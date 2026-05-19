@@ -422,96 +422,112 @@ let materiales   = [];
 let nombreSiatel = '';
 
 // ── INIT ──
-// ── MODO SERVIDOR vs MODO LOCAL ──
-const MODO_SERVIDOR = window.location.protocol === 'http:' && window.location.hostname !== 'localhost'
-  ? true
-  : window.location.protocol === 'http:';
-const ES_ADMIN = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-const API      = window.location.origin; // mismo origen que el servidor
+// ── CONFIGURACIÓN JSONBIN ──
+// Pega aquí tu X-Master-Key de jsonbin.io
+const JSONBIN_KEY    = '$2a$10$nOZbhFexjpOLGD.MlhAup.0f4muSH/6i08ocwNVBc3xPWHd7obKt.';
+const JSONBIN_URL    = 'https://api.jsonbin.io/v3/b';
+let   JSONBIN_BIN_ID = localStorage.getItem('tx41_bin_id') || '';
+
+// ── DETECCIÓN DE MODO ──
+const ES_GITHUB = window.location.hostname.includes('github.io');
 
 window.addEventListener('DOMContentLoaded', () => {
   baseMaestra = baseMaestraEmbebida;
 
-  if (MODO_SERVIDOR && !ES_ADMIN) {
-    // Dispositivo cliente (iPhone, tablet) — espera que el admin cargue el SIATEL
-    mostrarPantallaCliente();
-  } else if (MODO_SERVIDOR && ES_ADMIN) {
-    // Admin en localhost — flujo normal pero comparte al servidor
-    document.getElementById('hint-servidor').style.display = 'block';
+  if (ES_GITHUB) {
+    // GitHub Pages — intentar cargar SIATEL desde JSONBin
+    if (JSONBIN_BIN_ID) {
+      cargarDesdeNube();
+    } else {
+      mostrarEsperaNube('Esperando que el administrador cargue las existencias...');
+    }
+  } else {
+    // Local — mostrar hint de nube en pantalla de carga
+    const hint = document.getElementById('hint-servidor');
+    if (hint) hint.style.display = 'block';
   }
-  // Modo archivo local: comportamiento normal sin cambios
 });
 
-// ── PANTALLA CLIENTE (espera datos del servidor) ──
-function mostrarPantallaCliente() {
-  document.getElementById('pantalla-carga').innerHTML = `
+// ── FUNCIONES DE NUBE (JSONBin) ──
+function mostrarEsperaNube(msg) {
+  const pc = document.getElementById('pantalla-carga');
+  pc.innerHTML = `
     <div class="base-card">
       <div class="icono">📡</div>
-      <h2>Conectando al servidor...</h2>
-      <p>Esperando que el administrador cargue el archivo de existencias SIATEL en la computadora.</p>
-      <div id="cliente-status" style="margin-top:16px;font-size:13px;color:var(--muted)">Verificando conexión...</div>
-      <button class="btn btn-outline" onclick="verificarServidor()" style="margin-top:20px">🔄 Verificar ahora</button>
+      <h2>Sistema de Inventario TX41</h2>
+      <p>${msg}</p>
+      <div id="nube-status" style="margin-top:16px;font-size:13px;color:var(--muted)">Verificando...</div>
+      <button class="btn btn-outline" onclick="cargarDesdeNube()" style="margin-top:20px">🔄 Verificar ahora</button>
     </div>`;
-  document.getElementById('pantalla-carga').style.display = 'flex';
-  verificarServidor();
+  pc.style.display = 'flex';
+  setTimeout(cargarDesdeNube, 4000);
 }
 
-async function verificarServidor() {
-  const el = document.getElementById('cliente-status');
-  if (el) el.textContent = 'Verificando...';
-  try {
-    const res  = await fetch(`${API}/api/estado`);
-    const data = await res.json();
-    if (data.siatel_cargado) {
-      if (el) el.textContent = `✅ SIATEL disponible: ${data.nombre}`;
-      // Cargar datos automáticamente
-      cargarDesdServidor();
-    } else {
-      if (el) el.textContent = '⏳ El administrador aún no ha cargado el SIATEL. Reintentando...';
-      setTimeout(verificarServidor, 5000);
-    }
-  } catch(e) {
-    if (el) el.textContent = '❌ No se puede conectar al servidor. Verifica la red.';
-    setTimeout(verificarServidor, 8000);
+async function cargarDesdeNube() {
+  const el = document.getElementById('nube-status');
+  if (!JSONBIN_BIN_ID) {
+    if (el) el.textContent = '⏳ Esperando que el administrador cargue el SIATEL...';
+    setTimeout(cargarDesdeNube, 6000);
+    return;
   }
-}
-
-async function cargarDesdServidor() {
   try {
-    const res  = await fetch(`${API}/api/siatel`);
+    if (el) el.textContent = 'Conectando...';
+    const res  = await fetch(`${JSONBIN_URL}/${JSONBIN_BIN_ID}/latest`, {
+      headers: { 'X-Master-Key': JSONBIN_KEY }
+    });
+    if (!res.ok) throw new Error('Sin datos');
     const data = await res.json();
-    if (!data.ok || !data.datos) { setTimeout(verificarServidor, 5000); return; }
-
-    siatelMap    = data.datos;
-    nombreSiatel = data.nombre;
-
-    const total = Object.keys(siatelMap).length;
+    const rec  = data.record;
+    if (!rec || !rec.siatel || Object.keys(rec.siatel).length === 0) {
+      if (el) el.textContent = '⏳ El administrador aún no ha cargado las existencias...';
+      setTimeout(cargarDesdeNube, 6000);
+      return;
+    }
+    siatelMap    = rec.siatel;
+    nombreSiatel = rec.nombre || 'SIATEL';
+    const total  = Object.keys(siatelMap).length;
     document.getElementById('base-status-txt').textContent =
       `${nombreSiatel} · ${total.toLocaleString()} materiales`;
     document.getElementById('pantalla-carga').style.display = 'none';
     construirPantallaAreas();
     document.getElementById('pantalla-area').style.display = 'flex';
   } catch(e) {
-    setTimeout(verificarServidor, 5000);
+    if (el) el.textContent = '❌ Error de conexión. Reintentando...';
+    setTimeout(cargarDesdeNube, 8000);
   }
 }
 
-// ── Compartir SIATEL al servidor cuando es admin ──
 async function compartirAlServidor(mapDatos, nombre) {
-  if (!MODO_SERVIDOR || !ES_ADMIN) return;
+  if (JSONBIN_KEY === 'TU_API_KEY_AQUI') return; // sin configurar
   try {
-    await fetch(`${API}/api/siatel`, {
-      method:  'POST',
-      headers: {'Content-Type': 'application/json'},
-      body:    JSON.stringify({
-        datos:     mapDatos,
-        nombre:    nombre,
-        timestamp: new Date().toISOString()
-      })
-    });
-    console.log('✅ SIATEL compartido al servidor');
+    const payload = { siatel: mapDatos, nombre, timestamp: new Date().toISOString() };
+    let res, data;
+    if (JSONBIN_BIN_ID) {
+      // Actualizar bin existente
+      res  = await fetch(`${JSONBIN_URL}/${JSONBIN_BIN_ID}`, {
+        method:  'PUT',
+        headers: { 'Content-Type':'application/json', 'X-Master-Key': JSONBIN_KEY },
+        body:    JSON.stringify(payload)
+      });
+    } else {
+      // Crear bin nuevo
+      res  = await fetch(JSONBIN_URL, {
+        method:  'POST',
+        headers: { 'Content-Type':'application/json', 'X-Master-Key': JSONBIN_KEY, 'X-Bin-Name':'TX41-SIATEL', 'X-Bin-Private':'false' },
+        body:    JSON.stringify(payload)
+      });
+      data = await res.json();
+      JSONBIN_BIN_ID = data.metadata?.id || '';
+      if (JSONBIN_BIN_ID) {
+        localStorage.setItem('tx41_bin_id', JSONBIN_BIN_ID);
+        console.log('✅ Bin creado:', JSONBIN_BIN_ID);
+      }
+    }
+    console.log('✅ SIATEL subido a JSONBin');
+    // Mostrar bin ID en consola para configurar en GitHub
+    if (JSONBIN_BIN_ID) console.log('📌 Bin ID:', JSONBIN_BIN_ID);
   } catch(e) {
-    console.warn('No se pudo compartir al servidor:', e);
+    console.warn('No se pudo subir a JSONBin:', e);
   }
 }
 
