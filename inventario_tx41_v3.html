@@ -539,12 +539,11 @@ async function cargarDesdeNube() {
     if (el) el.textContent = 'Conectando...';
     if (bar) { bar.style.width = '20%'; pct.textContent = '20%'; }
 
-    // Paso 1: Leer JSONBin (rápido, siempre disponible)
+    // Paso 1: Leer JSONBin (bin público, sin clave necesaria)
     const controller = new AbortController();
     const timeoutId  = setTimeout(() => controller.abort(), 8000);
     const res  = await fetch(`${JSONBIN_URL}/${JSONBIN_BIN_ID}/latest`, {
-      headers: { 'X-Master-Key': JSONBIN_KEY },
-      signal:  controller.signal
+      signal: controller.signal
     });
     clearTimeout(timeoutId);
     if (!res.ok) throw new Error('Sin conexión');
