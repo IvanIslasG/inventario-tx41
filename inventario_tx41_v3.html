@@ -447,10 +447,10 @@ function guardarNgrokUrl() {
 }
 
 async function subirNgrokUrl() {
-  if (!NGROK_URL || !JSONBIN_KEY || !JSONBIN_BIN_ID) return;
+  if (!NGROK_URL) return;
+  if (!JSONBIN_KEY || !JSONBIN_BIN_ID) return;
   try {
-    // Leer bin actual y actualizar solo la URL
-    const res = await fetch(`${JSONBIN_URL}/${JSONBIN_BIN_ID}/latest`, {
+    const res  = await fetch(`${JSONBIN_URL}/${JSONBIN_BIN_ID}/latest`, {
       headers: { 'X-Master-Key': JSONBIN_KEY }
     });
     const data = await res.json();
@@ -463,7 +463,7 @@ async function subirNgrokUrl() {
     });
     console.log('✅ URL ngrok guardada en JSONBin:', NGROK_URL);
   } catch(e) {
-    console.warn('No se pudo guardar URL ngrok:', e);
+    console.warn('JSONBin no disponible:', e);
   }
 }
 
