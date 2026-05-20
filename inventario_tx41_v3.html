@@ -455,38 +455,56 @@ window.addEventListener('DOMContentLoaded', () => {
 function mostrarEsperaNube(msg) {
   const pc = document.getElementById('pantalla-carga');
   pc.innerHTML = `
-    <div class="base-card">
-      <div class="icono">📡</div>
-      <h2>Sistema de Inventario TX41</h2>
-      <p>${msg}</p>
-      <div id="nube-status" style="margin-top:16px;font-size:13px;color:var(--muted)">Verificando...</div>
-      <button class="btn btn-outline" onclick="cargarDesdeNube()" style="margin-top:20px">🔄 Verificar ahora</button>
+    <div class="base-card" style="max-width:420px">
+      <div style="font-size:52px;margin-bottom:16px">📦</div>
+      <h2 style="font-size:18px;margin-bottom:8px">Sistema de Inventario TX41</h2>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:24px">${msg}</p>
+      <div style="background:#e8eef8;border-radius:20px;height:12px;overflow:hidden;margin-bottom:8px">
+        <div id="nube-bar" style="height:100%;background:var(--azul);border-radius:20px;width:0%;transition:width .4s ease"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:20px">
+        <span id="nube-status">Iniciando...</span>
+        <span id="nube-pct">0%</span>
+      </div>
+      <button class="btn btn-outline btn-sm" onclick="cargarDesdeNube()">🔄 Verificar ahora</button>
     </div>`;
   pc.style.display = 'flex';
-  setTimeout(cargarDesdeNube, 4000);
+  setTimeout(cargarDesdeNube, 1000);
 }
 
 async function cargarDesdeNube() {
   const el = document.getElementById('nube-status');
+  const bar = document.getElementById('nube-bar');
+  const pct = document.getElementById('nube-pct');
+
   if (!JSONBIN_BIN_ID) {
     if (el) el.textContent = '⏳ Esperando que el administrador cargue el SIATEL...';
     setTimeout(cargarDesdeNube, 6000);
     return;
   }
   try {
-    if (el) el.textContent = 'Conectando...';
+    if (el) el.textContent = 'Descargando existencias...';
+    if (bar) { bar.style.width = '30%'; pct.textContent = '30%'; }
+
     const res  = await fetch(`${JSONBIN_URL}/${JSONBIN_BIN_ID}/latest`, {
       headers: { 'X-Master-Key': JSONBIN_KEY }
     });
     if (!res.ok) throw new Error('Sin datos');
+
+    if (bar) { bar.style.width = '60%'; pct.textContent = '60%'; }
     const data = await res.json();
     const rec  = data.record;
+
     if (!rec || !rec.siatel || Object.keys(rec.siatel).length === 0) {
       if (el) el.textContent = '⏳ El administrador aún no ha cargado las existencias...';
+      if (bar) { bar.style.width = '0%'; pct.textContent = '0%'; }
       setTimeout(cargarDesdeNube, 6000);
       return;
     }
-    // Descomprimir: [lib, tras] → {lib, tras, desc, um}
+
+    if (bar) { bar.style.width = '85%'; pct.textContent = '85%'; }
+
+    // Descomprimir: [lib, tras, um] → {lib, tras, um}
     const comprimido = rec.siatel;
     siatelMap = {};
     for (const cat in comprimido) {
@@ -494,14 +512,21 @@ async function cargarDesdeNube() {
       siatelMap[cat] = { lib: v[0]||0, tras: v[1]||0, um: v[2]||'' };
     }
     nombreSiatel = rec.nombre || 'SIATEL';
-    const total  = Object.keys(siatelMap).length;
-    document.getElementById('base-status-txt').textContent =
-      `${nombreSiatel} · ${total.toLocaleString()} materiales`;
-    document.getElementById('pantalla-carga').style.display = 'none';
-    construirPantallaAreas();
-    document.getElementById('pantalla-area').style.display = 'flex';
+
+    if (bar) { bar.style.width = '100%'; pct.textContent = '100%'; }
+
+    setTimeout(() => {
+      const total = Object.keys(siatelMap).length;
+      document.getElementById('base-status-txt').textContent =
+        `${nombreSiatel} · ${total.toLocaleString()} materiales`;
+      document.getElementById('pantalla-carga').style.display = 'none';
+      construirPantallaAreas();
+      document.getElementById('pantalla-area').style.display = 'flex';
+    }, 400);
+
   } catch(e) {
     if (el) el.textContent = '❌ Error de conexión. Reintentando...';
+    if (bar) { bar.style.width = '0%'; pct.textContent = '0%'; }
     setTimeout(cargarDesdeNube, 8000);
   }
 }
@@ -511,17 +536,36 @@ async function compartirAlServidor(mapDatos, nombre) {
     console.warn('⚠️ JSONBin no configurado');
     return;
   }
-  try {
-    // Comprimir: solo guardar catalogo → {lib, tras} para reducir tamaño
-    const siatelComprimido = {};
-    for (const cat in mapDatos) {
-      const m = mapDatos[cat];
-      siatelComprimido[cat] = [m.lib || 0, m.tras || 0, m.um || ''];
+
+  // Comprimir: [lib, tras, um]
+  const siatelComprimido = {};
+  for (const cat in mapDatos) {
+    const m = mapDatos[cat];
+    siatelComprimido[cat] = [m.lib || 0, m.tras || 0, m.um || ''];
+  }
+  const payload = { siatel: siatelComprimido, nombre, timestamp: new Date().toISOString() };
+
+  // En modo local: enviar al servidor Python (que sube a JSONBin sin CORS)
+  if (!ES_GITHUB) {
+    try {
+      const res = await fetch('/api/siatel', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ datos: mapDatos, nombre, timestamp: new Date().toISOString() })
+      });
+      if (res.ok) {
+        console.log('✅ SIATEL enviado al servidor local → JSONBin');
+        return;
+      }
+    } catch(e) {
+      console.warn('Servidor local no disponible, subiendo directo...');
     }
-    const payload = { siatel: siatelComprimido, nombre, timestamp: new Date().toISOString() };
+  }
+
+  // En GitHub Pages: subir directo a JSONBin
+  try {
     let res, data;
     if (JSONBIN_BIN_ID) {
-      // Actualizar bin existente
       res = await fetch(`${JSONBIN_URL}/${JSONBIN_BIN_ID}`, {
         method:  'PUT',
         headers: { 'Content-Type':'application/json', 'X-Master-Key': JSONBIN_KEY },
@@ -530,7 +574,6 @@ async function compartirAlServidor(mapDatos, nombre) {
       data = await res.json();
       console.log('✅ SIATEL actualizado en JSONBin. Bin ID:', JSONBIN_BIN_ID);
     } else {
-      // Crear bin nuevo
       res = await fetch(JSONBIN_URL, {
         method:  'POST',
         headers: {
@@ -542,15 +585,10 @@ async function compartirAlServidor(mapDatos, nombre) {
         body: JSON.stringify(payload)
       });
       data = await res.json();
-      console.log('Respuesta JSONBin:', data);
       JSONBIN_BIN_ID = data?.metadata?.id || '';
       if (JSONBIN_BIN_ID) {
         localStorage.setItem('tx41_bin_id', JSONBIN_BIN_ID);
-        console.log('%c✅ Bin creado exitosamente', 'color:green;font-weight:bold');
-        console.log('%c📌 BIN ID: ' + JSONBIN_BIN_ID, 'color:blue;font-size:14px;font-weight:bold');
-        console.log('%c👆 Copia este ID y guárdalo', 'color:orange');
-      } else {
-        console.error('❌ No se pudo obtener el Bin ID. Respuesta:', data);
+        console.log('✅ Bin creado. Bin ID:', JSONBIN_BIN_ID);
       }
     }
   } catch(e) {
