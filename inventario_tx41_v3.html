@@ -424,7 +424,7 @@ let nombreSiatel = '';
 // ── INIT ──
 // ── CONFIGURACIÓN JSONBIN ──
 // Pega aquí tu X-Master-Key de jsonbin.io
-const JSONBIN_KEY    = $2a$10$nOZbhFexjpOLGD.MlhAup.0f4muSH/6i08ocwNVBc3xPWHd7obKt.;
+const JSONBIN_KEY    = '$2a$10$nOZbhFexjpOLGD.MlhAup.0f4muSH/6i08ocwNVBc3xPWHd7obKt.';
 const JSONBIN_URL    = 'https://api.jsonbin.io/v3/b';
 let   JSONBIN_BIN_ID = localStorage.getItem('tx41_bin_id') || '';
 
@@ -498,8 +498,8 @@ async function cargarDesdeNube() {
 }
 
 async function compartirAlServidor(mapDatos, nombre) {
-  if (JSONBIN_KEY === 'TU_API_KEY_AQUI') {
-    console.warn('⚠️ JSONBin no configurado — reemplaza TU_API_KEY_AQUI');
+  if (JSONBIN_KEY === '$2a$10$nOZbhFexjpOLGD.MlhAup.0f4muSH/6i08ocwNVBc3xPWHd7obKt.') {
+    console.warn('⚠️ JSONBin no configurado — reemplaza $2a$10$nOZbhFexjpOLGD.MlhAup.0f4muSH/6i08ocwNVBc3xPWHd7obKt.');
     return;
   }
   try {
