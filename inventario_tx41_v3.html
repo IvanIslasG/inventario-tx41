@@ -540,9 +540,14 @@ async function cargarDesdeNube() {
     if (bar) { bar.style.width = '20%'; pct.textContent = '20%'; }
 
     // Leer JSONBin para obtener URL de ngrok y datos
+    // Leer JSONBin con timeout de 8 segundos
+    const controller = new AbortController();
+    const timeoutId  = setTimeout(() => controller.abort(), 8000);
     const res  = await fetch(`${JSONBIN_URL}/${JSONBIN_BIN_ID}/latest`, {
-      headers: { 'X-Master-Key': JSONBIN_KEY }
+      headers: { 'X-Master-Key': JSONBIN_KEY },
+      signal:  controller.signal
     });
+    clearTimeout(timeoutId);
     if (!res.ok) throw new Error('Sin conexión');
     const data = await res.json();
     const rec  = data.record || {};
@@ -596,7 +601,7 @@ async function cargarDesdeNube() {
   } catch(e) {
     if (el) el.textContent = '❌ Error de conexión. Reintentando...';
     if (bar) { bar.style.width = '0%'; pct.textContent = '0%'; }
-    setTimeout(cargarDesdeNube, 8000);
+    setTimeout(cargarDesdeNube, 5000);
   }
 }
 
