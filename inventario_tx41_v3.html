@@ -483,7 +483,13 @@ async function cargarDesdeNube() {
       setTimeout(cargarDesdeNube, 6000);
       return;
     }
-    siatelMap    = rec.siatel;
+    // Descomprimir: [lib, tras] → {lib, tras, desc, um}
+    const comprimido = rec.siatel;
+    siatelMap = {};
+    for (const cat in comprimido) {
+      const v = comprimido[cat];
+      siatelMap[cat] = { lib: v[0]||0, tras: v[1]||0, desc: '', um: '' };
+    }
     nombreSiatel = rec.nombre || 'SIATEL';
     const total  = Object.keys(siatelMap).length;
     document.getElementById('base-status-txt').textContent =
@@ -503,7 +509,13 @@ async function compartirAlServidor(mapDatos, nombre) {
     return;
   }
   try {
-    const payload = { siatel: mapDatos, nombre, timestamp: new Date().toISOString() };
+    // Comprimir: solo guardar catalogo → {lib, tras} para reducir tamaño
+    const siatelComprimido = {};
+    for (const cat in mapDatos) {
+      const m = mapDatos[cat];
+      siatelComprimido[cat] = [m.lib || 0, m.tras || 0];
+    }
+    const payload = { siatel: siatelComprimido, nombre, timestamp: new Date().toISOString() };
     let res, data;
     if (JSONBIN_BIN_ID) {
       // Actualizar bin existente
