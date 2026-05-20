@@ -498,36 +498,48 @@ async function cargarDesdeNube() {
 }
 
 async function compartirAlServidor(mapDatos, nombre) {
-  if (JSONBIN_KEY === 'TU_API_KEY_AQUI') return; // sin configurar
+  if (JSONBIN_KEY === 'TU_API_KEY_AQUI') {
+    console.warn('⚠️ JSONBin no configurado — reemplaza TU_API_KEY_AQUI');
+    return;
+  }
   try {
     const payload = { siatel: mapDatos, nombre, timestamp: new Date().toISOString() };
     let res, data;
     if (JSONBIN_BIN_ID) {
       // Actualizar bin existente
-      res  = await fetch(`${JSONBIN_URL}/${JSONBIN_BIN_ID}`, {
+      res = await fetch(`${JSONBIN_URL}/${JSONBIN_BIN_ID}`, {
         method:  'PUT',
         headers: { 'Content-Type':'application/json', 'X-Master-Key': JSONBIN_KEY },
         body:    JSON.stringify(payload)
       });
+      data = await res.json();
+      console.log('✅ SIATEL actualizado en JSONBin. Bin ID:', JSONBIN_BIN_ID);
     } else {
       // Crear bin nuevo
-      res  = await fetch(JSONBIN_URL, {
+      res = await fetch(JSONBIN_URL, {
         method:  'POST',
-        headers: { 'Content-Type':'application/json', 'X-Master-Key': JSONBIN_KEY, 'X-Bin-Name':'TX41-SIATEL', 'X-Bin-Private':'false' },
-        body:    JSON.stringify(payload)
+        headers: {
+          'Content-Type':  'application/json',
+          'X-Master-Key':  JSONBIN_KEY,
+          'X-Bin-Name':    'TX41-SIATEL',
+          'X-Bin-Private': 'false'
+        },
+        body: JSON.stringify(payload)
       });
       data = await res.json();
-      JSONBIN_BIN_ID = data.metadata?.id || '';
+      console.log('Respuesta JSONBin:', data);
+      JSONBIN_BIN_ID = data?.metadata?.id || '';
       if (JSONBIN_BIN_ID) {
         localStorage.setItem('tx41_bin_id', JSONBIN_BIN_ID);
-        console.log('✅ Bin creado:', JSONBIN_BIN_ID);
+        console.log('%c✅ Bin creado exitosamente', 'color:green;font-weight:bold');
+        console.log('%c📌 BIN ID: ' + JSONBIN_BIN_ID, 'color:blue;font-size:14px;font-weight:bold');
+        console.log('%c👆 Copia este ID y guárdalo', 'color:orange');
+      } else {
+        console.error('❌ No se pudo obtener el Bin ID. Respuesta:', data);
       }
     }
-    console.log('✅ SIATEL subido a JSONBin');
-    // Mostrar bin ID en consola para configurar en GitHub
-    if (JSONBIN_BIN_ID) console.log('📌 Bin ID:', JSONBIN_BIN_ID);
   } catch(e) {
-    console.warn('No se pudo subir a JSONBin:', e);
+    console.error('❌ Error subiendo a JSONBin:', e);
   }
 }
 
@@ -571,7 +583,7 @@ function procesarSiatel(file) {
         };
       }
 
-      // Compartir al servidor si está en modo servidor
+      // Subir a JSONBin siempre (nube)
       compartirAlServidor(siatelMap, nombreSiatel);
 
       const total = Object.keys(siatelMap).length;
