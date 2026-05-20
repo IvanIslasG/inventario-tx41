@@ -468,16 +468,7 @@ async function subirNgrokUrl() {
 }
 
 // Inicializar campo ngrok si hay URL guardada
-window.addEventListener('DOMContentLoaded', () => {
-  if (NGROK_URL) {
-    const input = document.getElementById('ngrok-url');
-    if (input) {
-      input.value = NGROK_URL;
-      const st = document.getElementById('ngrok-status');
-      if (st) { st.textContent = '✅ Guardada'; st.style.color = '#065f46'; }
-    }
-  }
-});
+
 // Pega aquí tu X-Master-Key de jsonbin.io
 const JSONBIN_KEY    = '$2a$10$nOZbhFexjpOLGD.MlhAup.0f4muSH/6i08ocwNVBc3xPWHd7obKt.';
 const JSONBIN_URL    = 'https://api.jsonbin.io/v3/b';
@@ -487,20 +478,26 @@ let   JSONBIN_BIN_ID = localStorage.getItem('tx41_bin_id') || '6a0d027bee5a733b1
 const ES_GITHUB = window.location.hostname.includes('github.io');
 
 window.addEventListener('DOMContentLoaded', () => {
+  // Inicializar base maestra
   baseMaestra = baseMaestraEmbebida;
 
+  // Restaurar URL ngrok si estaba guardada
+  if (NGROK_URL) {
+    const input = document.getElementById('ngrok-url');
+    if (input) {
+      input.value = NGROK_URL;
+      const st = document.getElementById('ngrok-status');
+      if (st) { st.textContent = '✅ Guardada'; st.style.color = '#065f46'; }
+    }
+  }
+
   if (ES_GITHUB) {
-    // GitHub Pages — ocultar botón cambiar archivo (solo admin)
+    // GitHub Pages — modo cliente
     const btnCambiar = document.getElementById('btn-cambiar-archivo');
     if (btnCambiar) btnCambiar.style.display = 'none';
-    // Intentar cargar SIATEL desde JSONBin
-    if (JSONBIN_BIN_ID) {
-      cargarDesdeNube();
-    } else {
-      mostrarEsperaNube('Esperando que el administrador cargue las existencias...');
-    }
+    mostrarEsperaNube('Cargando existencias del almacén...');
   } else {
-    // Local — mostrar hint de nube en pantalla de carga
+    // Modo local — mostrar hint de administrador
     const hint = document.getElementById('hint-servidor');
     if (hint) hint.style.display = 'block';
   }
