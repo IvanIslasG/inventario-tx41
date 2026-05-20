@@ -628,6 +628,46 @@ function mostrarAreas() {
   document.getElementById('pantalla-carga').style.display = 'none';
   construirPantallaAreas();
   document.getElementById('pantalla-area').style.display = 'flex';
+
+  // Si es cliente GitHub Pages, refrescar datos en segundo plano cada 30 seg
+  if (ES_GITHUB) iniciarRefreshAutomatico();
+}
+
+let _refreshInterval = null;
+function iniciarRefreshAutomatico() {
+  if (_refreshInterval) return; // ya está corriendo
+  _refreshInterval = setInterval(async () => {
+    try {
+      // Leer config.json para obtener URL ngrok actualizada
+      const GITHUB_CONFIG = 'https://ivanislasg.github.io/inventario-tx41/config.json';
+      const res = await fetch(`${GITHUB_CONFIG}?t=${Date.now()}`);
+      if (!res.ok) return;
+      const cfg = await res.json();
+      const ngrokURL = cfg.ngrok || '';
+      if (!ngrokURL) return;
+
+      // Obtener datos frescos del servidor
+      const ctrl  = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 5000);
+      const r2 = await fetch(`${ngrokURL}/api/siatel`, {
+        headers: { 'ngrok-skip-browser-warning': 'true' },
+        signal:  ctrl.signal
+      });
+      clearTimeout(timer);
+      if (!r2.ok) return;
+      const d2 = await r2.json();
+      if (d2.ok && d2.datos && d2.nombre !== nombreSiatel) {
+        // Datos nuevos disponibles — actualizar silenciosamente
+        siatelMap    = d2.datos;
+        nombreSiatel = d2.nombre;
+        document.getElementById('base-status-txt').textContent =
+          `${nombreSiatel} · ${Object.keys(siatelMap).length.toLocaleString()} materiales`;
+        console.log('✅ Datos actualizados automáticamente:', nombreSiatel);
+      }
+    } catch(e) {
+      // Silencioso — no molestar al usuario
+    }
+  }, 30000); // cada 30 segundos
 }
 
 async function compartirAlServidor(mapDatos, nombre) {
