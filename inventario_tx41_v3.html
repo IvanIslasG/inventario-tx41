@@ -271,7 +271,7 @@ table.pt tr:nth-child(even) td{background:#f7f7f7}
   <div class="base-status">
     <div class="dot"></div>
     <span id="base-status-txt">SIATEL cargado</span>
-    <button class="btn btn-outline btn-sm" onclick="cambiarSiatel()" style="margin-left:8px">Cambiar archivo</button>
+    <button class="btn btn-outline btn-sm" onclick="cambiarSiatel()" id="btn-cambiar-archivo" style="margin-left:8px">Cambiar archivo</button>
   </div>
   <div class="area-titulo">¿De qué área se realizará el inventario?</div>
   <div class="area-sub">Selecciona el área o visualiza todo el inventario</div>
@@ -435,7 +435,10 @@ window.addEventListener('DOMContentLoaded', () => {
   baseMaestra = baseMaestraEmbebida;
 
   if (ES_GITHUB) {
-    // GitHub Pages — intentar cargar SIATEL desde JSONBin
+    // GitHub Pages — ocultar botón cambiar archivo (solo admin)
+    const btnCambiar = document.getElementById('btn-cambiar-archivo');
+    if (btnCambiar) btnCambiar.style.display = 'none';
+    // Intentar cargar SIATEL desde JSONBin
     if (JSONBIN_BIN_ID) {
       cargarDesdeNube();
     } else {
@@ -488,7 +491,7 @@ async function cargarDesdeNube() {
     siatelMap = {};
     for (const cat in comprimido) {
       const v = comprimido[cat];
-      siatelMap[cat] = { lib: v[0]||0, tras: v[1]||0, desc: '', um: '' };
+      siatelMap[cat] = { lib: v[0]||0, tras: v[1]||0, um: v[2]||'' };
     }
     nombreSiatel = rec.nombre || 'SIATEL';
     const total  = Object.keys(siatelMap).length;
@@ -513,7 +516,7 @@ async function compartirAlServidor(mapDatos, nombre) {
     const siatelComprimido = {};
     for (const cat in mapDatos) {
       const m = mapDatos[cat];
-      siatelComprimido[cat] = [m.lib || 0, m.tras || 0];
+      siatelComprimido[cat] = [m.lib || 0, m.tras || 0, m.um || ''];
     }
     const payload = { siatel: siatelComprimido, nombre, timestamp: new Date().toISOString() };
     let res, data;
