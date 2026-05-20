@@ -531,7 +531,7 @@ async function cargarDesdeNube() {
 
   if (!JSONBIN_BIN_ID) {
     if (el) el.textContent = '⏳ Esperando configuración...';
-    setTimeout(cargarDesdeNube, 6000);
+    setTimeout(cargarDesdeNube, 5000);
     return;
   }
 
@@ -539,8 +539,7 @@ async function cargarDesdeNube() {
     if (el) el.textContent = 'Conectando...';
     if (bar) { bar.style.width = '20%'; pct.textContent = '20%'; }
 
-    // Leer JSONBin para obtener URL de ngrok y datos
-    // Leer JSONBin con timeout de 8 segundos
+    // Paso 1: Leer JSONBin (rápido, siempre disponible)
     const controller = new AbortController();
     const timeoutId  = setTimeout(() => controller.abort(), 8000);
     const res  = await fetch(`${JSONBIN_URL}/${JSONBIN_BIN_ID}/latest`, {
@@ -549,43 +548,14 @@ async function cargarDesdeNube() {
     });
     clearTimeout(timeoutId);
     if (!res.ok) throw new Error('Sin conexión');
+
+    if (bar) { bar.style.width = '50%'; pct.textContent = '50%'; }
     const data = await res.json();
     const rec  = data.record || {};
 
-    if (bar) { bar.style.width = '40%'; pct.textContent = '40%'; }
-
-    // Si hay URL de ngrok, cargar datos directo del servidor
-    const ngrok = rec.ngrok || '';
-    if (ngrok) {
-      if (el) el.textContent = 'Cargando existencias...';
-      if (bar) { bar.style.width = '60%'; pct.textContent = '60%'; }
-      try {
-        const ctrl2   = new AbortController();
-        const timeout2 = setTimeout(() => ctrl2.abort(), 6000);
-        const r2 = await fetch(`${ngrok}/api/siatel`, {
-          headers: { 'ngrok-skip-browser-warning': 'true' },
-          signal:  ctrl2.signal
-        });
-        clearTimeout(timeout2);
-        if (r2.ok) {
-          const d2 = await r2.json();
-          if (d2.ok && d2.datos && Object.keys(d2.datos).length > 0) {
-            if (bar) { bar.style.width = '90%'; pct.textContent = '90%'; }
-            siatelMap    = d2.datos;
-            nombreSiatel = d2.nombre || 'SIATEL';
-            if (bar) { bar.style.width = '100%'; pct.textContent = '100%'; }
-            setTimeout(() => mostrarAreas(), 400);
-            return;
-          }
-        }
-      } catch(e) {
-        console.warn('ngrok no disponible, intentando JSONBin...');
-      }
-    }
-
-    // Fallback: usar datos comprimidos de JSONBin
-    if (bar) { bar.style.width = '70%'; pct.textContent = '70%'; }
     const comprimido = rec.siatel || {};
+    const ngrok      = rec.ngrok  || '';
+
     if (Object.keys(comprimido).length === 0) {
       if (el) el.textContent = '⏳ Esperando que el administrador cargue las existencias...';
       if (bar) { bar.style.width = '0%'; pct.textContent = '0%'; }
@@ -593,19 +563,53 @@ async function cargarDesdeNube() {
       return;
     }
 
+    // Paso 2: Cargar datos comprimidos de JSONBin (sin UM)
+    if (bar) { bar.style.width = '70%'; pct.textContent = '70%'; }
+    if (el) el.textContent = 'Cargando materiales...';
+
     siatelMap = {};
     for (const cat in comprimido) {
       const v = comprimido[cat];
       siatelMap[cat] = { lib: v[0]||0, tras: v[1]||0, um: v[2]||'' };
     }
     nombreSiatel = rec.nombre || 'SIATEL';
+
+    if (bar) { bar.style.width = '90%'; pct.textContent = '90%'; }
+
+    // Paso 3: Intentar enriquecer con datos completos via ngrok (en paralelo, sin bloquear)
+    if (ngrok) {
+      enriquecerConNgrok(ngrok);
+    }
+
     if (bar) { bar.style.width = '100%'; pct.textContent = '100%'; }
-    setTimeout(() => mostrarAreas(), 400);
+    setTimeout(() => mostrarAreas(), 300);
 
   } catch(e) {
     if (el) el.textContent = '❌ Error de conexión. Reintentando...';
     if (bar) { bar.style.width = '0%'; pct.textContent = '0%'; }
     setTimeout(cargarDesdeNube, 5000);
+  }
+}
+
+async function enriquecerConNgrok(ngrok) {
+  // Intenta obtener datos completos del servidor sin bloquear la UI
+  try {
+    const ctrl    = new AbortController();
+    const timeout = setTimeout(() => ctrl.abort(), 8000);
+    const r = await fetch(`${ngrok}/api/siatel`, {
+      headers: { 'ngrok-skip-browser-warning': 'true' },
+      signal:  ctrl.signal
+    });
+    clearTimeout(timeout);
+    if (!r.ok) return;
+    const d = await r.json();
+    if (d.ok && d.datos && Object.keys(d.datos).length > 0) {
+      siatelMap    = d.datos;
+      nombreSiatel = d.nombre || nombreSiatel;
+      console.log('✅ Datos enriquecidos con ngrok');
+    }
+  } catch(e) {
+    console.log('ngrok no disponible, usando datos de JSONBin');
   }
 }
 
