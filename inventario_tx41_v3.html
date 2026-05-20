@@ -539,18 +539,18 @@ async function cargarDesdeNube() {
     if (el) el.textContent = 'Conectando...';
     if (bar) { bar.style.width = '20%'; pct.textContent = '20%'; }
 
-    // Paso 1: Leer JSONBin (bin público, sin clave necesaria)
+    // Paso 1: Leer config.json desde GitHub Pages
+    const GITHUB_CONFIG = 'https://ivanislasg.github.io/inventario-tx41/config.json';
     const controller = new AbortController();
     const timeoutId  = setTimeout(() => controller.abort(), 8000);
-    const res  = await fetch(`${JSONBIN_URL}/${JSONBIN_BIN_ID}/latest`, {
+    const res  = await fetch(`${GITHUB_CONFIG}?t=${Date.now()}`, {
       signal: controller.signal
     });
     clearTimeout(timeoutId);
-    if (!res.ok) throw new Error('Sin conexión');
+    if (!res.ok) throw new Error('Sin config');
 
     if (bar) { bar.style.width = '50%'; pct.textContent = '50%'; }
-    const data = await res.json();
-    const rec  = data.record || {};
+    const rec  = await res.json();
 
     const comprimido = rec.siatel || {};
     const ngrok      = rec.ngrok  || '';
