@@ -558,7 +558,9 @@ async function cargarDesdeNube() {
       if (el) el.textContent = 'Cargando existencias...';
       if (bar) { bar.style.width = '60%'; pct.textContent = '60%'; }
       try {
-        const r2 = await fetch(`${ngrok}/api/siatel`);
+        const r2 = await fetch(`${ngrok}/api/siatel`, {
+            headers: { 'ngrok-skip-browser-warning': 'true' }
+          });
         if (r2.ok) {
           const d2 = await r2.json();
           if (d2.ok && d2.datos && Object.keys(d2.datos).length > 0) {
