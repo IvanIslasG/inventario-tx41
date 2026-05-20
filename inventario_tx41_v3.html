@@ -255,8 +255,16 @@ table.pt tr:nth-child(even) td{background:#f7f7f7}
     <button class="btn btn-primary" onclick="document.getElementById('file-siatel').click()">Seleccionar archivo</button>
     <input type="file" id="file-siatel" accept=".xlsx,.xls" style="display:none" onchange="cargarSiatel(event)">
     <div class="hint" id="hint-servidor" style="display:none;background:#dcfce7;color:#065f46">
-      <b>🖥️ Modo servidor activo</b><br>
-      Al cargar el SIATEL, los datos se compartirán automáticamente con todos los dispositivos conectados al servidor.
+      <b>🖥️ Modo administrador</b><br>
+      Al cargar el SIATEL los datos estarán disponibles para todos los dispositivos.<br><br>
+      <b>URL de ngrok:</b><br>
+      <div style="display:flex;gap:8px;margin-top:6px;align-items:center">
+        <input type="text" id="ngrok-url" placeholder="https://xxxx.ngrok-free.dev"
+          style="flex:1;height:34px;font-size:12px;border:1.5px solid #86efac;border-radius:8px;padding:0 10px;color:#065f46;background:white"
+          oninput="guardarNgrokUrl()">
+        <span id="ngrok-status" style="font-size:11px;white-space:nowrap"></span>
+      </div>
+      <div style="font-size:11px;margin-top:4px;opacity:.8">Pega la URL de ngrok antes de cargar el SIATEL</div>
     </div>
     <div class="hint">
       <b>Archivo esperado:</b> Existencia_total41.xlsx (exportación SIATEL)<br>
@@ -422,7 +430,54 @@ let materiales   = [];
 let nombreSiatel = '';
 
 // ── INIT ──
-// ── CONFIGURACIÓN JSONBIN ──
+// ── NGROK URL ──
+let NGROK_URL = localStorage.getItem('tx41_ngrok') || '';
+
+function guardarNgrokUrl() {
+  const input = document.getElementById('ngrok-url');
+  NGROK_URL = input.value.trim().replace(/\/$/, '');
+  localStorage.setItem('tx41_ngrok', NGROK_URL);
+  const st = document.getElementById('ngrok-status');
+  if (NGROK_URL) {
+    st.textContent = '✅ Guardada';
+    st.style.color = '#065f46';
+    // Subir URL a JSONBin para que los clientes la lean
+    subirNgrokUrl();
+  }
+}
+
+async function subirNgrokUrl() {
+  if (!NGROK_URL || !JSONBIN_KEY || !JSONBIN_BIN_ID) return;
+  try {
+    // Leer bin actual y actualizar solo la URL
+    const res = await fetch(`${JSONBIN_URL}/${JSONBIN_BIN_ID}/latest`, {
+      headers: { 'X-Master-Key': JSONBIN_KEY }
+    });
+    const data = await res.json();
+    const rec  = data.record || {};
+    rec.ngrok  = NGROK_URL;
+    await fetch(`${JSONBIN_URL}/${JSONBIN_BIN_ID}`, {
+      method:  'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_KEY },
+      body:    JSON.stringify(rec)
+    });
+    console.log('✅ URL ngrok guardada en JSONBin:', NGROK_URL);
+  } catch(e) {
+    console.warn('No se pudo guardar URL ngrok:', e);
+  }
+}
+
+// Inicializar campo ngrok si hay URL guardada
+window.addEventListener('DOMContentLoaded', () => {
+  if (NGROK_URL) {
+    const input = document.getElementById('ngrok-url');
+    if (input) {
+      input.value = NGROK_URL;
+      const st = document.getElementById('ngrok-status');
+      if (st) { st.textContent = '✅ Guardada'; st.style.color = '#065f46'; }
+    }
+  }
+});
 // Pega aquí tu X-Master-Key de jsonbin.io
 const JSONBIN_KEY    = '$2a$10$nOZbhFexjpOLGD.MlhAup.0f4muSH/6i08ocwNVBc3xPWHd7obKt.';
 const JSONBIN_URL    = 'https://api.jsonbin.io/v3/b';
@@ -473,62 +528,86 @@ function mostrarEsperaNube(msg) {
 }
 
 async function cargarDesdeNube() {
-  const el = document.getElementById('nube-status');
+  const el  = document.getElementById('nube-status');
   const bar = document.getElementById('nube-bar');
   const pct = document.getElementById('nube-pct');
 
   if (!JSONBIN_BIN_ID) {
-    if (el) el.textContent = '⏳ Esperando que el administrador cargue el SIATEL...';
+    if (el) el.textContent = '⏳ Esperando configuración...';
     setTimeout(cargarDesdeNube, 6000);
     return;
   }
-  try {
-    if (el) el.textContent = 'Descargando existencias...';
-    if (bar) { bar.style.width = '30%'; pct.textContent = '30%'; }
 
+  try {
+    if (el) el.textContent = 'Conectando...';
+    if (bar) { bar.style.width = '20%'; pct.textContent = '20%'; }
+
+    // Leer JSONBin para obtener URL de ngrok y datos
     const res  = await fetch(`${JSONBIN_URL}/${JSONBIN_BIN_ID}/latest`, {
       headers: { 'X-Master-Key': JSONBIN_KEY }
     });
-    if (!res.ok) throw new Error('Sin datos');
-
-    if (bar) { bar.style.width = '60%'; pct.textContent = '60%'; }
+    if (!res.ok) throw new Error('Sin conexión');
     const data = await res.json();
-    const rec  = data.record;
+    const rec  = data.record || {};
 
-    if (!rec || !rec.siatel || Object.keys(rec.siatel).length === 0) {
-      if (el) el.textContent = '⏳ El administrador aún no ha cargado las existencias...';
+    if (bar) { bar.style.width = '40%'; pct.textContent = '40%'; }
+
+    // Si hay URL de ngrok, cargar datos directo del servidor
+    const ngrok = rec.ngrok || '';
+    if (ngrok) {
+      if (el) el.textContent = 'Cargando existencias...';
+      if (bar) { bar.style.width = '60%'; pct.textContent = '60%'; }
+      try {
+        const r2 = await fetch(`${ngrok}/api/siatel`);
+        if (r2.ok) {
+          const d2 = await r2.json();
+          if (d2.ok && d2.datos && Object.keys(d2.datos).length > 0) {
+            if (bar) { bar.style.width = '90%'; pct.textContent = '90%'; }
+            siatelMap    = d2.datos;
+            nombreSiatel = d2.nombre || 'SIATEL';
+            if (bar) { bar.style.width = '100%'; pct.textContent = '100%'; }
+            setTimeout(() => mostrarAreas(), 400);
+            return;
+          }
+        }
+      } catch(e) {
+        console.warn('ngrok no disponible, intentando JSONBin...');
+      }
+    }
+
+    // Fallback: usar datos comprimidos de JSONBin
+    if (bar) { bar.style.width = '70%'; pct.textContent = '70%'; }
+    const comprimido = rec.siatel || {};
+    if (Object.keys(comprimido).length === 0) {
+      if (el) el.textContent = '⏳ Esperando que el administrador cargue las existencias...';
       if (bar) { bar.style.width = '0%'; pct.textContent = '0%'; }
       setTimeout(cargarDesdeNube, 6000);
       return;
     }
 
-    if (bar) { bar.style.width = '85%'; pct.textContent = '85%'; }
-
-    // Descomprimir: [lib, tras, um] → {lib, tras, um}
-    const comprimido = rec.siatel;
     siatelMap = {};
     for (const cat in comprimido) {
       const v = comprimido[cat];
       siatelMap[cat] = { lib: v[0]||0, tras: v[1]||0, um: v[2]||'' };
     }
     nombreSiatel = rec.nombre || 'SIATEL';
-
     if (bar) { bar.style.width = '100%'; pct.textContent = '100%'; }
-
-    setTimeout(() => {
-      const total = Object.keys(siatelMap).length;
-      document.getElementById('base-status-txt').textContent =
-        `${nombreSiatel} · ${total.toLocaleString()} materiales`;
-      document.getElementById('pantalla-carga').style.display = 'none';
-      construirPantallaAreas();
-      document.getElementById('pantalla-area').style.display = 'flex';
-    }, 400);
+    setTimeout(() => mostrarAreas(), 400);
 
   } catch(e) {
     if (el) el.textContent = '❌ Error de conexión. Reintentando...';
     if (bar) { bar.style.width = '0%'; pct.textContent = '0%'; }
     setTimeout(cargarDesdeNube, 8000);
   }
+}
+
+function mostrarAreas() {
+  const total = Object.keys(siatelMap).length;
+  document.getElementById('base-status-txt').textContent =
+    `${nombreSiatel} · ${total.toLocaleString()} materiales`;
+  document.getElementById('pantalla-carga').style.display = 'none';
+  construirPantallaAreas();
+  document.getElementById('pantalla-area').style.display = 'flex';
 }
 
 async function compartirAlServidor(mapDatos, nombre) {
