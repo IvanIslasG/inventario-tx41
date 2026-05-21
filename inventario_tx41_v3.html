@@ -1267,55 +1267,130 @@ function renderCaptura() {
   lista.innerHTML = '';
 
   capLista.forEach(m => {
-    const fisico    = capturaData[m.catalogo];
-    const capturado = fisico !== undefined;
-    const libre     = m.existencia || 0;
-    const traslado  = m.traslado   || 0;
-    const total     = libre + traslado;
-    const dif       = capturado ? fisico - total : null;
+    const tieneLotes = m.lotes && m.lotes.length > 0;
 
-    let cardClass = 'cap-card';
-    let difClass  = 'dif-pending';
-    let difTxt    = '—';
-    if (capturado) {
-      if (dif === 0)    { cardClass += ' capturado'; difClass = 'dif-ok';  difTxt = '✓ 0'; }
-      else if (dif < 0) { cardClass += ' faltante';  difClass = 'dif-neg'; difTxt = dif.toString(); }
-      else              { cardClass += ' sobrante';   difClass = 'dif-pos'; difTxt = '+' + dif; }
+    if (tieneLotes) {
+      // ── Tarjeta con lotes ──
+      const div = document.createElement('div');
+      div.id = `cap-${m.catalogo}`;
+      div.style.cssText = 'background:white;border-radius:12px;border:2px solid #fed7aa;overflow:hidden;';
+
+      // Header del material
+      div.innerHTML = `
+        <div style="padding:12px 16px;background:#fff7ed;border-bottom:1px solid #fed7aa;display:flex;align-items:center;gap:10px">
+          <div>
+            <span class="cap-cat" style="color:#9a3412">${m.catalogo}</span>
+            <span style="font-size:10px;background:#fed7aa;color:#9a3412;padding:2px 6px;border-radius:8px;margin-left:6px">📦 ${m.lotes.length} lotes</span>
+          </div>
+          <div style="flex:1;font-size:12px;color:var(--texto)">${m.descripcion}</div>
+          <div style="font-size:10px;color:var(--muted)">${m.ubicacion||'—'} · ${m.um||'—'}</div>
+        </div>`;
+
+      // Filas por lote
+      const tbody = document.createElement('div');
+      tbody.style.cssText = 'padding:8px';
+
+      m.lotes.forEach((lote, idx) => {
+        const key       = `${m.catalogo}__${lote.lote}`;
+        const fisico    = capturaData[key];
+        const capturado = fisico !== undefined;
+        const total     = (lote.lib || 0) + (lote.tras || 0);
+        const dif       = capturado ? fisico - total : null;
+
+        let difClass = 'dif-pending', difTxt = '—', bgColor = 'transparent';
+        if (capturado) {
+          if (dif === 0)    { difClass='dif-ok';  difTxt='✓ 0'; bgColor='#f0fdf4'; }
+          else if (dif < 0) { difClass='dif-neg'; difTxt=dif.toString(); bgColor='#fff5f5'; }
+          else              { difClass='dif-pos'; difTxt='+'+dif; bgColor='#fffdf0'; }
+        }
+
+        const row = document.createElement('div');
+        row.id = `cap-lote-${m.catalogo}-${idx}`;
+        row.style.cssText = `display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;margin-bottom:4px;background:${bgColor};`;
+        row.innerHTML = `
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#9a3412;font-weight:600;min-width:80px">${lote.lote}</div>
+          <div style="min-width:52px;text-align:center">
+            <div style="font-size:16px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:var(--azul)">${lote.lib.toLocaleString()}</div>
+            <div style="font-size:9px;color:var(--muted);text-transform:uppercase">Libre</div>
+          </div>
+          <div style="min-width:52px;text-align:center">
+            <div style="font-size:16px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:var(--naranja)">${lote.tras.toLocaleString()}</div>
+            <div style="font-size:9px;color:var(--muted);text-transform:uppercase">Traslado</div>
+          </div>
+          <div style="flex:1"></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:3px">
+            <input class="cap-input" type="number" inputmode="numeric" pattern="[0-9]*" min="0" placeholder="—"
+              value="${capturado ? fisico : ''}"
+              data-cat="${m.catalogo}" data-lote="${lote.lote}" data-idx="${idx}"
+              data-libre="${lote.lib}" data-traslado="${lote.tras}"
+              onchange="guardarFisicoLote(this)"
+              onfocus="this.select()"
+              onkeydown="navegarInputLote(event, '${m.catalogo}', ${idx})"
+              style="width:72px;height:48px;font-size:22px">
+            <div style="font-size:9px;color:var(--muted);text-transform:uppercase">Físico</div>
+          </div>
+          <div style="min-width:52px;text-align:center">
+            <div class="cap-dif-n ${difClass}" style="font-size:16px" id="dif-${m.catalogo}-${idx}">${difTxt}</div>
+            <div style="font-size:9px;color:var(--muted);text-transform:uppercase">Dif.</div>
+          </div>`;
+        tbody.appendChild(row);
+      });
+
+      div.appendChild(tbody);
+      lista.appendChild(div);
+
+    } else {
+      // ── Tarjeta sin lotes (comportamiento original) ──
+      const fisico    = capturaData[m.catalogo];
+      const capturado = fisico !== undefined;
+      const libre     = m.existencia || 0;
+      const traslado  = m.traslado   || 0;
+      const total     = libre + traslado;
+      const dif       = capturado ? fisico - total : null;
+
+      let cardClass = 'cap-card';
+      let difClass  = 'dif-pending';
+      let difTxt    = '—';
+      if (capturado) {
+        if (dif === 0)    { cardClass += ' capturado'; difClass = 'dif-ok';  difTxt = '✓ 0'; }
+        else if (dif < 0) { cardClass += ' faltante';  difClass = 'dif-neg'; difTxt = dif.toString(); }
+        else              { cardClass += ' sobrante';  difClass = 'dif-pos'; difTxt = '+' + dif; }
+      }
+
+      const div = document.createElement('div');
+      div.className = cardClass;
+      div.id = `cap-${m.catalogo}`;
+      div.innerHTML = `
+        <div class="cap-cat">${m.catalogo}</div>
+        <div style="flex:1">
+          <div class="cap-desc">${m.descripcion}</div>
+          <div class="cap-ubi">${m.ubicacion || '—'} · ${m.um || '—'}</div>
+        </div>
+        <div class="cap-siatel" style="min-width:52px">
+          <div class="cap-siatel-n">${libre.toLocaleString()}</div>
+          <div class="cap-siatel-l">Libre</div>
+        </div>
+        <div class="cap-siatel" style="min-width:52px">
+          <div class="cap-siatel-n" style="color:var(--naranja)">${traslado.toLocaleString()}</div>
+          <div class="cap-siatel-l">Traslado</div>
+        </div>
+        <div class="cap-input-wrap">
+          <input class="cap-input" type="number" inputmode="numeric" pattern="[0-9]*" min="0" placeholder="—"
+            value="${capturado ? fisico : ''}"
+            data-cat="${m.catalogo}"
+            data-libre="${libre}"
+            data-traslado="${traslado}"
+            onchange="guardarFisico(this)"
+            onfocus="this.select()"
+            onkeydown="navegarInput(event, '${m.catalogo}')">
+          <div class="cap-input-l">Físico</div>
+        </div>
+        <div class="cap-dif">
+          <div class="cap-dif-n ${difClass}">${difTxt}</div>
+          <div class="cap-dif-l">Diferencia</div>
+        </div>`;
+      lista.appendChild(div);
     }
-
-    const div = document.createElement('div');
-    div.className = cardClass;
-    div.id = `cap-${m.catalogo}`;
-    div.innerHTML = `
-      <div class="cap-cat">${m.catalogo}</div>
-      <div style="flex:1">
-        <div class="cap-desc">${m.descripcion}</div>
-        <div class="cap-ubi">${m.ubicacion || '—'} · ${m.um || '—'}</div>
-      </div>
-      <div class="cap-siatel" style="min-width:60px">
-        <div class="cap-siatel-n">${libre.toLocaleString()}</div>
-        <div class="cap-siatel-l">Libre</div>
-      </div>
-      <div class="cap-siatel" style="min-width:60px">
-        <div class="cap-siatel-n" style="color:var(--naranja)">${traslado.toLocaleString()}</div>
-        <div class="cap-siatel-l">Traslado</div>
-      </div>
-      <div class="cap-input-wrap">
-        <input class="cap-input" type="number" inputmode="numeric" pattern="[0-9]*" min="0" placeholder="—"
-          value="${capturado ? fisico : ''}"
-          data-cat="${m.catalogo}"
-          data-libre="${libre}"
-          data-traslado="${traslado}"
-          onchange="guardarFisico(this)"
-          onfocus="this.select()"
-          onkeydown="navegarInput(event, '${m.catalogo}')">
-        <div class="cap-input-l">Físico</div>
-      </div>
-      <div class="cap-dif">
-        <div class="cap-dif-n ${difClass}">${difTxt}</div>
-        <div class="cap-dif-l">Diferencia</div>
-      </div>`;
-    lista.appendChild(div);
   });
 
   actualizarProgreso();
@@ -1373,7 +1448,83 @@ function guardarFisico(input) {
   }
 }
 
-function navegarInput(event, cat) {
+function guardarFisicoLote(input) {
+  const cat      = input.dataset.cat;
+  const lote     = input.dataset.lote;
+  const idx      = parseInt(input.dataset.idx);
+  const libre    = parseFloat(input.dataset.libre)    || 0;
+  const traslado = parseFloat(input.dataset.traslado) || 0;
+  const total    = libre + traslado;
+  const key      = `${cat}__${lote}`;
+  const val      = input.value.trim();
+
+  if (val === '' || isNaN(val)) {
+    delete capturaData[key];
+  } else {
+    capturaData[key] = parseInt(val);
+  }
+
+  const fisico    = capturaData[key];
+  const capturado = fisico !== undefined;
+  const dif       = capturado ? fisico - total : null;
+
+  // Actualizar diferencia visual
+  const difEl = document.getElementById(`dif-${cat}-${idx}`);
+  if (difEl) {
+    if (capturado) {
+      difEl.className = 'cap-dif-n ' + (dif===0?'dif-ok':dif<0?'dif-neg':'dif-pos');
+      difEl.textContent = dif===0 ? '✓ 0' : dif<0 ? dif : '+'+dif;
+    } else {
+      difEl.className = 'cap-dif-n dif-pending';
+      difEl.textContent = '—';
+    }
+  }
+
+  // Actualizar color de la fila
+  const row = document.getElementById(`cap-lote-${cat}-${idx}`);
+  if (row && capturado) {
+    row.style.background = dif===0 ? '#f0fdf4' : dif<0 ? '#fff5f5' : '#fffdf0';
+  }
+
+  actualizarProgreso();
+  actualizarTotalesCaptura();
+
+  // Auto-scroll al siguiente lote o material
+  const filtroDif = document.getElementById('cap-filtro-dif').value;
+  if (!filtroDif) {
+    // Buscar el siguiente input
+    const m = capLista.find(m => m.catalogo === cat);
+    if (m && m.lotes && m.lotes.length > 0) {
+      const nextLoteInput = document.querySelector(`input[data-cat="${cat}"][data-idx="${idx+1}"]`);
+      if (nextLoteInput) {
+        nextLoteInput.scrollIntoView({ behavior:'smooth', block:'center' });
+        return;
+      }
+    }
+    // Siguiente material
+    const mIdx = capLista.findIndex(m => m.catalogo === cat);
+    const siguiente = capLista[mIdx + 1];
+    if (siguiente) {
+      const nextCard = document.getElementById(`cap-${siguiente.catalogo}`);
+      if (nextCard) nextCard.scrollIntoView({ behavior:'smooth', block:'center' });
+    }
+  }
+}
+
+function navegarInputLote(event, cat, idx) {
+  if (event.key === 'Enter' || event.key === 'Tab') {
+    event.preventDefault();
+    const nextInput = document.querySelector(`input[data-cat="${cat}"][data-idx="${idx+1}"]`);
+    if (nextInput) { nextInput.focus(); nextInput.select(); return; }
+    // Pasar al siguiente material
+    const mIdx     = capLista.findIndex(m => m.catalogo === cat);
+    const siguiente = capLista[mIdx + 1];
+    if (siguiente) {
+      const nextInput2 = document.querySelector(`input[data-cat="${siguiente.catalogo}"]`);
+      if (nextInput2) { nextInput2.focus(); nextInput2.select(); }
+    }
+  }
+}
   if (event.key === 'Enter' || event.key === 'Tab') {
     event.preventDefault();
     const idx = capLista.findIndex(m => m.catalogo === cat);
@@ -1386,8 +1537,19 @@ function navegarInput(event, cat) {
 }
 
 function actualizarProgreso() {
-  const total     = materiales.length;
-  const capturados = Object.keys(capturaData).length;
+  // Contar unidades a capturar (lotes individuales o materiales)
+  let total = 0, capturados = 0;
+  materiales.forEach(m => {
+    if (m.lotes && m.lotes.length > 0) {
+      m.lotes.forEach(lote => {
+        total++;
+        if (capturaData[`${m.catalogo}__${lote.lote}`] !== undefined) capturados++;
+      });
+    } else {
+      total++;
+      if (capturaData[m.catalogo] !== undefined) capturados++;
+    }
+  });
   document.getElementById('cap-progreso').textContent = `${capturados}/${total}`;
   document.getElementById('cap-subtitulo').textContent =
     `${capLista.length} visibles · ${capturados} capturados`;
@@ -1396,14 +1558,29 @@ function actualizarProgreso() {
 function actualizarTotalesCaptura() {
   let cap = 0, pen = 0, ok = 0, falt = 0, sob = 0;
   materiales.forEach(m => {
-    const fisico = capturaData[m.catalogo];
-    if (fisico === undefined) { pen++; return; }
-    cap++;
-    const total = (m.existencia || 0) + (m.traslado || 0);
-    const dif   = fisico - total;
-    if (dif === 0) ok++;
-    else if (dif < 0) falt++;
-    else sob++;
+    if (m.lotes && m.lotes.length > 0) {
+      // Material con lotes — contar por lote
+      m.lotes.forEach(lote => {
+        const key    = `${m.catalogo}__${lote.lote}`;
+        const fisico = capturaData[key];
+        const total  = (lote.lib || 0) + (lote.tras || 0);
+        if (fisico === undefined) { pen++; return; }
+        cap++;
+        const dif = fisico - total;
+        if (dif === 0) ok++;
+        else if (dif < 0) falt++;
+        else sob++;
+      });
+    } else {
+      const fisico = capturaData[m.catalogo];
+      const total  = (m.existencia || 0) + (m.traslado || 0);
+      if (fisico === undefined) { pen++; return; }
+      cap++;
+      const dif = fisico - total;
+      if (dif === 0) ok++;
+      else if (dif < 0) falt++;
+      else sob++;
+    }
   });
   document.getElementById('cap-tot-cap').textContent  = cap;
   document.getElementById('cap-tot-pen').textContent  = pen;
@@ -1457,20 +1634,47 @@ function exportarCaptura() {
   const filas = [];
 
   materiales.forEach(m => {
-    const fisico    = capturaData[m.catalogo];
-    const capturado = fisico !== undefined;
-    const libre     = m.existencia !== null ? m.existencia : 0;
-    const traslado  = m.traslado   !== null ? m.traslado   : 0;
-    const total     = libre + traslado;
-    const dif       = capturado ? fisico - total : null;
-
-    if (capturado) {
-      if (dif === 0) capOk++;
-      else if (dif < 0) capFalt++;
-      else capSob++;
-    } else capPend++;
-
-    filas.push({ m, fisico, libre, traslado, total, dif, capturado });
+    if (m.lotes && m.lotes.length > 0) {
+      // Material con lotes — una fila por lote
+      m.lotes.forEach(lote => {
+        const key    = `${m.catalogo}__${lote.lote}`;
+        const fisico = capturaData[key];
+        const total  = (lote.lib || 0) + (lote.tras || 0);
+        const dif    = fisico !== undefined ? fisico - total : '';
+        if (fisico !== undefined) {
+          if (dif === 0) capOk++;
+          else if (dif < 0) capFalt++;
+          else capSob++;
+          cap++;
+        } else capPend++;
+        filas.push({
+          catalogo:    m.catalogo,
+          descripcion: m.descripcion,
+          um:          m.um || '',
+          ubicacion:   m.ubicacion || '',
+          lote:        lote.lote,
+          libre:       lote.lib,
+          traslado:    lote.tras,
+          total,
+          fisico:      fisico !== undefined ? fisico : '',
+          dif,
+          capturado:   fisico !== undefined
+        });
+      });
+    } else {
+      const fisico   = capturaData[m.catalogo];
+      const libre    = m.existencia !== null ? m.existencia : 0;
+      const traslado = m.traslado   !== null ? m.traslado   : 0;
+      const total    = libre + traslado;
+      const dif      = fisico !== undefined ? fisico - total : '';
+      if (fisico !== undefined) {
+        if (dif === 0) capOk++;
+        else if (typeof dif === 'number' && dif < 0) capFalt++;
+        else if (typeof dif === 'number') capSob++;
+        cap++;
+      } else capPend++;
+      filas.push({ catalogo: m.catalogo, descripcion: m.descripcion, um: m.um||'', ubicacion: m.ubicacion||'', lote:'', libre, traslado, total, fisico: fisico !== undefined ? fisico : '', dif, capturado: fisico !== undefined });
+    }
   });
 
   // ── Hoja principal ──
@@ -1493,21 +1697,16 @@ function exportarCaptura() {
   r++;
 
   // Encabezados
-  wsData.push(['Catálogo','Descripción','U.M.','Ubicación','Libre Utilización','Traslado','Total SIATEL','Físico','Diferencia']);
+  wsData.push(['Catálogo','Descripción','U.M.','Ubicación','Lote','Libre Utilización','Traslado','Total SIATEL','Físico','Diferencia']);
   r++;
 
   // Datos
-  filas.forEach(({m, fisico, libre, traslado, total, dif, capturado}) => {
+  filas.forEach(f => {
     wsData.push([
-      m.catalogo,
-      m.descripcion,
-      m.um || '',
-      m.ubicacion || '',
-      libre,
-      traslado,
-      total,
-      capturado ? fisico : '',
-      dif !== null ? dif : ''
+      f.catalogo, f.descripcion, f.um, f.ubicacion,
+      f.lote || '', f.libre, f.traslado, f.total,
+      f.fisico !== '' ? f.fisico : '',
+      f.dif !== '' ? f.dif : ''
     ]);
     r++;
   });
@@ -1533,8 +1732,8 @@ function exportarCaptura() {
 
   // Anchos de columna
   ws['!cols'] = [
-    {wch:12}, {wch:46}, {wch:7}, {wch:18},
-    {wch:16}, {wch:12}, {wch:14}, {wch:10}, {wch:12}
+    {wch:12}, {wch:40}, {wch:7}, {wch:16},
+    {wch:14}, {wch:14}, {wch:12}, {wch:14}, {wch:10}, {wch:12}
   ];
 
   // Alto de filas
@@ -1547,7 +1746,7 @@ function exportarCaptura() {
 
   // ── Aplicar estilos celda por celda ──
   const nFilas   = wsData.length;
-  const nCols    = 9;
+  const nCols    = 10;
   const iHeader  = 3;  // fila de encabezados (0-indexed)
   const iDataIni = 4;  // primera fila de datos
   const iDataFin = iDataIni + filas.length - 1;
@@ -1618,14 +1817,14 @@ function exportarCaptura() {
   const wsDifData = [
     [`DIFERENCIAS — ${areaLabel} — ${hoy}`, '', '', '', '', '', '', '', ''],
     [''],
-    ['Catálogo','Descripción','U.M.','Ubicación','Libre Util.','Traslado','Total SIATEL','Físico','Diferencia']
+    ['Catálogo','Descripción','U.M.','Ubicación','Lote','Libre Util.','Traslado','Total SIATEL','Físico','Diferencia']
   ];
 
   filas
-    .filter(f => f.capturado && f.dif !== 0)
-    .sort((a, b) => a.dif - b.dif)
-    .forEach(({m, fisico, libre, traslado, total, dif}) => {
-      wsDifData.push([m.catalogo, m.descripcion, m.um||'', m.ubicacion||'', libre, traslado, total, fisico, dif]);
+    .filter(f => f.capturado && f.dif !== 0 && f.dif !== '')
+    .sort((a, b) => (a.dif||0) - (b.dif||0))
+    .forEach(f => {
+      wsDifData.push([f.catalogo, f.descripcion, f.um||'', f.ubicacion||'', f.lote||'', f.libre, f.traslado, f.total, f.fisico, f.dif]);
     });
 
   if (wsDifData.length === 3) {
@@ -1634,7 +1833,7 @@ function exportarCaptura() {
 
   const wsDif = XLSX.utils.aoa_to_sheet(wsDifData);
   wsDif['!merges'] = [{ s:{r:0,c:0}, e:{r:0,c:8} }];
-  wsDif['!cols']   = ws['!cols'];
+  wsDif['!cols'] = ws['!cols'];
   XLSX.utils.book_append_sheet(wb, wsDif, 'Solo Diferencias');
 
   // ── Descargar ──
