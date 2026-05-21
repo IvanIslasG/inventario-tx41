@@ -1626,7 +1626,7 @@ function exportarCaptura() {
   });
 
   // ── Construir datos ──
-  let capOk=0, capFalt=0, capSob=0, capPend=0;
+  let capOk=0, capFalt=0, capSob=0, capPend=0, cap=0;
   const filas = [];
 
   materiales.forEach(m => {
@@ -1786,15 +1786,13 @@ function exportarCaptura() {
         if (!fila.capturado && ci >= 8) {
           bg = C.gris; txtColor = C.gris_txt;
         }
-        // Lote en naranja
         if (ci === 4 && fila.lote) {
           ws[addr].s = estilo(C.naranja_bg, '9A3412', true, 9, 'center');
-          continue;
-        }
-
+        } else {
         const aln = ci === 1 || ci === 3 ? 'left' : 'center';
         ws[addr].s = estilo(bg, txtColor, false, 9, aln);
         if (ci === 0) ws[addr].s.font.bold = true;
+        }
       }
       // Fila vacía post-datos
       else if (ri === iDataFin + 1) {
