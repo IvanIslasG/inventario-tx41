@@ -168,6 +168,15 @@ tbody td{padding:8px 12px;vertical-align:middle}
 .cap-dif{min-width:58px;text-align:center;flex-shrink:0}
 .cap-dif-n{font-size:16px;font-weight:700;font-family:'IBM Plex Mono',monospace;line-height:1}
 .cap-dif-l{font-size:9px;color:var(--muted);text-transform:uppercase}
+.lote-badge{display:inline-flex;align-items:center;gap:4px;background:#fff7ed;color:#9a3412;font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;cursor:pointer;border:1px solid #fed7aa}
+.lote-badge:hover{background:#ffedd5}
+.lotes-row{display:none}
+.lotes-row.visible{display:table-row}
+.lotes-subtable{width:100%;border-collapse:collapse;font-size:11px}
+.lotes-subtable td{padding:5px 12px 5px 28px;border-bottom:1px solid #fef3c7;color:var(--texto)}
+.lotes-subtable tr:last-child td{border-bottom:none}
+.lote-num{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#9a3412;font-weight:600}
+.lote-cant{font-family:'IBM Plex Mono',monospace;text-align:right}
 .dif-ok{color:var(--verde)}
 .dif-neg{color:var(--rojo)}
 .dif-pos{color:var(--naranja)}
@@ -248,13 +257,55 @@ table.pt tr:nth-child(even) td{background:#f7f7f7}
 
 <!-- PANTALLA 0: CARGA SIATEL (primera pantalla) -->
 <div id="pantalla-carga" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 60px);padding:32px">
-  <div class="base-card">
+  <div class="base-card" style="max-width:580px">
     <div class="icono">📂</div>
-    <h2>Cargar archivo de Existencias SIATEL</h2>
-    <p>Arrastra aquí el archivo de existencias exportado de SIATEL, o haz clic para seleccionarlo. Una vez cargado podrás elegir el área a inventariar.</p>
-    <button class="btn btn-primary" onclick="document.getElementById('file-siatel').click()">Seleccionar archivo</button>
-    <input type="file" id="file-siatel" accept=".xlsx,.xls" style="display:none" onchange="cargarSiatel(event)">
+    <h2>Cargar archivos de existencias</h2>
+    <p>Carga los archivos exportados de SAP para iniciar. El archivo de lotes es opcional.</p>
+
+    <!-- SIATEL -->
+    <div style="background:#f8fafc;border:1.5px solid var(--borde);border-radius:10px;padding:16px;margin-bottom:12px;text-align:left">
+      <div style="font-size:13px;font-weight:600;color:var(--azul);margin-bottom:8px">📊 Existencias SIATEL <span style="color:var(--rojo)">*</span></div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Archivo de existencias totales del almacén TX41</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <button class="btn btn-primary btn-sm" onclick="document.getElementById('file-siatel').click()">Seleccionar archivo</button>
+        <span id="siatel-status" style="font-size:12px;color:var(--muted)">Sin cargar</span>
+      </div>
+      <input type="file" id="file-siatel" accept=".xlsx,.xls" style="display:none" onchange="cargarSiatel(event)">
+    </div>
+
+    <!-- LOTES -->
+    <div style="background:#f8fafc;border:1.5px solid var(--borde);border-radius:10px;padding:16px;margin-bottom:16px;text-align:left">
+      <div style="font-size:13px;font-weight:600;color:var(--naranja);margin-bottom:8px">📦 Detalle de lotes <span style="font-size:11px;font-weight:400;color:var(--muted)">(opcional)</span></div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Archivo con detalle por lote/número de serie</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <button class="btn btn-sm" style="background:var(--naranja);color:white" onclick="document.getElementById('file-lotes').click()">Seleccionar archivo</button>
+        <span id="lotes-status" style="font-size:12px;color:var(--muted)">Sin cargar</span>
+      </div>
+      <input type="file" id="file-lotes" accept=".xlsx,.xls" style="display:none" onchange="cargarLotes(event)">
+    </div>
+
+    <button class="btn btn-primary" id="btn-continuar" onclick="continuarConArchivos()" style="display:none;width:100%">
+      Continuar →
+    </button>
+
     <div class="hint" id="hint-servidor" style="display:none;background:#dcfce7;color:#065f46">
+      <b>🖥️ Modo administrador</b><br>
+      Al continuar, los datos se compartirán con todos los dispositivos conectados.<br><br>
+      <b>URL de ngrok:</b><br>
+      <div style="display:flex;gap:8px;margin-top:6px;align-items:center">
+        <input type="text" id="ngrok-url" placeholder="https://xxxx.ngrok-free.dev"
+          style="flex:1;height:34px;font-size:12px;border:1.5px solid #86efac;border-radius:8px;padding:0 10px;color:#065f46;background:white"
+          oninput="guardarNgrokUrl()">
+        <span id="ngrok-status" style="font-size:11px;white-space:nowrap"></span>
+      </div>
+      <div style="font-size:11px;margin-top:4px;opacity:.8">Pega la URL de ngrok antes de continuar</div>
+    </div>
+    <div class="hint">
+      <b>Archivos esperados:</b> Exportaciones de SAP/SIATEL<br>
+      <b>Base maestra:</b> Embebida · 5,550 materiales con áreas y ubicaciones<br>
+      <b>Nota:</b> Solo necesitas estos archivos. La base maestra ya viene incluida en la app.
+    </div>
+  </div>
       <b>🖥️ Modo administrador</b><br>
       Al cargar el SIATEL los datos estarán disponibles para todos los dispositivos.<br><br>
       <b>URL de ngrok:</b><br>
@@ -429,9 +480,13 @@ const AREA_CONFIG = {
 // ── ESTADO GLOBAL ──
 let baseMaestra  = {};
 let siatelMap    = {};
+let lotesMap     = {};  // catalogo → [{lote, lib, tras}]
 let areaActual   = '';
 let materiales   = [];
 let nombreSiatel = '';
+let nombreLotes  = '';
+let siatelListo  = false;
+let lotesListo   = false;
 
 // ── INIT ──
 // ── NGROK URL ──
@@ -740,8 +795,72 @@ async function compartirAlServidor(mapDatos, nombre) {
 }
 
 // ── PANTALLA 0: CARGAR SIATEL ──
-function cargarSiatel(e) {
-  if (e.target.files[0]) procesarSiatel(e.target.files[0]);
+function cargarSiatel(e) { if (e.target.files[0]) procesarSiatel(e.target.files[0]); }
+function cargarLotes(e)  { if (e.target.files[0]) procesarLotes(e.target.files[0]); }
+
+function verificarContinuar() {
+  if (siatelListo) document.getElementById('btn-continuar').style.display = 'block';
+}
+
+function continuarConArchivos() {
+  compartirAlServidor(siatelMap, nombreSiatel);
+  const total = Object.keys(siatelMap).length;
+  document.getElementById('base-status-txt').textContent =
+    nombreSiatel + ' · ' + total.toLocaleString() + ' materiales' +
+    (lotesListo ? ' · 📦 ' + Object.keys(lotesMap).length + ' con lotes' : '');
+  document.getElementById('pantalla-carga').style.display = 'none';
+  construirPantallaAreas();
+  document.getElementById('pantalla-area').style.display = 'flex';
+}
+
+function procesarLotes(file) {
+  nombreLotes = file.name;
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    try {
+      const wb   = XLSX.read(ev.target.result, { type:'array' });
+      const ws   = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header:1, defval:'' });
+
+      let hRow = -1;
+      for (let i = 0; i < rows.length; i++) {
+        if (rows[i].some(c => String(c).trim() === 'Material')) { hRow = i; break; }
+      }
+      if (hRow === -1) { alert('No se encontró el formato de lotes esperado.'); return; }
+
+      const hdrs  = rows[hRow].map(h => String(h).trim());
+      const iMat  = hdrs.indexOf('Material');
+      const iLote = hdrs.indexOf('Lote');
+      const iLib  = hdrs.findIndex(h => h.startsWith('Libre'));
+      const iTra  = hdrs.findIndex(h => h.includes('Traslado'));
+      const iUM   = hdrs.indexOf('Unidad de medida');
+
+      lotesMap = {};
+      for (let i = hRow + 1; i < rows.length; i++) {
+        const r   = rows[i];
+        const cat = String(r[iMat]  || '').trim();
+        const lot = String(r[iLote] || '').trim();
+        if (!cat || !lot || cat === 'None') continue;
+        if (!lotesMap[cat]) lotesMap[cat] = [];
+        lotesMap[cat].push({
+          lote: lot,
+          lib:  Number(r[iLib]  || 0),
+          tras: Number(r[iTra]  || 0),
+          um:   iUM >= 0 ? String(r[iUM] || '').trim() : ''
+        });
+      }
+
+      const totalCats = Object.keys(lotesMap).length;
+      const totalLots = Object.values(lotesMap).reduce((s,v) => s+v.length, 0);
+      lotesListo = true;
+
+      const st = document.getElementById('lotes-status');
+      st.textContent = '✅ ' + file.name + ' · ' + totalCats + ' materiales · ' + totalLots + ' lotes';
+      st.style.color = 'var(--naranja)';
+      verificarContinuar();
+    } catch(err) { alert('Error al leer el archivo de lotes: ' + err.message); }
+  };
+  reader.readAsArrayBuffer(file);
 }
 
 function procesarSiatel(file) {
@@ -780,14 +899,12 @@ function procesarSiatel(file) {
       }
 
       // Subir a JSONBin siempre (nube)
-      compartirAlServidor(siatelMap, nombreSiatel);
-
+      // Marcar SIATEL como listo y esperar confirmación del usuario
+      siatelListo = true;
       const total = Object.keys(siatelMap).length;
-      document.getElementById('base-status-txt').textContent =
-        `${nombreSiatel} · ${total.toLocaleString()} materiales`;
-      document.getElementById('pantalla-carga').style.display = 'none';
-      construirPantallaAreas();
-      document.getElementById('pantalla-area').style.display = 'flex';
+      const st = document.getElementById('siatel-status');
+      if (st) { st.textContent = '✅ ' + nombreSiatel + ' · ' + total.toLocaleString() + ' materiales'; st.style.color = 'var(--verde)'; }
+      verificarContinuar();
 
     } catch(err) { alert('Error al leer el archivo SIATEL: ' + err.message); }
   };
@@ -863,6 +980,7 @@ function seleccionarArea(area) {
         ubicacion:   b ? b.u : '',
         telefonia:   b ? b.t : 0,
         area:        b ? b.area || 'Sin clasificar' : 'Sin clasificar',
+        lotes:       lotesMap[cat] || [],
         esTodo:      true
       };
     });
@@ -880,6 +998,7 @@ function seleccionarArea(area) {
           ubicacion:   b.u,
           telefonia:   b.t,
           area:        b.area,
+          lotes:       lotesMap[cat] || [],
           esTodo:      false
         };
       });
@@ -989,7 +1108,7 @@ function renderTabla(lista) {
 
   const tbody = document.getElementById('tbody');
   tbody.innerHTML = '';
-  lista.forEach(m => {
+  for (const m of lista) {
     const exStr = m.existencia !== null
       ? m.existencia.toLocaleString()
       : '<span style="color:#9ca3af;font-style:italic">—</span>';
@@ -1007,17 +1126,46 @@ function renderTabla(lista) {
         <td class="td-c"><span class="area-badge ${areaCfg.cls||'ab-sin'}">${m.area}</span></td>
         <td class="td-ubi"><span style="${UBI_PILL_STYLE}">${m.ubicacion||'—'}</span></td>`;
     } else {
+      const lotesBadge = m.lotes && m.lotes.length > 0
+        ? `<span class="lote-badge" onclick="toggleLotes('${m.catalogo}')">📦 ${m.lotes.length} lote${m.lotes.length>1?'s':''}</span>`
+        : '';
+      const cols = 5 + (cfg.tieneTel ? 1 : 0) + 1; // +1 ubicacion
       tr.innerHTML = `
         <td class="td-cat">${m.catalogo}</td>
-        <td class="td-desc">${m.descripcion}</td>
+        <td class="td-desc">${m.descripcion} ${lotesBadge}</td>
         <td class="td-c">${m.um||'—'}</td>
         <td class="td-c">${exStr}</td>
         <td class="td-c">${trStr}</td>
         <td class="td-ubi"><span style="${UBI_PILL_STYLE}">${m.ubicacion||'Sin asignar'}</span></td>`
         + (cfg.tieneTel ? `<td class="td-c">${m.telefonia ? '<span class="tp-badge">T</span>' : ''}</td>` : '');
+      tbody.appendChild(tr);
+
+      // Fila de lotes (oculta por defecto)
+      if (m.lotes && m.lotes.length > 0) {
+        const trLotes = document.createElement('tr');
+        trLotes.className = 'lotes-row';
+        trLotes.id = `lotes-row-${m.catalogo}`;
+        const numCols = 6 + (cfg.tieneTel ? 1 : 0);
+        trLotes.innerHTML = `<td colspan="${numCols}" style="padding:0;background:#fffbf5">
+          <table class="lotes-subtable">
+            <thead><tr style="background:#fff7ed">
+              <td style="padding:5px 12px 5px 28px;font-weight:600;font-size:10px;color:#9a3412;text-transform:uppercase;letter-spacing:.06em">Lote</td>
+              <td style="text-align:right;font-weight:600;font-size:10px;color:#9a3412;text-transform:uppercase;letter-spacing:.06em">Libre</td>
+              <td style="text-align:right;font-weight:600;font-size:10px;color:#9a3412;text-transform:uppercase;letter-spacing:.06em">Traslado</td>
+            </tr></thead>
+            <tbody>${m.lotes.map(l => `<tr>
+              <td><span class="lote-num">${l.lote}</span></td>
+              <td class="lote-cant">${l.lib.toLocaleString()}</td>
+              <td class="lote-cant" style="color:var(--naranja)">${l.tras.toLocaleString()}</td>
+            </tr>`).join('')}</tbody>
+          </table>
+        </td>`;
+        tbody.appendChild(trLotes);
+        continue; // skip the default appendChild below
+      }
     }
     tbody.appendChild(tr);
-  });
+  }
   document.getElementById('t-info').textContent =
     `Mostrando ${lista.length.toLocaleString()} de ${materiales.length.toLocaleString()} materiales`;
 }
@@ -1476,6 +1624,11 @@ function exportarCaptura() {
   // ── Descargar ──
   const fecha = new Date().toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric'}).replace(/\//g,'-');
   XLSX.writeFile(wb, `Inventario_${areaLabel.replace(/ /g,'_')}_${fecha}.xlsx`);
+}
+
+function toggleLotes(cat) {
+  const row = document.getElementById(`lotes-row-${cat}`);
+  if (row) row.classList.toggle('visible');
 }
 
 // ── EXPORTAR TRASLADOS ──
