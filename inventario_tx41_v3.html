@@ -1525,6 +1525,7 @@ function navegarInputLote(event, cat, idx) {
     }
   }
 }
+function navegarInput(event, cat) {
   if (event.key === 'Enter' || event.key === 'Tab') {
     event.preventDefault();
     const idx = capLista.findIndex(m => m.catalogo === cat);
