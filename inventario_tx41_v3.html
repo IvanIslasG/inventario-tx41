@@ -303,6 +303,10 @@ table.pt tr:nth-child(even) td{background:#f7f7f7}
         <input type="checkbox" id="f-ceros" onchange="filtrar()" style="width:15px;height:15px;cursor:pointer;accent-color:var(--azul)">
         Ocultar existencias en cero
       </label>
+      <label class="filtro-check" style="font-size:13px;color:var(--texto)">
+        <input type="checkbox" id="f-traslados" onchange="filtrar()" style="width:15px;height:15px;cursor:pointer;accent-color:var(--naranja)">
+        Solo con traslado
+      </label>
       <select id="f-area" onchange="filtrar()" style="width:160px;flex-shrink:0;display:none">
         <option value="">Todas las áreas</option>
       </select>
@@ -316,6 +320,7 @@ table.pt tr:nth-child(even) td{background:#f7f7f7}
       <button class="btn btn-outline" onclick="volverAreas()">↩ Cambiar área</button>
       <button class="btn btn-primary" onclick="entrarCaptura()" id="btn-captura" style="display:none">📝 Iniciar captura</button>
       <button class="btn btn-success" onclick="abrirImp()">🖨 Imprimir listados</button>
+      <button class="btn btn-outline" onclick="exportarTraslados()" style="color:var(--naranja);border-color:var(--naranja)" title="Exportar materiales con traslado">📦 Traslados</button>
     </div>
   </div>
 
@@ -938,19 +943,21 @@ function actualizarFiltros() {
 }
 
 function filtrar() {
-  const q      = document.getElementById('buscar').value.toLowerCase();
-  const ubi    = document.getElementById('f-ubi').value;
-  const tp     = document.getElementById('f-tp').value;
-  const area   = document.getElementById('f-area').value;
-  const ceros  = document.getElementById('f-ceros').checked;
-  const esTodo = areaActual === '__TODO__';
-  const lista  = materiales.filter(m => {
-    const mQ = !q     || m.catalogo.toLowerCase().includes(q) || m.descripcion.toLowerCase().includes(q);
-    const mU = esTodo || !ubi  || m.ubicacion === ubi;
-    const mT = esTodo || tp === '' || (tp==='1' ? m.telefonia===1 : m.telefonia===0);
-    const mA = !esTodo || !area || m.area === area;
-    const mC = !ceros || (m.existencia !== null && m.existencia > 0);
-    return mQ && mU && mT && mA && mC;
+  const q         = document.getElementById('buscar').value.toLowerCase();
+  const ubi       = document.getElementById('f-ubi').value;
+  const tp        = document.getElementById('f-tp').value;
+  const area      = document.getElementById('f-area').value;
+  const ceros     = document.getElementById('f-ceros').checked;
+  const traslados = document.getElementById('f-traslados').checked;
+  const esTodo    = areaActual === '__TODO__';
+  const lista     = materiales.filter(m => {
+    const mQ  = !q         || m.catalogo.toLowerCase().includes(q) || m.descripcion.toLowerCase().includes(q);
+    const mU  = esTodo     || !ubi  || m.ubicacion === ubi;
+    const mT  = esTodo     || tp === '' || (tp==='1' ? m.telefonia===1 : m.telefonia===0);
+    const mA  = !esTodo    || !area || m.area === area;
+    const mC  = !ceros     || (m.existencia !== null && m.existencia > 0);
+    const mTr = !traslados || (m.traslado !== null && m.traslado > 0);
+    return mQ && mU && mT && mA && mC && mTr;
   });
   renderTabla(lista);
 }
@@ -1471,6 +1478,75 @@ function exportarCaptura() {
   const fecha = new Date().toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric'}).replace(/\//g,'-');
   XLSX.writeFile(wb, `Inventario_${areaLabel.replace(/ /g,'_')}_${fecha}.xlsx`);
 }
+
+// ── EXPORTAR TRASLADOS ──
+function exportarTraslados() {
+  const conTraslado = materiales.filter(m => m.traslado !== null && m.traslado > 0);
+  if (conTraslado.length === 0) {
+    alert('No hay materiales con traslado en esta área.');
+    return;
+  }
+
+  const hoy       = new Date().toLocaleDateString('es-MX', {day:'2-digit', month:'long', year:'numeric'});
+  const areaLabel = areaActual === '__TODO__' ? 'Todo el inventario' : areaActual;
+  const wb        = XLSX.utils.book_new();
+
+  const estilo = (bg, color, bold=false, sz=10, align='center') => ({
+    font:      { name:'Arial', sz, bold, color:{ rgb: color } },
+    fill:      { fgColor:{ rgb: bg }, patternType:'solid' },
+    alignment: { horizontal: align, vertical:'center', wrapText: true },
+    border: { top:{style:'thin',color:{rgb:'D1D5DB'}}, bottom:{style:'thin',color:{rgb:'D1D5DB'}}, left:{style:'thin',color:{rgb:'D1D5DB'}}, right:{style:'thin',color:{rgb:'D1D5DB'}} }
+  });
+
+  const wsData = [];
+  const merges = [];
+
+  wsData.push([`REPORTE DE TRASLADOS — ${areaLabel.toUpperCase()} — TX41 PUEBLA`,'','','','','']);
+  merges.push({ s:{r:0,c:0}, e:{r:0,c:5} });
+  wsData.push([`Fecha: ${hoy}   ·   SIATEL: ${nombreSiatel}   ·   ${conTraslado.length} materiales con traslado`,'','','','','']);
+  merges.push({ s:{r:1,c:0}, e:{r:1,c:5} });
+  wsData.push(['','','','','','']);
+  wsData.push(['Catálogo','Descripción','U.M.','Área','Libre Utilización','Traslado']);
+
+  conTraslado.forEach(m => {
+    wsData.push([
+      m.catalogo, m.descripcion, m.um||'',
+      m.area||m.ubicacion||'', m.existencia!==null?m.existencia:'', m.traslado
+    ]);
+  });
+
+  wsData.push(['','','','','','']);
+  const totalTras = conTraslado.reduce((s,m) => s + (m.traslado||0), 0);
+  wsData.push(['TOTAL','','','','',totalTras]);
+  merges.push({ s:{r:wsData.length-1,c:0}, e:{r:wsData.length-1,c:4} });
+
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  ws['!merges'] = merges;
+  ws['!cols']   = [{wch:12},{wch:46},{wch:7},{wch:20},{wch:16},{wch:12}];
+
+  for (let ri = 0; ri < wsData.length; ri++) {
+    for (let ci = 0; ci < 6; ci++) {
+      const addr = XLSX.utils.encode_cell({r:ri, c:ci});
+      if (!ws[addr]) ws[addr] = { v:'', t:'s' };
+      if (ri===0)   ws[addr].s = estilo('001F5B','FFFFFF',true,13,'center');
+      else if (ri===1) ws[addr].s = estilo('003087','FFFFFF',false,10,'center');
+      else if (ri===2) ws[addr].s = estilo('F5F7FA','6B7280');
+      else if (ri===3) ws[addr].s = estilo('001F5B','FFFFFF',true,10,ci===1?'left':'center');
+      else if (ri >= 4 && ri < wsData.length-2) {
+        const bg  = ri%2===0?'FFFFFF':'F5F7FA';
+        const aln = ci===1||ci===3?'left':'center';
+        ws[addr].s = estilo(bg,'1A1A2E',false,9,aln);
+        if (ci===5) { ws[addr].s.fill={fgColor:{rgb:'FFF7ED'},patternType:'solid'}; ws[addr].s.font={name:'Arial',sz:9,bold:true,color:{rgb:'9A3412'}}; }
+      }
+      else if (ri===wsData.length-1) ws[addr].s = estilo('FEF3C7','92400E',true,10,ci===0?'left':'center');
+    }
+  }
+
+  XLSX.utils.book_append_sheet(wb, ws, 'Traslados');
+  const fecha = new Date().toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric'}).replace(/\//g,'-');
+  XLSX.writeFile(wb, `Traslados_${areaLabel.replace(/ /g,'_')}_${fecha}.xlsx`);
+}
+
 function abrirImp() {
   const ubis = [...new Set(materiales.map(m => m.ubicacion).filter(Boolean))].sort();
   const btns = document.getElementById('modal-ubis');
