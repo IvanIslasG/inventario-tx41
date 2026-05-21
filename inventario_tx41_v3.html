@@ -317,11 +317,6 @@ table.pt tr:nth-child(even) td{background:#f7f7f7}
       </div>
       <div style="font-size:11px;margin-top:4px;opacity:.8">Pega la URL de ngrok antes de cargar el SIATEL</div>
     </div>
-    <div class="hint">
-      <b>Archivo esperado:</b> Existencia_total41.xlsx (exportación SIATEL)<br>
-      <b>Base maestra:</b> Embebida · 5,550 materiales con áreas y ubicaciones<br>
-      <b>Nota:</b> Solo necesitas este archivo. La base maestra ya viene incluida en la app.
-    </div>
   </div>
 </div>
 
@@ -1781,20 +1776,24 @@ function exportarCaptura() {
         let txtColor = '1A1A2E';
 
         // Colorear según diferencia (solo si capturado)
-        if (fila.capturado && ci >= 6) {
-          if (fila.dif === 0)      { bg = C.verde_bg;    txtColor = C.verde_txt; }
-          else if (fila.dif < 0)   { bg = C.rojo_bg;     txtColor = C.rojo_txt; }
-          else                     { bg = C.amarillo_bg; txtColor = C.amarillo_txt; }
+        if (fila.capturado && ci >= 7) {
+          const dif = fila.dif;
+          if (dif === 0)           { bg = C.verde_bg;    txtColor = C.verde_txt; }
+          else if (typeof dif === 'number' && dif < 0) { bg = C.rojo_bg; txtColor = C.rojo_txt; }
+          else if (typeof dif === 'number')            { bg = C.amarillo_bg; txtColor = C.amarillo_txt; }
         }
         // Pendiente
-        if (!fila.capturado && ci >= 7) {
+        if (!fila.capturado && ci >= 8) {
           bg = C.gris; txtColor = C.gris_txt;
+        }
+        // Lote en naranja
+        if (ci === 4 && fila.lote) {
+          ws[addr].s = estilo(C.naranja_bg, '9A3412', true, 9, 'center');
+          continue;
         }
 
         const aln = ci === 1 || ci === 3 ? 'left' : 'center';
         ws[addr].s = estilo(bg, txtColor, false, 9, aln);
-
-        // Negrita en catálogo
         if (ci === 0) ws[addr].s.font.bold = true;
       }
       // Fila vacía post-datos
@@ -1943,9 +1942,11 @@ function imprimir(ubi) {
   cerrarImp();
   const hoy    = new Date().toLocaleDateString('es-MX',{day:'2-digit',month:'long',year:'numeric'});
   const ceros  = document.getElementById('f-ceros').checked;
-  const ubis   = ubi === '__TODAS__'
-    ? [...new Set(materiales.map(m => m.ubicacion).filter(Boolean))].sort()
+  // Incluir materiales sin ubicación como 'Sin asignar'
+  const todasUbis = ubi === '__TODAS__'
+    ? [...new Set(materiales.map(m => m.ubicacion || 'Sin asignar'))].sort()
     : [ubi];
+  const ubis = todasUbis;
 
   const pa = document.getElementById('print-area');
   pa.innerHTML = '';
@@ -1953,7 +1954,7 @@ function imprimir(ubi) {
 
   const areaLabel = areaActual === '__TODO__' ? 'Todo el inventario' : areaActual;
   ubis.forEach(u => {
-    let lista = materiales.filter(m => m.ubicacion === u);
+    let lista = materiales.filter(m => (m.ubicacion || 'Sin asignar') === u);
     if (ceros) lista = lista.filter(m => m.existencia !== null && m.existencia > 0);
     if (!lista.length) return;
     const div = document.createElement('div');
@@ -1975,14 +1976,27 @@ function imprimir(ubi) {
           <th style="width:62px;text-align:center">Físico</th>
         </tr></thead>
         <tbody>
-          ${lista.map(m=>`<tr>
-            <td style="font-family:monospace;font-size:8pt">${m.catalogo}</td>
-            <td>${m.descripcion}</td>
-            <td style="text-align:center;font-size:8pt">${m.um||'—'}</td>
-            <td style="text-align:center">${m.existencia!==null?m.existencia.toLocaleString():'—'}</td>
-            <td style="text-align:center">${m.traslado!==null?m.traslado:'—'}</td>
-            <td class="col-fis">&nbsp;</td>
-          </tr>`).join('')}
+          ${lista.map(m => {
+            const filaBase = `<tr>
+              <td style="font-family:monospace;font-size:8pt">${m.catalogo}</td>
+              <td>${m.descripcion}${m.lotes&&m.lotes.length>0?' <span style="font-size:7pt;color:#9a3412;font-weight:600">['+m.lotes.length+' lotes]</span>':''}</td>
+              <td style="text-align:center;font-size:8pt">${m.um||'—'}</td>
+              <td style="text-align:center">${m.existencia!==null?m.existencia.toLocaleString():'—'}</td>
+              <td style="text-align:center">${m.traslado!==null?m.traslado:'—'}</td>
+              <td class="col-fis">&nbsp;</td>
+            </tr>`;
+            const filasLotes = m.lotes&&m.lotes.length>0
+              ? m.lotes.map(l=>`<tr style="background:#fffbf5">
+                  <td style="font-family:monospace;font-size:7pt;color:#9a3412;padding-left:18px">↳ ${l.lote}</td>
+                  <td style="font-size:7.5pt;color:#666;font-style:italic">Lote</td>
+                  <td></td>
+                  <td style="text-align:center;font-size:7.5pt">${l.lib.toLocaleString()}</td>
+                  <td style="text-align:center;font-size:7.5pt;color:#f97316">${l.tras.toLocaleString()}</td>
+                  <td class="col-fis">&nbsp;</td>
+                </tr>`).join('')
+              : '';
+            return filaBase + filasLotes;
+          }).join('')}
         </tbody>
       </table>
       <div class="pf">
