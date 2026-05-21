@@ -320,7 +320,6 @@ table.pt tr:nth-child(even) td{background:#f7f7f7}
       <button class="btn btn-outline" onclick="volverAreas()">↩ Cambiar área</button>
       <button class="btn btn-primary" onclick="entrarCaptura()" id="btn-captura" style="display:none">📝 Iniciar captura</button>
       <button class="btn btn-success" onclick="abrirImp()">🖨 Imprimir listados</button>
-      <button class="btn btn-outline" onclick="exportarTraslados()" style="color:var(--naranja);border-color:var(--naranja)" title="Exportar materiales con traslado">📦 Traslados</button>
     </div>
   </div>
 
@@ -1550,10 +1549,17 @@ function exportarTraslados() {
 function abrirImp() {
   const ubis = [...new Set(materiales.map(m => m.ubicacion).filter(Boolean))].sort();
   const btns = document.getElementById('modal-ubis');
-  btns.innerHTML = `<button class="btn-ubi todos" onclick="imprimir('__TODAS__')">Todas</button>`;
+  btns.innerHTML = `<button class="btn-ubi todos" onclick="imprimir('__TODAS__')">Todas las ubicaciones</button>`;
   ubis.forEach(u => {
     btns.innerHTML += `<button class="btn-ubi" onclick="imprimir('${u}')">${u}</button>`;
   });
+  // Separador y opción de traslados
+  const conTraslado = materiales.filter(m => m.traslado !== null && m.traslado > 0).length;
+  btns.innerHTML += `
+    <div style="width:100%;border-top:1px solid var(--borde);margin:8px 0;padding-top:8px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Reportes especiales</div>
+    <button class="btn-ubi" onclick="exportarTraslados()" style="border-color:var(--naranja);color:var(--naranja);flex-basis:100%">
+      📦 Exportar traslados (${conTraslado} materiales)
+    </button>`;
   document.getElementById('panel-imp').classList.add('visible');
 }
 function cerrarImp() { document.getElementById('panel-imp').classList.remove('visible'); }
