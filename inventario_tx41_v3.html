@@ -759,10 +759,10 @@ async function compartirAlServidor(mapDatos, nombre, lotes={}) {
       const res = await fetch('/api/siatel', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ datos: mapDatos, nombre, timestamp: new Date().toISOString() })
+        body:    JSON.stringify({ datos: mapDatos, nombre, lotes, timestamp: new Date().toISOString() })
       });
       if (res.ok) {
-        console.log('✅ SIATEL enviado al servidor local → JSONBin');
+        console.log('✅ SIATEL enviado al servidor local → GitHub');
         return;
       }
     } catch(e) {
