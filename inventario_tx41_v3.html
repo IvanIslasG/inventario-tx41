@@ -627,7 +627,10 @@ async function cargarDesdeNube() {
           if (bar) { bar.style.width = '90%'; pct.textContent = '90%'; }
           siatelMap    = d2.datos;
           nombreSiatel = d2.nombre || 'SIATEL';
-          if (d2.lotes) lotesMap = d2.lotes;
+          if (d2.lotes) {
+            lotesMap = d2.lotes;
+            if (materiales.length > 0) actualizarLotesEnMateriales();
+          }
           if (bar) { bar.style.width = '100%'; pct.textContent = '100%'; }
           setTimeout(() => mostrarAreas(), 300);
           return;
@@ -649,7 +652,11 @@ async function cargarDesdeNube() {
     }
     nombreSiatel = configData.nombre || 'SIATEL';
     // Cargar lotes si están disponibles
-    if (configData.lotes) lotesMap = configData.lotes;
+    if (configData.lotes) {
+      lotesMap = configData.lotes;
+      // Actualizar lotes en materiales si ya están construidos
+      if (materiales.length > 0) actualizarLotesEnMateriales();
+    }
     if (bar) { bar.style.width = '100%'; pct.textContent = '100%'; }
     setTimeout(() => mostrarAreas(), 300);
     return;
@@ -1016,6 +1023,8 @@ function seleccionarArea(area) {
     nombreSiatel.length > 22 ? nombreSiatel.substring(0,20)+'…' : nombreSiatel;
 
   actualizarFiltros();
+  // Asegurar que los lotes estén asignados
+  if (Object.keys(lotesMap).length > 0) actualizarLotesEnMateriales();
   document.getElementById('btn-captura').style.display = 'inline-flex';
   document.getElementById('app').style.display = 'block';
   renderTabla(materiales);
@@ -1631,6 +1640,12 @@ function exportarCaptura() {
   // ── Descargar ──
   const fecha = new Date().toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric'}).replace(/\//g,'-');
   XLSX.writeFile(wb, `Inventario_${areaLabel.replace(/ /g,'_')}_${fecha}.xlsx`);
+}
+
+function actualizarLotesEnMateriales() {
+  materiales.forEach(m => {
+    m.lotes = lotesMap[m.catalogo] || [];
+  });
 }
 
 function toggleLotes(cat) {
