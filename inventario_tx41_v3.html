@@ -627,6 +627,7 @@ async function cargarDesdeNube() {
           if (bar) { bar.style.width = '90%'; pct.textContent = '90%'; }
           siatelMap    = d2.datos;
           nombreSiatel = d2.nombre || 'SIATEL';
+          if (d2.lotes) lotesMap = d2.lotes;
           if (bar) { bar.style.width = '100%'; pct.textContent = '100%'; }
           setTimeout(() => mostrarAreas(), 300);
           return;
@@ -647,6 +648,8 @@ async function cargarDesdeNube() {
       siatelMap[cat] = { lib: v[0]||0, tras: v[1]||0, um: v[2]||'' };
     }
     nombreSiatel = configData.nombre || 'SIATEL';
+    // Cargar lotes si están disponibles
+    if (configData.lotes) lotesMap = configData.lotes;
     if (bar) { bar.style.width = '100%'; pct.textContent = '100%'; }
     setTimeout(() => mostrarAreas(), 300);
     return;
@@ -729,7 +732,7 @@ function iniciarRefreshAutomatico() {
   }, 30000); // cada 30 segundos
 }
 
-async function compartirAlServidor(mapDatos, nombre) {
+async function compartirAlServidor(mapDatos, nombre, lotes={}) {
   if (!JSONBIN_KEY || JSONBIN_KEY === 'TU_API_KEY_AQUI') {
     console.warn('⚠️ JSONBin no configurado');
     return;
@@ -741,7 +744,7 @@ async function compartirAlServidor(mapDatos, nombre) {
     const m = mapDatos[cat];
     siatelComprimido[cat] = [m.lib || 0, m.tras || 0, m.um || ''];
   }
-  const payload = { siatel: siatelComprimido, nombre, timestamp: new Date().toISOString() };
+  const payload = { siatel: siatelComprimido, nombre, timestamp: new Date().toISOString(), lotes: lotes };
 
   // En modo local: enviar al servidor Python (que sube a JSONBin sin CORS)
   if (!ES_GITHUB) {
@@ -803,7 +806,7 @@ function verificarContinuar() {
 }
 
 function continuarConArchivos() {
-  compartirAlServidor(siatelMap, nombreSiatel);
+  compartirAlServidor(siatelMap, nombreSiatel, lotesMap);
   const total = Object.keys(siatelMap).length;
   document.getElementById('base-status-txt').textContent =
     nombreSiatel + ' · ' + total.toLocaleString() + ' materiales' +
@@ -841,11 +844,15 @@ function procesarLotes(file) {
         const cat = String(r[iMat]  || '').trim();
         const lot = String(r[iLote] || '').trim();
         if (!cat || !lot || cat === 'None') continue;
+        const lib  = Number(r[iLib]  || 0);
+        const tras = Number(r[iTra]  || 0);
+        // Ignorar lotes con existencia cero
+        if (lib === 0 && tras === 0) continue;
         if (!lotesMap[cat]) lotesMap[cat] = [];
         lotesMap[cat].push({
           lote: lot,
-          lib:  Number(r[iLib]  || 0),
-          tras: Number(r[iTra]  || 0),
+          lib,
+          tras,
           um:   iUM >= 0 ? String(r[iUM] || '').trim() : ''
         });
       }
