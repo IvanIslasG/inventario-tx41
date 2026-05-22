@@ -631,7 +631,7 @@ async function cargarDesdeNube() {
             if (materiales.length > 0) actualizarLotesEnMateriales();
           }
           if (bar) { bar.style.width = '100%'; pct.textContent = '100%'; }
-          setTimeout(() => mostrarAreas(null), 300);
+          setTimeout(() => mostrarAreas(configData), 300);
           return;
         }
       }
