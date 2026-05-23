@@ -255,7 +255,48 @@ table.pt tr:nth-child(even) td{background:#f7f7f7}
   </div>
 </header>
 
-<!-- PANTALLA 0: CARGA SIATEL (primera pantalla) -->
+<!-- PANTALLA LOGIN -->
+<div id="pantalla-login" style="display:none;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 60px);padding:20px;background:var(--fondo)">
+  <div class="base-card" style="max-width:380px;width:100%">
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="font-size:52px;margin-bottom:8px">🔐</div>
+      <h2 style="margin:0 0 4px">Iniciar sesión</h2>
+      <p style="font-size:13px;color:var(--muted);margin:0">Sistema de Inventario TX41 Puebla</p>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--azul);display:block;margin-bottom:5px">Usuario</label>
+        <input type="text" id="login-usuario" placeholder="usuario" autocomplete="username"
+          style="width:100%;height:42px;font-size:15px;border:1.5px solid var(--borde);border-radius:8px;padding:0 12px;box-sizing:border-box"
+          onkeydown="if(event.key==='Enter')document.getElementById('login-password').focus()">
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--azul);display:block;margin-bottom:5px">Contraseña</label>
+        <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password"
+          style="width:100%;height:42px;font-size:15px;border:1.5px solid var(--borde);border-radius:8px;padding:0 12px;box-sizing:border-box"
+          onkeydown="if(event.key==='Enter')iniciarSesion()">
+      </div>
+      <div id="login-error" style="display:none;background:#fef2f2;color:#dc2626;font-size:12px;padding:10px 12px;border-radius:8px;border:1px solid #fecaca"></div>
+      <button id="btn-login" class="btn btn-primary" onclick="iniciarSesion()" style="height:44px;font-size:15px;width:100%">
+        Entrar
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL INACTIVIDAD -->
+<div id="modal-inactividad" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center">
+  <div class="base-card" style="max-width:360px;width:90%;text-align:center">
+    <div style="font-size:48px;margin-bottom:12px">⏳</div>
+    <h3 style="margin:0 0 8px">¿Sigues ahí?</h3>
+    <p style="font-size:13px;color:var(--muted);margin:0 0 16px">Tu sesión cerrará por inactividad en <span id="cuenta-regresiva" style="font-weight:700;color:var(--rojo);font-size:16px">60</span> segundos</p>
+    <div style="display:flex;gap:10px;justify-content:center">
+      <button class="btn btn-primary" onclick="continuarSesion()" style="flex:1">Continuar sesión</button>
+      <button class="btn btn-outline" onclick="cerrarSesion()" style="flex:1">Cerrar sesión</button>
+    </div>
+  </div>
+</div>
+
 <div id="pantalla-carga" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 60px);padding:32px">
   <div class="base-card" style="max-width:580px">
     <div class="icono">📂</div>
@@ -488,6 +529,181 @@ let siatelListo  = false;
 let lotesListo   = false;
 
 // ── INIT ──
+// ── AUTENTICACIÓN ──
+let sessionToken  = localStorage.getItem('tx41_token') || '';
+let sessionRol    = localStorage.getItem('tx41_rol')   || '';
+let sessionNombre = localStorage.getItem('tx41_nombre')|| '';
+
+const COUNTDOWN_SEG  = 60;
+let inactividadTimer = null;
+let countdownTimer   = null;
+let countdownVal     = COUNTDOWN_SEG;
+
+// ── AUTENTICACIÓN Y SESIÓN ──
+let sesionToken   = '';
+let sesionRol     = '';
+let sesionUsuario = '';
+let cuentaRegresivaTimer = null;
+const INACTIVIDAD_MS  = 20 * 60 * 1000; // 20 minutos
+const CUENTA_REGRESIVA_S = 60;           // 60 segundos para responder
+
+// Eventos de actividad que reinician el timer
+['click','keydown','mousemove','touchstart','scroll','input'].forEach(ev => {
+  document.addEventListener(ev, () => { if (sesionToken) resetInactividad(); }, { passive: true });
+});
+
+function resetInactividad() {
+  clearTimeout(inactividadTimer);
+  inactividadTimer = setTimeout(mostrarAvisoInactividad, INACTIVIDAD_MS);
+}
+
+function mostrarAvisoInactividad() {
+  const modal = document.getElementById('modal-inactividad');
+  if (!modal) return;
+  modal.style.display = 'flex';
+  let seg = CUENTA_REGRESIVA_S;
+  document.getElementById('cuenta-regresiva').textContent = seg;
+  cuentaRegresivaTimer = setInterval(() => {
+    seg--;
+    const el = document.getElementById('cuenta-regresiva');
+    if (el) el.textContent = seg;
+    if (seg <= 0) {
+      clearInterval(cuentaRegresivaTimer);
+      cerrarSesion();
+    }
+  }, 1000);
+}
+
+function continuarSesion() {
+  clearInterval(cuentaRegresivaTimer);
+  const modal = document.getElementById('modal-inactividad');
+  if (modal) modal.style.display = 'none';
+  resetInactividad();
+}
+
+async function iniciarSesion() {
+  const usuario  = document.getElementById('login-usuario').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errEl    = document.getElementById('login-error');
+  const btn      = document.getElementById('btn-login');
+  if (!usuario || !password) {
+    errEl.textContent = 'Ingresa usuario y contraseña';
+    errEl.style.display = 'block'; return;
+  }
+  btn.textContent = 'Verificando...'; btn.disabled = true;
+  errEl.style.display = 'none';
+  try {
+    const res = await fetch('/api/login', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ usuario, password })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      sesionToken   = data.token;
+      sesionRol     = data.rol;
+      sesionUsuario = data.usuario;
+      sessionStorage.setItem('tx41_token',   sesionToken);
+      sessionStorage.setItem('tx41_rol',     sesionRol);
+      sessionStorage.setItem('tx41_usuario', sesionUsuario);
+      document.getElementById('pantalla-login').style.display = 'none';
+      mostrarHeaderUsuario();
+      resetInactividad();
+      mostrarPantallaCarga();
+    } else {
+      errEl.textContent = data.msg || 'Usuario o contraseña incorrectos';
+      errEl.style.display = 'block';
+      btn.textContent = 'Entrar'; btn.disabled = false;
+    }
+  } catch(e) {
+    errEl.textContent = 'Error de conexión con el servidor';
+    errEl.style.display = 'block';
+    btn.textContent = 'Entrar'; btn.disabled = false;
+  }
+}
+
+async function cerrarSesion() {
+  clearTimeout(inactividadTimer);
+  clearInterval(cuentaRegresivaTimer);
+  const modal = document.getElementById('modal-inactividad');
+  if (modal) modal.style.display = 'none';
+  try {
+    await fetch('/api/logout', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + sesionToken }
+    });
+  } catch(e) {}
+  sesionToken = ''; sesionRol = ''; sesionUsuario = '';
+  sessionStorage.removeItem('tx41_token');
+  sessionStorage.removeItem('tx41_rol');
+  sessionStorage.removeItem('tx41_usuario');
+  // Ocultar todo y mostrar login
+  ['pantalla-carga','pantalla-area','pantalla-consulta','pantalla-captura'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+  document.getElementById('login-usuario').value = '';
+  document.getElementById('login-password').value = '';
+  document.getElementById('login-error').style.display = 'none';
+  document.getElementById('btn-login').textContent = 'Entrar';
+  document.getElementById('btn-login').disabled = false;
+  document.getElementById('pantalla-login').style.display = 'flex';
+  ocultarHeaderUsuario();
+}
+
+async function verificarSesionExistente() {
+  const token   = sessionStorage.getItem('tx41_token');
+  const rol     = sessionStorage.getItem('tx41_rol');
+  const usuario = sessionStorage.getItem('tx41_usuario');
+  if (!token) return false;
+  try {
+    const res = await fetch('/api/verificar', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }
+    });
+    const data = await res.json();
+    if (data.ok) {
+      sesionToken   = token;
+      sesionRol     = rol;
+      sesionUsuario = usuario;
+      mostrarHeaderUsuario();
+      resetInactividad();
+      return true;
+    }
+  } catch(e) {}
+  sessionStorage.removeItem('tx41_token');
+  sessionStorage.removeItem('tx41_rol');
+  sessionStorage.removeItem('tx41_usuario');
+  return false;
+}
+
+function mostrarHeaderUsuario() {
+  let el = document.getElementById('header-usuario');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'header-usuario';
+    el.style.cssText = 'display:flex;align-items:center;gap:10px;font-size:12px;color:white;opacity:.9';
+    document.querySelector('.header-right')?.appendChild(el);
+  }
+  el.innerHTML = `<span>👤 ${sesionUsuario}</span>
+    <button onclick="cerrarSesion()" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:white;padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer">Salir</button>`;
+}
+
+function ocultarHeaderUsuario() {
+  const el = document.getElementById('header-usuario');
+  if (el) el.remove();
+}
+
+function mostrarPantallaCarga() {
+  document.getElementById('pantalla-carga').style.display = 'flex';
+  if (ES_GITHUB) {
+    cargarDesdeNube();
+  } else {
+    const hint = document.getElementById('hint-servidor');
+    if (hint) hint.style.display = 'block';
+  }
+}
+
 // ── NGROK URL ──
 let NGROK_URL = localStorage.getItem('tx41_ngrok') || '';
 
@@ -535,8 +751,7 @@ let   JSONBIN_BIN_ID = localStorage.getItem('tx41_bin_id') || '6a0d027bee5a733b1
 // ── DETECCIÓN DE MODO ──
 const ES_GITHUB = window.location.hostname.includes('github.io');
 
-window.addEventListener('DOMContentLoaded', () => {
-  // Inicializar base maestra
+window.addEventListener('DOMContentLoaded', async () => {
   baseMaestra = baseMaestraEmbebida;
 
   // Restaurar URL ngrok si estaba guardada
@@ -550,14 +765,19 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   if (ES_GITHUB) {
-    // GitHub Pages — modo cliente
+    // Cliente GitHub Pages — no requiere login, carga directo
     const btnCambiar = document.getElementById('btn-cambiar-archivo');
     if (btnCambiar) btnCambiar.style.display = 'none';
     mostrarEsperaNube('Cargando existencias del almacén...');
   } else {
-    // Modo local — mostrar hint de administrador
-    const hint = document.getElementById('hint-servidor');
-    if (hint) hint.style.display = 'block';
+    // Servidor local — requiere login
+    // Verificar si hay sesión activa
+    const sesionActiva = await verificarSesionExistente();
+    if (sesionActiva) {
+      mostrarPantallaCarga();
+    } else {
+      document.getElementById('pantalla-login').style.display = 'flex';
+    }
   }
 });
 
@@ -779,7 +999,7 @@ async function compartirAlServidor(mapDatos, nombre, lotes={}) {
     try {
       const res = await fetch('/api/siatel', {
         method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + sessionToken },
         body:    JSON.stringify({ datos: mapDatos, nombre, lotes, timestamp: new Date().toISOString() })
       });
       if (res.ok) {
