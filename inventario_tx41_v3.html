@@ -687,6 +687,15 @@ async function iniciarSesion() {
         const ngrok = data.ngrok || '';
         if (!ngrok) throw new Error('servidor no disponible');
         loginUrl = `${ngrok}/api/login`;
+        // Warm-up GET: fuerza que ngrok procese la advertencia ANTES del preflight OPTIONS
+        // (el preflight del browser no lleva headers custom, por eso falla sin esto)
+        try {
+          await fetch(`${ngrok}/api/estado`, {
+            method: 'GET',
+            headers: { 'ngrok-skip-browser-warning': 'true' },
+            mode: 'cors'
+          });
+        } catch(_) { /* solo warm-up, ignorar errores */ }
       } catch(e) {
         errEl.textContent = 'El sistema no está disponible en este momento. Contacta al administrador.';
         errEl.style.display = 'block';
@@ -697,6 +706,7 @@ async function iniciarSesion() {
 
     const res  = await fetch(loginUrl, {
       method:  'POST',
+      mode:    'cors',
       headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
       body:    JSON.stringify({ usuario, password })
     });
