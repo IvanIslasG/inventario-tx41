@@ -1344,17 +1344,24 @@ async function compartirAlServidor(mapDatos, nombre, lotes={}) {
   // En modo local: enviar al servidor Python (que sube a JSONBin sin CORS)
   if (!ES_GITHUB) {
     try {
+      const token = sesionToken || sessionStorage.getItem('tx41_token') || '';
       const res = await fetch('/api/siatel', {
         method:  'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + sessionToken },
-        body:    JSON.stringify({ datos: mapDatos, nombre, lotes, timestamp: new Date().toISOString() })
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token,
+          'ngrok-skip-browser-warning': 'true'
+        },
+        body: JSON.stringify({ datos: mapDatos, nombre, lotes, timestamp: new Date().toISOString() })
       });
       if (res.ok) {
         console.log('✅ SIATEL enviado al servidor local → GitHub');
         return;
+      } else {
+        console.error('❌ Servidor respondió:', res.status);
       }
     } catch(e) {
-      console.warn('Servidor local no disponible, subiendo directo...');
+      console.warn('Servidor local no disponible, subiendo directo...', e.message);
     }
   }
 
