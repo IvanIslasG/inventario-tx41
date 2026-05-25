@@ -299,6 +299,19 @@ table.pt tr:nth-child(even) td{background:#f7f7f7}
 
 
 <!-- PANTALLA INICIO -->
+
+<!-- BARRA NAVEGACIÓN ADMIN -->
+<nav id="nav-admin" style="display:none;background:white;border-bottom:1.5px solid var(--borde);padding:0 20px;height:48px;align-items:center;gap:8px;position:sticky;top:60px;z-index:900;box-shadow:0 1px 4px rgba(0,0,0,.06)">
+  <span style="font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.05em;margin-right:8px">TX41</span>
+  <button id="nav-btn-inventario" onclick="irAInventarios()" class="btn btn-sm" style="font-size:13px;background:transparent;color:var(--texto);border:none;padding:6px 14px;border-radius:8px;cursor:pointer;transition:background .15s" onmouseover="this.style.background='#EEF2FF';this.style.color='var(--azul)'" onmouseout="this.style.background='transparent';this.style.color='var(--texto)'">
+    📦 Inventario
+  </button>
+  <button id="nav-btn-admin" onclick="irAAdministracion()" class="btn btn-sm" style="font-size:13px;background:transparent;color:var(--texto);border:none;padding:6px 14px;border-radius:8px;cursor:pointer;transition:background .15s" onmouseover="this.style.background='#F5F3FF';this.style.color='#7c3aed'" onmouseout="this.style.background='transparent';this.style.color='var(--texto)'">
+    ⚙️ Administración
+  </button>
+  <div style="flex:1"></div>
+  <span id="nav-usuario-label" style="font-size:12px;color:var(--muted)"></span>
+</nav>
 <div id="pantalla-inicio" style="display:none;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 60px);padding:32px;background:var(--fondo)">
   <div style="text-align:center;margin-bottom:32px">
     <div style="font-size:48px;margin-bottom:8px">🏭</div>
@@ -375,7 +388,7 @@ table.pt tr:nth-child(even) td{background:#f7f7f7}
   </div>
 </div>
 
-<div id="pantalla-carga" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 60px);padding:32px">
+<div id="pantalla-carga" style="display:none;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 60px);padding:32px">
   <div class="base-card" style="max-width:580px">
     <div class="icono">📂</div>
     <h2>Cargar archivos de existencias</h2>
@@ -759,6 +772,8 @@ async function cerrarSesion() {
     });
   } catch(e) {}
   sesionToken = ''; sesionRol = ''; sesionUsuario = '';
+  const navEl = document.getElementById('nav-admin');
+  if (navEl) navEl.style.display = 'none';
   sessionStorage.removeItem('tx41_token');
   sessionStorage.removeItem('tx41_rol');
   sessionStorage.removeItem('tx41_usuario');
@@ -988,7 +1003,10 @@ async function cargarDesdeNube() {
       const ctrl2  = new AbortController();
       const timer2 = setTimeout(() => ctrl2.abort(), 6000);
       const r2 = await fetch(`${ngrokURL}/api/siatel`, {
-        headers: { 'ngrok-skip-browser-warning': 'true' },
+        headers: {
+          'ngrok-skip-browser-warning': 'true',
+          'Authorization': 'Bearer ' + (sessionStorage.getItem('tx41_token') || '')
+        },
         signal:  ctrl2.signal
       });
       clearTimeout(timer2);
@@ -1045,7 +1063,10 @@ async function enriquecerConNgrok(ngrok) {
     const ctrl    = new AbortController();
     const timeout = setTimeout(() => ctrl.abort(), 8000);
     const r = await fetch(`${ngrok}/api/siatel`, {
-      headers: { 'ngrok-skip-browser-warning': 'true' },
+      headers: {
+        'ngrok-skip-browser-warning': 'true',
+        'Authorization': 'Bearer ' + (sessionStorage.getItem('tx41_token') || '')
+      },
       signal:  ctrl.signal
     });
     clearTimeout(timeout);
@@ -2253,6 +2274,17 @@ function actualizarLotesEnMateriales() {
 
 // ── PANTALLA INICIO ──
 function mostrarInicio() {
+  // Mostrar/ocultar barra de navegación admin
+  const nav = document.getElementById('nav-admin');
+  if (nav) {
+    if (sesionRol === 'admin') {
+      nav.style.display = 'flex';
+      const lbl = document.getElementById('nav-usuario-label');
+      if (lbl) lbl.textContent = '👤 ' + (sesionUsuario || 'admin');
+    } else {
+      nav.style.display = 'none';
+    }
+  }
   ['pantalla-carga','pantalla-area','pantalla-consulta','pantalla-captura','pantalla-admin'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
@@ -2265,11 +2297,25 @@ function mostrarInicio() {
 }
 
 function irAInventarios() {
+  // Marcar botón activo en nav
+  ['nav-btn-inventario','nav-btn-admin'].forEach(id => {
+    const b = document.getElementById(id);
+    if (b) { b.style.background='transparent'; b.style.color='var(--texto)'; b.style.fontWeight='400'; }
+  });
+  const bi = document.getElementById('nav-btn-inventario');
+  if (bi) { bi.style.background='#EEF2FF'; bi.style.color='var(--azul)'; bi.style.fontWeight='700'; }
   document.getElementById('pantalla-inicio').style.display = 'none';
   mostrarPantallaCarga();
 }
 
 function irAAdministracion() {
+  // Marcar botón activo en nav
+  ['nav-btn-inventario','nav-btn-admin'].forEach(id => {
+    const b = document.getElementById(id);
+    if (b) { b.style.background='transparent'; b.style.color='var(--texto)'; b.style.fontWeight='400'; }
+  });
+  const ba = document.getElementById('nav-btn-admin');
+  if (ba) { ba.style.background='#F5F3FF'; ba.style.color='#7c3aed'; ba.style.fontWeight='700'; }
   document.getElementById('pantalla-inicio').style.display = 'none';
   document.getElementById('pantalla-admin').style.display = 'flex';
   cargarTablaUsuarios();
