@@ -1025,6 +1025,48 @@ function mostrarEsperaNube(msg) {
   setTimeout(cargarDesdeNube, 1000);
 }
 
+// Descarga los movimientos del servidor y los aplica al siatelMap local
+// Esto garantiza que las existencias reflejen salidas/entradas aunque
+// el config.json de GitHub esté desactualizado (caché de hasta 10 min)
+async function aplicarMovimientosAlCliente(ngrokURL) {
+  try {
+    const baseURL = ngrokURL || sessionStorage.getItem('tx41_ngrok') || '';
+    if (!baseURL) return; // Sin servidor no podemos obtener movimientos
+    const token = sessionStorage.getItem('tx41_token') || sesionToken || '';
+    if (!token) return;
+    const res = await fetch(`${baseURL}/api/movimientos`, {
+      mode: 'cors',
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'ngrok-skip-browser-warning': 'true'
+      }
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!data.ok || !data.movimientos) return;
+    // Aplicar cada movimiento al siatelMap
+    let aplicados = 0;
+    data.movimientos.forEach(mov => {
+      (mov.renglones || []).forEach(r => {
+        const cat = r.cat;
+        const qty = parseInt(r.cantidad) || 0;
+        if (siatelMap[cat] !== undefined && qty > 0) {
+          if (mov.tipo === 'salida') {
+            siatelMap[cat].lib = Math.max(0, (siatelMap[cat].lib || 0) - qty);
+          } else if (mov.tipo === 'entrada') {
+            siatelMap[cat].lib = (siatelMap[cat].lib || 0) + qty;
+          }
+          aplicados++;
+        }
+      });
+    });
+    if (aplicados > 0) console.log(`✅ ${data.movimientos.length} movimientos aplicados (${aplicados} renglones)`);
+  } catch(e) {
+    console.warn('No se pudieron aplicar movimientos:', e.message);
+    // No es crítico — el inventario mostrará existencias base del SIATEL
+  }
+}
+
 async function cargarDesdeNube() {
   const el  = document.getElementById('nube-status');
   const bar = document.getElementById('nube-bar');
@@ -1081,6 +1123,8 @@ async function cargarDesdeNube() {
             if (materiales.length > 0) actualizarLotesEnMateriales();
           }
           if (bar) { bar.style.width = '100%'; pct.textContent = '100%'; }
+          // Aplicar movimientos históricos antes de mostrar (ngrok ya los tiene aplicados,
+          // pero por seguridad también los aplicamos desde el historial local)
           setTimeout(() => mostrarAreas(configData), 300);
           return;
         }
@@ -1091,6 +1135,8 @@ async function cargarDesdeNube() {
   }
 
   // Paso 3: Fallback — usar datos comprimidos de config.json
+  // IMPORTANTE: el config.json puede estar desactualizado respecto a movimientos.
+  // Se descargarán y aplicarán los movimientos desde el servidor después de cargar.
   if (bar) { bar.style.width = '70%'; pct.textContent = '70%'; }
   if (configData && configData.siatel && Object.keys(configData.siatel).length > 0) {
     if (el) el.textContent = 'Cargando materiales...';
@@ -1100,13 +1146,14 @@ async function cargarDesdeNube() {
       siatelMap[cat] = { lib: v[0]||0, tras: v[1]||0, um: v[2]||'' };
     }
     nombreSiatel = configData.nombre || 'SIATEL';
-    // Cargar lotes si están disponibles
     if (configData.lotes) {
       lotesMap = configData.lotes;
-      // Actualizar lotes en materiales si ya están construidos
       if (materiales.length > 0) actualizarLotesEnMateriales();
     }
     if (bar) { bar.style.width = '100%'; pct.textContent = '100%'; }
+    // Aplicar movimientos al siatelMap antes de mostrar
+    if (el) el.textContent = 'Aplicando movimientos registrados...';
+    await aplicarMovimientosAlCliente(configData.ngrok || '');
     setTimeout(() => mostrarAreas(configData), 300);
     return;
   }
