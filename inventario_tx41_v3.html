@@ -340,20 +340,23 @@ table.pt tr:nth-child(even) td{background:#f7f7f7}
 
 <!-- PANTALLA INICIO -->
 
-<!-- BARRA NAVEGACIÓN ADMIN -->
-<nav id="nav-admin" style="display:none;background:white;border-bottom:1.5px solid var(--borde);padding:0 20px;height:48px;align-items:center;gap:8px;position:sticky;top:60px;z-index:900;box-shadow:0 1px 4px rgba(0,0,0,.06)">
-  <span style="font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.05em;margin-right:8px">TX41</span>
-  <button id="nav-btn-inventario" onclick="irAInventarios()" class="btn btn-sm" style="font-size:13px;background:transparent;color:var(--texto);border:none;padding:6px 14px;border-radius:8px;cursor:pointer;transition:background .15s" onmouseover="this.style.background='#EEF2FF';this.style.color='var(--azul)'" onmouseout="this.style.background='transparent';this.style.color='var(--texto)'">
+<!-- BARRA NAVEGACIÓN GLOBAL (admin y usuarios) -->
+<nav id="nav-admin" style="display:none;background:white;border-bottom:1.5px solid var(--borde);padding:0 12px;height:48px;align-items:center;gap:4px;position:sticky;top:60px;z-index:900;box-shadow:0 1px 4px rgba(0,0,0,.06)">
+  <button onclick="irAMenu()" class="btn btn-sm" style="font-size:12px;background:#EEF2FF;color:var(--azul);border:none;padding:6px 12px;border-radius:8px;cursor:pointer;font-weight:600;flex-shrink:0">
+    ☰ Menú
+  </button>
+  <div style="width:1px;height:24px;background:var(--borde);margin:0 4px;flex-shrink:0"></div>
+  <button id="nav-btn-inventario" onclick="irAInventarios()" class="btn btn-sm" style="font-size:13px;background:transparent;color:var(--texto);border:none;padding:6px 12px;border-radius:8px;cursor:pointer;transition:background .15s;white-space:nowrap">
     📦 Inventario
   </button>
-  <button id="nav-btn-admin" onclick="irAAdministracion()" class="btn btn-sm" style="font-size:13px;background:transparent;color:var(--texto);border:none;padding:6px 14px;border-radius:8px;cursor:pointer;transition:background .15s" onmouseover="this.style.background='#F5F3FF';this.style.color='#7c3aed'" onmouseout="this.style.background='transparent';this.style.color='var(--texto)'">
-    ⚙️ Administración
-  </button>
-  <button id="nav-btn-traspasos" onclick="irATraspasos()" class="btn btn-sm" style="font-size:13px;background:transparent;color:var(--texto);border:none;padding:6px 14px;border-radius:8px;cursor:pointer;transition:background .15s" onmouseover="this.style.background='#FFF7ED';this.style.color='#c2410c'" onmouseout="this.style.background='transparent';this.style.color='var(--texto)'">
+  <button id="nav-btn-traspasos" onclick="irATraspasos()" class="btn btn-sm" style="font-size:13px;background:transparent;color:var(--texto);border:none;padding:6px 12px;border-radius:8px;cursor:pointer;transition:background .15s;white-space:nowrap">
     🔄 Traspasos
   </button>
+  <button id="nav-btn-admin" onclick="irAAdministracion()" class="btn btn-sm" style="display:none;font-size:13px;background:transparent;color:var(--texto);border:none;padding:6px 12px;border-radius:8px;cursor:pointer;transition:background .15s;white-space:nowrap">
+    ⚙️ Admin
+  </button>
   <div style="flex:1"></div>
-  <span id="nav-usuario-label" style="font-size:12px;color:var(--muted)"></span>
+  <span id="nav-usuario-label" style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px"></span>
 </nav>
 <div id="pantalla-inicio" style="display:none;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 60px);padding:32px;background:var(--fondo)">
   <div style="text-align:center;margin-bottom:32px">
@@ -368,6 +371,13 @@ table.pt tr:nth-child(even) td{background:#f7f7f7}
       <div style="font-size:52px;margin-bottom:12px">📦</div>
       <div style="font-size:18px;font-weight:700;color:var(--azul);margin-bottom:6px">Inventarios</div>
       <div style="font-size:12px;color:var(--muted)">Consulta, captura y reportes de existencias</div>
+    </div>
+    <!-- Traspasos (todos) -->
+    <div onclick="irATraspasos()" style="background:white;border:2px solid #ea580c;border-radius:16px;padding:32px 28px;text-align:center;cursor:pointer;flex:1;min-width:200px;transition:all .2s"
+      onmouseover="this.style.background='#FFF7ED'" onmouseout="this.style.background='white'">
+      <div style="font-size:52px;margin-bottom:12px">🔄</div>
+      <div style="font-size:18px;font-weight:700;color:#ea580c;margin-bottom:6px">Traspasos</div>
+      <div style="font-size:12px;color:var(--muted)">Salidas y recepciones de material</div>
     </div>
     <!-- Administración (solo admin) -->
     <div id="btn-administracion" onclick="irAAdministracion()" style="display:none;background:white;border:2px solid #7c3aed;border-radius:16px;padding:32px 28px;text-align:center;cursor:pointer;flex:1;min-width:200px;transition:all .2s"
@@ -2317,18 +2327,22 @@ function actualizarLotesEnMateriales() {
 
 // ── PANTALLA INICIO ──
 function mostrarInicio() {
-  // Mostrar/ocultar barra de navegación admin
+  // Nav: visible para TODOS después de login
   const nav = document.getElementById('nav-admin');
   if (nav) {
-    if (sesionRol === 'admin') {
-      nav.style.display = 'flex';
-      const lbl = document.getElementById('nav-usuario-label');
-      if (lbl) lbl.textContent = '👤 ' + (sesionUsuario || 'admin');
-    } else {
-      nav.style.display = 'none';
-    }
+    nav.style.display = 'flex';
+    const lbl = document.getElementById('nav-usuario-label');
+    if (lbl) lbl.textContent = '👤 ' + (sesionUsuario || '');
+    // Botón Admin solo visible si es admin
+    const btnAdmin = document.getElementById('nav-btn-admin');
+    if (btnAdmin) btnAdmin.style.display = sesionRol === 'admin' ? 'inline-flex' : 'none';
   }
-  ['pantalla-carga','pantalla-area','pantalla-consulta','pantalla-captura','pantalla-admin'].forEach(id => {
+  // Limpiar estado nav activo
+  ['nav-btn-inventario','nav-btn-traspasos','nav-btn-admin'].forEach(id => {
+    const b = document.getElementById(id);
+    if (b) { b.style.background='transparent'; b.style.color='var(--texto)'; b.style.fontWeight='400'; }
+  });
+  ['pantalla-carga','pantalla-area','pantalla-consulta','pantalla-captura','pantalla-admin','pantalla-traspasos'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
   });
@@ -2339,33 +2353,37 @@ function mostrarInicio() {
   }
 }
 
-function irAInventarios() {
-  // Marcar botón activo en nav
-  ['nav-btn-inventario','nav-btn-admin'].forEach(id => {
+function irAMenu() {
+  // Volver a la pantalla de inicio (menú principal)
+  ['pantalla-carga','pantalla-area','pantalla-consulta','pantalla-captura',
+   'pantalla-admin','pantalla-traspasos'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.style.display='none';
+  });
+  ['nav-btn-inventario','nav-btn-traspasos','nav-btn-admin'].forEach(id => {
     const b = document.getElementById(id);
     if (b) { b.style.background='transparent'; b.style.color='var(--texto)'; b.style.fontWeight='400'; }
   });
-  const bi = document.getElementById('nav-btn-inventario');
-  if (bi) { bi.style.background='#EEF2FF'; bi.style.color='var(--azul)'; bi.style.fontWeight='700'; }
+  document.getElementById('pantalla-inicio').style.display = 'flex';
+}
+
+function irAInventarios() {
+  mvNavActivo('inventario');
   document.getElementById('pantalla-inicio').style.display = 'none';
+  document.getElementById('pantalla-traspasos').style.display = 'none';
   mostrarPantallaCarga();
 }
 
 function irAAdministracion() {
-  // Marcar botón activo en nav
-  ['nav-btn-inventario','nav-btn-admin'].forEach(id => {
-    const b = document.getElementById(id);
-    if (b) { b.style.background='transparent'; b.style.color='var(--texto)'; b.style.fontWeight='400'; }
+  mvNavActivo('admin');
+  ['pantalla-inicio','pantalla-traspasos'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.style.display='none';
   });
-  const ba = document.getElementById('nav-btn-admin');
-  if (ba) { ba.style.background='#F5F3FF'; ba.style.color='#7c3aed'; ba.style.fontWeight='700'; }
-  document.getElementById('pantalla-inicio').style.display = 'none';
   document.getElementById('pantalla-admin').style.display = 'flex';
   cargarTablaUsuarios();
 }
 
 function volverInicio() {
-  ['pantalla-admin','pantalla-carga','pantalla-area','pantalla-consulta','pantalla-captura'].forEach(id => {
+  ['pantalla-admin','pantalla-carga','pantalla-area','pantalla-consulta','pantalla-captura','pantalla-traspasos'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
   });
@@ -2781,6 +2799,301 @@ function imprimir(ubi) {
     </div>
   </div>
 </div>
+
+
+<script>
+// ════════════════════════════════════════════════════════
+// MÓDULO TRASPASOS / RECEPCIONES — JS COMPLETO
+// ════════════════════════════════════════════════════════
+
+let mvTipo        = 'salida';
+let mvRenglones   = [];
+let mvMovimientos = [];
+let mvRenglonIdx  = 0;
+
+// ── Navegación ──
+function irATraspasos() {
+  mvNavActivo('traspasos');
+  ['pantalla-inicio','pantalla-admin','pantalla-carga','pantalla-area',
+   'pantalla-consulta','pantalla-captura'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.style.display = 'none';
+  });
+  document.getElementById('pantalla-traspasos').style.display = 'flex';
+  mvInicializar();
+}
+
+function mvNavActivo(cual) {
+  const mapa = {
+    inventario: { id:'nav-btn-inventario', bg:'#EEF2FF', color:'var(--azul)'  },
+    admin:      { id:'nav-btn-admin',       bg:'#F5F3FF', color:'#7c3aed'      },
+    traspasos:  { id:'nav-btn-traspasos',   bg:'#FFF7ED', color:'#c2410c'      },
+  };
+  Object.values(mapa).forEach(m => {
+    const b = document.getElementById(m.id);
+    if (b) { b.style.background='transparent'; b.style.color='var(--texto)'; b.style.fontWeight='400'; }
+  });
+  if (mapa[cual]) {
+    const b = document.getElementById(mapa[cual].id);
+    if (b) { b.style.background=mapa[cual].bg; b.style.color=mapa[cual].color; b.style.fontWeight='700'; }
+  }
+}
+
+function mvInicializar() {
+  if (mvRenglones.length === 0) mvAgregarRenglon();
+  mvCargarHistorial();
+}
+
+// ── Tipo ──
+function mvSetTipo(tipo) {
+  mvTipo = tipo;
+  document.getElementById('mv-btn-salida').className  = 'mv-tipo-btn' + (tipo === 'salida'  ? ' activo-salida'  : '');
+  document.getElementById('mv-btn-entrada').className = 'mv-tipo-btn' + (tipo === 'entrada' ? ' activo-entrada' : '');
+  document.getElementById('mv-label-dir').textContent = tipo === 'salida' ? 'destino' : 'origen';
+  mvRenderRenglones();
+}
+
+// ── Almacén ──
+function mvAlmacenChange() {
+  const sel  = document.getElementById('mv-almacen-sel');
+  const otro = document.getElementById('mv-almacen-otro');
+  otro.style.display = sel.value === '__otro__' ? 'block' : 'none';
+  if (sel.value === '__otro__') otro.focus();
+}
+function mvGetAlmacen() {
+  const sel = document.getElementById('mv-almacen-sel').value;
+  return sel === '__otro__' ? document.getElementById('mv-almacen-otro').value.trim() : sel;
+}
+
+// ── Tabs ──
+function mvTab(tab) {
+  document.getElementById('mv-panel-nuevo').style.display     = tab === 'nuevo'     ? 'block' : 'none';
+  document.getElementById('mv-panel-historial').style.display = tab === 'historial' ? 'block' : 'none';
+  document.getElementById('mv-tab-nuevo').classList.toggle('activo', tab === 'nuevo');
+  document.getElementById('mv-tab-historial').classList.toggle('activo', tab === 'historial');
+  if (tab === 'historial') mvRenderHistorial();
+}
+
+// ── Renglones ──
+function mvAgregarRenglon() {
+  mvRenglones.push({ id: ++mvRenglonIdx, cat:'', desc:'', cantidad:1, existencia:null, um:'' });
+  mvRenderRenglones();
+}
+
+function mvEliminarRenglon(id) {
+  mvRenglones = mvRenglones.filter(r => r.id !== id);
+  if (mvRenglones.length === 0) mvAgregarRenglon();
+  else mvRenderRenglones();
+}
+
+function mvRenderRenglones() {
+  const cont = document.getElementById('mv-renglones');
+  if (!cont) return;
+  cont.innerHTML = '';
+  mvRenglones.forEach(r => {
+    const sinExist = mvTipo === 'salida' && r.existencia !== null && r.cantidad > r.existencia;
+    const div = document.createElement('div');
+    div.className = 'mv-renglon';
+    div.id = `mv-r-${r.id}`;
+    const valInput = r.cat ? (r.cat + ' — ' + r.desc.substring(0,45)) : '';
+    div.innerHTML = `
+      <div class="mv-renglon-header">
+        <div style="flex:1;position:relative">
+          <input type="text" class="mv-cat-input" id="mv-cat-${r.id}"
+            placeholder="Buscar catálogo o descripción..."
+            value="${valInput.replace(/"/g,'&quot;')}"
+            oninput="mvBuscar(${r.id},this.value)"
+            onfocus="mvBuscar(${r.id},this.value)"
+            onblur="setTimeout(()=>mvCerrar(${r.id}),200)">
+          <div id="mv-res-${r.id}" class="mv-cat-resultados" style="display:none"></div>
+          ${r.existencia !== null ? `<div class="mv-exist-label">Existencia: <b ${r.existencia===0?'class="mv-exist-warn"':''}>${r.existencia}</b>${r.um?' '+r.um:''}</div>` : ''}
+        </div>
+        <button class="mv-btn-del-renglon" onclick="mvEliminarRenglon(${r.id})">✕</button>
+      </div>
+      <div class="mv-renglon-footer">
+        <label style="font-size:12px;color:var(--muted)">Cantidad:</label>
+        <input type="number" class="mv-qty-input${sinExist?' warn':''}"
+          id="mv-qty-${r.id}" value="${r.cantidad}" min="1"
+          onchange="mvSetQty(${r.id},+this.value)"
+          oninput="mvSetQty(${r.id},+this.value)">
+        ${r.um ? `<span style="font-size:12px;color:var(--muted)">${r.um}</span>` : ''}
+        ${sinExist ? `<span style="font-size:11px;color:var(--rojo);font-weight:600">⚠️ Insuficiente</span>` : ''}
+      </div>`;
+    cont.appendChild(div);
+  });
+}
+
+function mvBuscar(id, q) {
+  const res = document.getElementById(`mv-res-${id}`);
+  if (!res) return;
+  if (!q || q.length < 2) { res.style.display='none'; return; }
+  const qLow = q.toLowerCase();
+  const hits = [];
+  for (const [cat, mat] of Object.entries(baseMaestra)) {
+    if ((cat + ' ' + mat.d).toLowerCase().includes(qLow)) {
+      const ex = siatelMap[cat];
+      hits.push({ cat, desc:mat.d, um:mat.u||'', lib: ex ? ex.lib : null });
+      if (hits.length >= 12) break;
+    }
+  }
+  if (!hits.length) { res.style.display='none'; return; }
+  res.innerHTML = hits.map(h =>
+    `<div class="mv-cat-item" onmousedown="mvSel(${id},'${h.cat}','${h.desc.replace(/'/g,"\\'").substring(0,80)}','${h.um}',${h.lib})">
+       <span>${h.cat}</span>
+       <small>${h.desc.substring(0,70)}${h.lib!==null?' | Exist: '+h.lib:''}</small>
+     </div>`
+  ).join('');
+  res.style.display = 'block';
+}
+
+function mvSel(id, cat, desc, um, existencia) {
+  const r = mvRenglones.find(x => x.id === id);
+  if (!r) return;
+  r.cat = cat; r.desc = desc; r.um = um;
+  r.existencia = (existencia !== null && existencia !== undefined) ? Number(existencia) : null;
+  mvCerrar(id);
+  mvRenderRenglones();
+}
+
+function mvCerrar(id) {
+  const el = document.getElementById(`mv-res-${id}`);
+  if (el) el.style.display = 'none';
+}
+
+function mvSetQty(id, val) {
+  const r = mvRenglones.find(x => x.id === id);
+  if (r) { r.cantidad = Math.max(1, val || 1); mvRenderRenglones(); }
+}
+
+// ── Limpiar ──
+function mvLimpiarForm() {
+  mvRenglones = []; mvRenglonIdx = 0;
+  ['mv-almacen-sel','mv-guia','mv-notas'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  const otro = document.getElementById('mv-almacen-otro');
+  if (otro) { otro.value=''; otro.style.display='none'; }
+  const errEl = document.getElementById('mv-error');
+  if (errEl) errEl.style.display = 'none';
+  mvAgregarRenglon();
+}
+
+// ── Guardar ──
+async function mvGuardar() {
+  const errEl = document.getElementById('mv-error');
+  errEl.style.display = 'none';
+
+  const almacen = mvGetAlmacen();
+  if (!almacen) { errEl.textContent='Selecciona el almacén '+(mvTipo==='salida'?'destino':'origen'); errEl.style.display='block'; return; }
+
+  const ren = mvRenglones.filter(r => r.cat);
+  if (!ren.length) { errEl.textContent='Agrega al menos un catálogo'; errEl.style.display='block'; return; }
+
+  if (mvTipo === 'salida') {
+    for (const r of ren) {
+      if (r.existencia !== null && r.cantidad > r.existencia) {
+        errEl.textContent = `Cat. ${r.cat}: cantidad (${r.cantidad}) mayor que existencia (${r.existencia})`;
+        errEl.style.display='block'; return;
+      }
+    }
+  }
+
+  const btn = document.getElementById('mv-btn-guardar');
+  btn.textContent = 'Guardando...'; btn.disabled = true;
+
+  const baseURL = ES_GITHUB ? (sessionStorage.getItem('tx41_ngrok') || '') : '';
+  const url     = baseURL ? `${baseURL}/api/movimientos` : '/api/movimientos';
+  const token   = sessionStorage.getItem('tx41_token') || sesionToken || '';
+
+  try {
+    const res = await fetch(url, {
+      method:'POST', mode:'cors',
+      headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+token, 'ngrok-skip-browser-warning':'true' },
+      body: JSON.stringify({
+        tipo: mvTipo, almacen,
+        guia:   document.getElementById('mv-guia').value.trim(),
+        notas:  document.getElementById('mv-notas').value.trim(),
+        usuario: sesionUsuario,
+        renglones: ren.map(r => ({ cat:r.cat, desc:r.desc, cantidad:r.cantidad, existencia_antes:r.existencia }))
+      })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      ren.forEach(r => {
+        if (siatelMap[r.cat]) {
+          siatelMap[r.cat].lib = Math.max(0, (siatelMap[r.cat].lib||0) + (mvTipo==='entrada'?1:-1)*r.cantidad);
+        }
+      });
+      alert(`✅ ${mvTipo==='salida'?'Salida':'Entrada'} registrada correctamente.`);
+      mvLimpiarForm();
+      await mvCargarHistorial();
+    } else {
+      errEl.textContent = data.msg || 'Error al guardar'; errEl.style.display='block';
+    }
+  } catch(e) {
+    errEl.textContent = 'Error de conexión: ' + e.message; errEl.style.display='block';
+  }
+  btn.textContent = '💾 Registrar movimiento'; btn.disabled = false;
+}
+
+// ── Historial ──
+async function mvCargarHistorial() {
+  try {
+    const baseURL = ES_GITHUB ? (sessionStorage.getItem('tx41_ngrok') || '') : '';
+    const url   = baseURL ? `${baseURL}/api/movimientos` : '/api/movimientos';
+    const token = sessionStorage.getItem('tx41_token') || sesionToken || '';
+    const res   = await fetch(url, { headers:{ 'Authorization':'Bearer '+token, 'ngrok-skip-browser-warning':'true' } });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data.ok) { mvMovimientos = data.movimientos || []; mvRenderHistorial(); }
+  } catch(e) { /* silencioso */ }
+}
+
+function mvRenderHistorial() {
+  const cont  = document.getElementById('mv-historial-cont');
+  if (!cont) return;
+  const flt   = document.getElementById('mv-filtro-tipo').value;
+  const lista = flt ? mvMovimientos.filter(m => m.tipo===flt) : mvMovimientos;
+  if (!lista.length) {
+    cont.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted)">No hay movimientos registrados</div>';
+    return;
+  }
+  const ord = [...lista].sort((a,b) => new Date(b.fecha)-new Date(a.fecha));
+  cont.innerHTML = `<table class="mv-historial-tabla">
+    <thead><tr><th>Fecha</th><th>Tipo</th><th>Almacén</th><th>Guía</th><th>Usuario</th><th>Catálogos</th><th>Notas</th></tr></thead>
+    <tbody>${ord.map(m=>`<tr>
+      <td style="white-space:nowrap">${mvFmt(m.fecha)}</td>
+      <td><span class="${m.tipo==='salida'?'mv-badge-salida':'mv-badge-entrada'}">${m.tipo==='salida'?'📤 Salida':'📥 Entrada'}</span></td>
+      <td>${m.almacen}</td><td>${m.guia||'—'}</td><td>${m.usuario}</td>
+      <td style="font-size:11px">${(m.renglones||[]).map(r=>`<b>${r.cat}</b> ×${r.cantidad}`).join('<br>')}</td>
+      <td style="font-size:11px;color:var(--muted)">${m.notas||'—'}</td>
+    </tr>`).join('')}</tbody></table>`;
+}
+
+function mvFmt(iso) {
+  if (!iso) return '—';
+  try {
+    const d = new Date(iso);
+    return d.toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric'})+' '+
+           d.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
+  } catch { return iso; }
+}
+
+function mvExportarExcel() {
+  if (!mvMovimientos.length) { alert('No hay movimientos para exportar'); return; }
+  const filas = [['Fecha','Tipo','Almacén','Guía','Usuario','Catálogo','Descripción','Cantidad','Exist. Antes','Notas']];
+  mvMovimientos.forEach(m => {
+    (m.renglones||[]).forEach(r => {
+      filas.push([mvFmt(m.fecha), m.tipo==='salida'?'Salida':'Entrada', m.almacen,
+        m.guia||'', m.usuario, r.cat, r.desc, r.cantidad, r.existencia_antes??'', m.notas||'']);
+    });
+  });
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(filas);
+  ws['!cols'] = [16,10,15,14,15,10,40,10,12,20].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb, ws, 'Movimientos');
+  XLSX.writeFile(wb, `Movimientos_TX41_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+</script>
 
 </body>
 </html>
