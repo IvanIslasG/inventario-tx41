@@ -332,7 +332,7 @@ table.pt tr:nth-child(even) td{background:#f7f7f7}
     <p style="font-size:13px;color:var(--muted);margin:0 0 16px">Tu sesión cerrará por inactividad en <span id="cuenta-regresiva" style="font-weight:700;color:var(--rojo);font-size:16px">60</span> segundos</p>
     <div style="display:flex;gap:10px;justify-content:center">
       <button class="btn btn-primary" onclick="continuarSesion()" style="flex:1">Continuar sesión</button>
-      <button class="btn btn-outline" onclick="cerrarSesion()" style="flex:1">Cerrar sesión</button>
+      <button class="btn btn-outline" onclick="confirmarCerrarSesion()" style="flex:1">Cerrar sesión</button>
     </div>
   </div>
 </div>
@@ -826,8 +826,9 @@ async function cerrarSesion() {
   sessionStorage.removeItem('tx41_token');
   sessionStorage.removeItem('tx41_rol');
   sessionStorage.removeItem('tx41_usuario');
-  // Ocultar todo y mostrar login
-  ['pantalla-carga','pantalla-area','pantalla-consulta','pantalla-captura'].forEach(id => {
+  // Ocultar TODAS las pantallas antes de mostrar login
+  ['pantalla-carga','pantalla-area','pantalla-consulta','pantalla-captura',
+   'pantalla-inicio','pantalla-admin','pantalla-traspasos'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
   });
@@ -838,6 +839,12 @@ async function cerrarSesion() {
   document.getElementById('btn-login').disabled = false;
   document.getElementById('pantalla-login').style.display = 'flex';
   ocultarHeaderUsuario();
+}
+
+function confirmarCerrarSesion() {
+  if (confirm('¿Seguro que deseas cerrar sesión?')) {
+    cerrarSesion();
+  }
 }
 
 async function verificarSesionExistente() {
@@ -898,7 +905,7 @@ function mostrarHeaderUsuario() {
     document.querySelector('.header-right')?.appendChild(el);
   }
   el.innerHTML = `<span>👤 ${sesionUsuario}</span>
-    <button onclick="cerrarSesion()" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:white;padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer">Salir</button>`;
+    <button onclick="confirmarCerrarSesion()" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:white;padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer">Cerrar sesión</button>`;
 }
 
 function ocultarHeaderUsuario() {
@@ -2378,7 +2385,13 @@ function irAInventarios() {
       mostrarPantallaCarga();
     }
   } else {
-    mostrarPantallaCarga();
+    // Admin local: si ya hay SIATEL cargado, ir directo a áreas
+    if (Object.keys(siatelMap).length > 0) {
+      document.getElementById('pantalla-carga').style.display = 'none';
+      document.getElementById('pantalla-area').style.display = 'flex';
+    } else {
+      mostrarPantallaCarga();
+    }
   }
 }
 
@@ -2912,7 +2925,7 @@ function mvRenderRenglones() {
             value="${valInput.replace(/"/g,'&quot;')}"
             oninput="mvBuscar(${r.id},this.value)"
             onfocus="mvBuscar(${r.id},this.value)"
-            onblur="setTimeout(()=>mvCerrar(${r.id}),200)">
+            onblur="setTimeout(()=>mvCerrar(${r.id}),400)">
           <div id="mv-res-${r.id}" class="mv-cat-resultados" style="display:none"></div>
           ${r.existencia !== null ? `<div class="mv-exist-label">Existencia: <b ${r.existencia===0?'class="mv-exist-warn"':''}>${r.existencia}</b>${r.um?' '+r.um:''}</div>` : ''}
         </div>
@@ -2948,7 +2961,7 @@ function mvBuscar(id, q) {
   }
   if (!hits.length) { res.style.display='none'; return; }
   res.innerHTML = hits.map(h =>
-    `<div class="mv-cat-item" onmousedown="mvSel(${id},'${h.cat}','${h.desc.replace(/'/g,"\\'").substring(0,80)}','${h.um}',${h.lib})">
+    `<div class="mv-cat-item" onpointerdown="mvSel(${id},'${h.cat}','${h.desc.replace(/'/g,"\\'").substring(0,80)}','${h.um}',${h.lib})">
        <span>${h.cat}</span>
        <small>${h.desc.substring(0,70)}${h.lib!==null?' | Exist: '+h.lib:''}</small>
      </div>`
@@ -3098,16 +3111,87 @@ function mvRenderHistorial() {
     cont.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted)">No hay movimientos registrados</div>';
     return;
   }
+  const esAdmin = sesionRol === 'admin';
   const ord = [...lista].sort((a,b) => new Date(b.fecha)-new Date(a.fecha));
   cont.innerHTML = `<table class="mv-historial-tabla">
-    <thead><tr><th>Fecha</th><th>Tipo</th><th>Almacén</th><th>Guía</th><th>Usuario</th><th>Catálogos</th><th>Notas</th></tr></thead>
-    <tbody>${ord.map(m=>`<tr>
+    <thead><tr>
+      <th>Fecha</th><th>Tipo</th><th>Almacén</th><th>Guía</th>
+      <th>Usuario</th><th>Catálogos</th><th>Notas</th>
+      ${esAdmin ? '<th>Acciones</th>' : ''}
+    </tr></thead>
+    <tbody>${ord.map(m=>`<tr id="mv-fila-${m.id}">
       <td style="white-space:nowrap">${mvFmt(m.fecha)}</td>
       <td><span class="${m.tipo==='salida'?'mv-badge-salida':'mv-badge-entrada'}">${m.tipo==='salida'?'📤 Salida':'📥 Entrada'}</span></td>
-      <td>${m.almacen}</td><td>${m.guia||'—'}</td><td>${m.usuario}</td>
+      <td>${m.almacen}</td>
+      <td>${m.guia||'—'}</td>
+      <td>${m.usuario}</td>
       <td style="font-size:11px">${(m.renglones||[]).map(r=>`<b>${r.cat}</b> ×${r.cantidad}`).join('<br>')}</td>
       <td style="font-size:11px;color:var(--muted)">${m.notas||'—'}</td>
+      ${esAdmin ? `<td style="white-space:nowrap">
+        <button onclick="mvEditarMovimiento('${m.id}')"
+          style="font-size:11px;padding:3px 8px;background:#EEF2FF;color:var(--azul);border:none;border-radius:6px;cursor:pointer;margin-right:4px">✏️ Editar</button>
+        <button onclick="mvEliminarMovimiento('${m.id}')"
+          style="font-size:11px;padding:3px 8px;background:#fef2f2;color:var(--rojo);border:none;border-radius:6px;cursor:pointer">🗑️ Eliminar</button>
+      </td>` : ''}
     </tr>`).join('')}</tbody></table>`;
+}
+
+// ── Modal edición de movimiento ──
+function mvEditarMovimiento(id) {
+  const mov = mvMovimientos.find(m => m.id === id);
+  if (!mov) return;
+  const nuevoAlmacen = prompt('Almacén ' + (mov.tipo==='salida'?'destino':'origen') + ':', mov.almacen || '');
+  if (nuevoAlmacen === null) return; // canceló
+  const nuevaGuia   = prompt('Guía de embarque / Folio:', mov.guia || '');
+  if (nuevaGuia === null) return;
+  const nuevasNotas = prompt('Notas:', mov.notas || '');
+  if (nuevasNotas === null) return;
+  mvActualizarMovimiento(id, {
+    almacen: nuevoAlmacen.trim() || mov.almacen,
+    guia:    nuevaGuia.trim(),
+    notas:   nuevasNotas.trim()
+  });
+}
+
+async function mvActualizarMovimiento(id, cambios) {
+  const baseURL = ES_GITHUB ? (sessionStorage.getItem('tx41_ngrok') || '') : '';
+  const url     = baseURL ? `${baseURL}/api/movimientos` : '/api/movimientos';
+  const token   = sessionStorage.getItem('tx41_token') || sesionToken || '';
+  try {
+    const res = await fetch(url, {
+      method: 'POST', mode: 'cors',
+      headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+token, 'ngrok-skip-browser-warning':'true' },
+      body: JSON.stringify({ accion: 'editar', id, ...cambios })
+    });
+    const data = await res.json();
+    if (data.ok) { await mvCargarHistorial(); }
+    else alert('Error: ' + (data.msg || 'No se pudo actualizar'));
+  } catch(e) { alert('Error de conexión'); }
+}
+
+async function mvEliminarMovimiento(id) {
+  const mov = mvMovimientos.find(m => m.id === id);
+  if (!mov) return;
+  const cats = (mov.renglones||[]).map(r=>`${r.cat} ×${r.cantidad}`).join(', ');
+  if (!confirm(`¿Eliminar este movimiento?
+
+${mov.tipo==='salida'?'📤 Salida':'📥 Entrada'} — ${mov.almacen}
+${cats}
+
+Esta acción no se puede deshacer.`)) return;
+  const baseURL = ES_GITHUB ? (sessionStorage.getItem('tx41_ngrok') || '') : '';
+  const url     = baseURL ? `${baseURL}/api/movimientos` : '/api/movimientos';
+  const token   = sessionStorage.getItem('tx41_token') || sesionToken || '';
+  try {
+    const res = await fetch(url, {
+      method: 'POST', mode: 'cors',
+      headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+token, 'ngrok-skip-browser-warning':'true' },
+      body: JSON.stringify({ accion: 'eliminar', id })
+    });
+    const data = await res.json();
+    if (data.ok) { await mvCargarHistorial(); }
+    else alert('Error: ' + (data.msg || 'No se pudo eliminar'));
+  } catch(e) { alert('Error de conexión'); }
 }
 
 function mvFmt(iso) {
