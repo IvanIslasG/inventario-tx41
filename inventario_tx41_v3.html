@@ -1122,9 +1122,16 @@ async function cargarDesdeNube() {
             lotesMap = d2.lotes;
             if (materiales.length > 0) actualizarLotesEnMateriales();
           }
+          // Usar el timestamp del servidor (más fresco que el config.json de GitHub)
+          if (d2.timestamp) {
+            const cfgConTimestamp = Object.assign({}, configData || {}, {
+              ts_siatel: d2.timestamp,
+              ts_lotes:  d2.lotes && Object.keys(d2.lotes).length > 0 ? d2.timestamp : (configData?.ts_lotes || '')
+            });
+            _configData = cfgConTimestamp;
+            configData  = cfgConTimestamp;
+          }
           if (bar) { bar.style.width = '100%'; pct.textContent = '100%'; }
-          // Aplicar movimientos históricos antes de mostrar (ngrok ya los tiene aplicados,
-          // pero por seguridad también los aplicamos desde el historial local)
           setTimeout(() => mostrarAreas(configData), 300);
           return;
         }
@@ -1281,10 +1288,27 @@ async function recargarExistencias() {
     }
 
     // Actualizar la barra de estado
+    // Actualizar timestamp si el servidor lo devolvió
+    if (d.timestamp && _configData) {
+      _configData = Object.assign({}, _configData, {
+        ts_siatel: d.timestamp,
+        ts_lotes:  d.lotes && Object.keys(d.lotes).length > 0 ? d.timestamp : (_configData.ts_lotes || '')
+      });
+    }
     const bar = document.getElementById('base-status-txt');
     if (bar) {
-      bar.textContent = 'Existencias actualizadas · ' +
-        new Date().toLocaleString('es-MX',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+      // Re-construir el status text con el timestamp correcto
+      let txt = 'Última actualización de existencias';
+      const ts = d.timestamp || (_configData && _configData.ts_siatel);
+      if (ts) {
+        const fmt = new Date(ts).toLocaleString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+        txt += ' · SIATEL: ' + fmt;
+      }
+      if (_configData && _configData.ts_lotes && Object.keys(lotesMap).length > 0) {
+        const fmt2 = new Date(_configData.ts_lotes).toLocaleString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+        txt += ' · Lotes: ' + fmt2;
+      }
+      bar.textContent = txt;
     }
     // Si hay una consulta abierta, refrescarla
     if (document.getElementById('pantalla-consulta')?.style.display !== 'none') {
