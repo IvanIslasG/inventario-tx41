@@ -1044,6 +1044,7 @@ async function cargarDesdeNube() {
     clearTimeout(timer1);
     if (res.ok) {
       configData = await res.json();
+      _configData = configData;  // Guardar para uso posterior
       ngrokURL   = configData.ngrok || '';
     }
   } catch(e) {
@@ -1143,6 +1144,8 @@ async function enriquecerConNgrok(ngrok) {
 
 function mostrarAreas(rec) {
   const total = Object.keys(siatelMap).length;
+  // Si no se pasó rec, usar el último config.json guardado
+  if (!rec && _configData) rec = _configData;
   let statusTxt;
 
   if (ES_GITHUB) {
@@ -1174,6 +1177,7 @@ function mostrarAreas(rec) {
   if (ES_GITHUB) iniciarRefreshAutomatico();
 }
 
+let _configData = null;  // Guarda el último config.json leído
 let _refreshInterval = null;
 function iniciarRefreshAutomatico() {
   if (_refreshInterval) return; // ya está corriendo
@@ -2754,21 +2758,14 @@ function imprimir(ubi) {
       <!-- Almacén + Guía -->
       <div style="margin-bottom:12px">
         <label class="mv-label">Almacén <span id="mv-label-dir">destino</span> <span style="color:var(--rojo)">*</span></label>
-        <div class="mv-almacen-row" style="margin-bottom:0">
-          <select class="mv-almacen-sel" id="mv-almacen-sel" onchange="mvAlmacenChange()">
-            <option value="">Seleccionar almacén...</option>
-            <option>Mocambo</option>
-            <option>CDMX Norte</option>
-            <option>CDMX Sur</option>
-            <option>Guadalajara</option>
-            <option>Monterrey</option>
-            <option>Veracruz</option>
-            <option>Oaxaca</option>
-            <option>Tuxtla Gutiérrez</option>
-            <option>Villahermosa</option>
-            <option value="__otro__">Otro...</option>
-          </select>
-          <input type="text" class="mv-almacen-otro" id="mv-almacen-otro" placeholder="Escribe el almacén...">
+        <div style="position:relative;margin-bottom:0">
+          <input type="text" class="mv-input" id="mv-almacen-input"
+            placeholder="Buscar por nombre o siglas (ej. TX8H, Mocambo)..."
+            autocomplete="off"
+            oninput="mvAlmacenBuscar(this.value)"
+            onfocus="mvAlmacenBuscar(this.value)"
+            onblur="setTimeout(mvAlmacenCerrar, 300)">
+          <div id="mv-almacen-lista" style="display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1.5px solid var(--borde);border-radius:8px;z-index:600;max-height:220px;overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,.1);margin-top:2px"></div>
         </div>
       </div>
 
@@ -2778,8 +2775,8 @@ function imprimir(ubi) {
           <input type="text" class="mv-input" id="mv-guia" placeholder="Ej. GE-2024-001">
         </div>
         <div>
-          <label class="mv-label">Notas (opcional)</label>
-          <input type="text" class="mv-input" id="mv-notas" placeholder="Observaciones...">
+          <label class="mv-label">Texto de cabecera</label>
+          <input type="text" class="mv-input" id="mv-notas" placeholder="Texto de cabecera del movimiento...">
         </div>
       </div>
 
@@ -2874,16 +2871,80 @@ function mvSetTipo(tipo) {
   mvRenderRenglones();
 }
 
-// ── Almacén ──
-function mvAlmacenChange() {
-  const sel  = document.getElementById('mv-almacen-sel');
-  const otro = document.getElementById('mv-almacen-otro');
-  otro.style.display = sel.value === '__otro__' ? 'block' : 'none';
-  if (sel.value === '__otro__') otro.focus();
+const MV_ALMACENES = [
+  { nombre: 'Oaxaca I Belisario', siglas: 'TX9O' },
+  { nombre: 'Oaxaca II', siglas: 'TX9Q' },
+  { nombre: 'Tehuacán', siglas: 'TX8E' },
+  { nombre: 'Huajuapan', siglas: 'TX9R' },
+  { nombre: 'Aquiles Serdán', siglas: 'TX8J' },
+  { nombre: 'Cholula', siglas: 'TX9T' },
+  { nombre: 'Mayorazgo', siglas: 'TX8Y' },
+  { nombre: 'Atlixco', siglas: 'TX8X' },
+  { nombre: 'San Pedro', siglas: 'TX8A' },
+  { nombre: 'Zaragoza', siglas: 'TX8B' },
+  { nombre: 'Amalucan', siglas: 'TX9U' },
+  { nombre: 'Altamirano', siglas: 'TX8K' },
+  { nombre: 'Lerdo', siglas: 'TX8L' },
+  { nombre: 'Mocambo', siglas: 'TX8H' },
+  { nombre: 'Teziutlán', siglas: 'TX84' },
+  { nombre: 'San Bruno', siglas: 'TX8F' },
+  { nombre: 'Xalapa Cristal', siglas: 'TX8G' },
+  { nombre: 'Córdoba Dos caminos', siglas: 'TX8I' },
+  { nombre: 'Peñuela', siglas: 'TX8M' },
+  { nombre: 'Orizaba', siglas: 'TX8C' },
+  { nombre: 'Tlaxcala', siglas: 'TX8D' },
+  { nombre: 'Pinotepa Nacional', siglas: 'TX9P' },
+  { nombre: 'Puerto Escondido', siglas: 'TX85' },
+  { nombre: 'Distribuidor Puebla', siglas: 'TX41' },
+  { nombre: 'Distribuidor Villahermosa', siglas: 'TX43' },
+  { nombre: 'Diana Cuernavaca', siglas: 'TXCD' },
+  { nombre: 'La Perla', siglas: 'TX07' },
+  { nombre: 'Distribuidor Guadalajara', siglas: 'TX21' },
+  { nombre: 'Apizaco', siglas: 'TX91' },
+  { nombre: 'Texmelucan', siglas: 'TX83' },
+  { nombre: 'Carso Tlaxcala', siglas: 'CITA' },
+  { nombre: 'CYCSA Puebla', siglas: 'TXY4' },
+  { nombre: 'Legaria', siglas: 'TXLG' },
+  { nombre: 'Tulancingo', siglas: 'TX8T' },
+];
+
+// ── Almacén autocomplete ──
+function mvAlmacenBuscar(q) {
+  const lista = document.getElementById('mv-almacen-lista');
+  if (!lista) return;
+  const qLow = q.trim().toLowerCase();
+  // Mostrar todos si está vacío, filtrar si hay texto
+  const hits = qLow
+    ? MV_ALMACENES.filter(a =>
+        a.nombre.toLowerCase().includes(qLow) ||
+        a.siglas.toLowerCase().includes(qLow))
+    : MV_ALMACENES;
+  if (!hits.length) { lista.style.display = 'none'; return; }
+  lista.innerHTML = hits.map(a =>
+    `<div onpointerdown="mvAlmacenSel('${a.nombre} (${a.siglas})')"
+      style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center"
+      onmouseover="this.style.background='#EEF2FF'" onmouseout="this.style.background='white'">
+      <span>${a.nombre}</span>
+      <span style="font-size:11px;font-weight:700;color:var(--azul);background:#EEF2FF;padding:2px 7px;border-radius:20px">${a.siglas}</span>
+    </div>`
+  ).join('');
+  lista.style.display = 'block';
 }
+
+function mvAlmacenSel(valor) {
+  const inp = document.getElementById('mv-almacen-input');
+  if (inp) inp.value = valor;
+  mvAlmacenCerrar();
+}
+
+function mvAlmacenCerrar() {
+  const lista = document.getElementById('mv-almacen-lista');
+  if (lista) lista.style.display = 'none';
+}
+
 function mvGetAlmacen() {
-  const sel = document.getElementById('mv-almacen-sel').value;
-  return sel === '__otro__' ? document.getElementById('mv-almacen-otro').value.trim() : sel;
+  const inp = document.getElementById('mv-almacen-input');
+  return inp ? inp.value.trim() : '';
 }
 
 // ── Tabs ──
@@ -2998,11 +3059,10 @@ function mvSetQty(id, val) {
 // ── Limpiar ──
 function mvLimpiarForm() {
   mvRenglones = []; mvRenglonIdx = 0;
-  ['mv-almacen-sel','mv-guia','mv-notas'].forEach(id => {
+  ['mv-almacen-input','mv-guia','mv-notas'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
-  const otro = document.getElementById('mv-almacen-otro');
-  if (otro) { otro.value=''; otro.style.display='none'; }
+  mvAlmacenCerrar();
   const errEl = document.getElementById('mv-error');
   if (errEl) errEl.style.display = 'none';
   mvAgregarRenglon();
