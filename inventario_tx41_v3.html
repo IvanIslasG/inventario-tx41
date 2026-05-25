@@ -3028,6 +3028,20 @@ async function mvGuardar() {
   const url     = baseURL ? `${baseURL}/api/movimientos` : '/api/movimientos';
   const token   = sessionStorage.getItem('tx41_token') || sesionToken || '';
 
+  // Warm-up GET: evita que ngrok devuelva HTML en lugar de JSON
+  // (ngrok en plan gratuito intercepta la primera petición cross-origin)
+  if (ES_GITHUB && baseURL) {
+    try {
+      await fetch(`${baseURL}/api/estado`, {
+        method: 'GET',
+        headers: { 'ngrok-skip-browser-warning': 'true' },
+        mode: 'cors'
+      });
+    } catch(_) { /* solo warm-up */ }
+    // Pequeña pausa para que ngrok procese el warm-up antes del POST
+    await new Promise(r => setTimeout(r, 300));
+  }
+
   try {
     const res = await fetch(url, {
       method:'POST', mode:'cors',
@@ -3065,7 +3079,10 @@ async function mvCargarHistorial() {
     const baseURL = ES_GITHUB ? (sessionStorage.getItem('tx41_ngrok') || '') : '';
     const url   = baseURL ? `${baseURL}/api/movimientos` : '/api/movimientos';
     const token = sessionStorage.getItem('tx41_token') || sesionToken || '';
-    const res   = await fetch(url, { headers:{ 'Authorization':'Bearer '+token, 'ngrok-skip-browser-warning':'true' } });
+    const res   = await fetch(url, {
+      mode: 'cors',
+      headers:{ 'Authorization':'Bearer '+token, 'ngrok-skip-browser-warning':'true' }
+    });
     if (!res.ok) return;
     const data = await res.json();
     if (data.ok) { mvMovimientos = data.movimientos || []; mvRenderHistorial(); }
