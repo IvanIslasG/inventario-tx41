@@ -774,22 +774,29 @@ async function verificarSesionExistente() {
   try {
     let verificarUrl = '/api/verificar';
     if (ES_GITHUB) {
-      // Obtener ngrok URL del config
-      const cfg  = await fetch(`https://ivanislasg.github.io/inventario-tx41/config.json?t=${Date.now()}`);
-      const data = await cfg.json();
+      const ctrl  = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 5000);
+      const cfg   = await fetch(`https://ivanislasg.github.io/inventario-tx41/config.json?t=${Date.now()}`, { signal: ctrl.signal });
+      clearTimeout(timer);
+      const data  = await cfg.json();
       const ngrok = data.ngrok || '';
       if (!ngrok) return false;
       verificarUrl = `${ngrok}/api/verificar`;
     }
+    const ctrl2  = new AbortController();
+    const timer2 = setTimeout(() => ctrl2.abort(), 5000);
     const res = await fetch(verificarUrl, {
       method:  'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, 'ngrok-skip-browser-warning': 'true' }
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, 'ngrok-skip-browser-warning': 'true' },
+      signal:  ctrl2.signal
     });
+    clearTimeout(timer2);
     const data = await res.json();
     if (data.ok) {
       sesionToken   = token;
       sesionRol     = rol;
       sesionUsuario = usuario;
+      document.getElementById('pantalla-login').style.display = 'none';
       mostrarHeaderUsuario();
       resetInactividad();
       if (ES_GITHUB) {
@@ -799,7 +806,9 @@ async function verificarSesionExistente() {
       }
       return true;
     }
-  } catch(e) {}
+  } catch(e) {
+    console.warn('verificarSesion error:', e.message);
+  }
   sessionStorage.removeItem('tx41_token');
   sessionStorage.removeItem('tx41_rol');
   sessionStorage.removeItem('tx41_usuario');
@@ -884,13 +893,15 @@ window.addEventListener('DOMContentLoaded', async () => {
   baseMaestra = baseMaestraEmbebida;
 
   if (ES_GITHUB) {
-    // Cliente GitHub Pages — requiere login via ngrok
+    // Cliente GitHub Pages — mostrar login inmediatamente
     const btnCambiar = document.getElementById('btn-cambiar-archivo');
     if (btnCambiar) btnCambiar.style.display = 'none';
-    // Verificar sesión existente
-    const sesionActiva = await verificarSesionExistente();
-    if (!sesionActiva) {
-      document.getElementById('pantalla-login').style.display = 'flex';
+    // Verificar si hay sesión activa en segundo plano
+    // Mostrar login primero para no dejar pantalla en blanco
+    document.getElementById('pantalla-login').style.display = 'flex';
+    // Si hay token guardado, intentar verificar
+    if (sessionStorage.getItem('tx41_token')) {
+      verificarSesionExistente(); // sin await — si funciona oculta el login
     }
   } else {
     // Servidor local — restaurar URL ngrok si estaba guardada
