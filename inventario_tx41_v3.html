@@ -875,16 +875,13 @@ async function verificarSesionExistente() {
     const data = await res.json();
     if (data.ok) {
       sesionToken   = token;
-      sesionRol     = rol;
-      sesionUsuario = usuario;
+      sesionRol     = data.rol || rol;
+      sesionUsuario = data.usuario || usuario;
       document.getElementById('pantalla-login').style.display = 'none';
       mostrarHeaderUsuario();
       resetInactividad();
-      if (ES_GITHUB) {
-        mostrarEsperaNube('Cargando existencias del almacén...');
-      } else {
-        mostrarInicio();
-      }
+      // Siempre ir al menú (mostrarInicio maneja cliente y admin)
+      mostrarInicio();
       return true;
     }
   } catch(e) {
@@ -1075,28 +1072,37 @@ async function cargarDesdeNube() {
   if (el) el.textContent = 'Conectando...';
   if (bar) { bar.style.width = '20%'; pct.textContent = '20%'; }
 
-  // Paso 1: Leer config.json para obtener URL de ngrok
-  let ngrokURL = '';
-  let configData = null;
+  // Paso 1: Obtener ngrok URL — primero de sessionStorage (más rápido y fresco),
+  // luego de config.json de GitHub como respaldo
+  let ngrokURL = sessionStorage.getItem('tx41_ngrok') || '';
+  let configData = _configData || null; // reusar si ya tenemos uno
+
+  // Siempre intentar refrescar config.json para obtener datos actualizados
   try {
     const GITHUB_CONFIG = 'https://ivanislasg.github.io/inventario-tx41/config.json';
     const ctrl1  = new AbortController();
     const timer1 = setTimeout(() => ctrl1.abort(), 8000);
-    const res = await fetch(`${GITHUB_CONFIG}?t=${Date.now()}`, { signal: ctrl1.signal });
+    // Cache-busting fuerte: header no-cache + timestamp
+    const res = await fetch(`${GITHUB_CONFIG}?t=${Date.now()}`, {
+      signal: ctrl1.signal,
+      cache: 'no-store',
+      headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate', 'Pragma': 'no-cache' }
+    });
     clearTimeout(timer1);
     if (res.ok) {
       configData = await res.json();
-      _configData = configData;  // Guardar para uso posterior
-      ngrokURL   = configData.ngrok || '';
+      _configData = configData;
+      // Actualizar ngrok solo si el config.json trae una URL válida
+      if (configData.ngrok) {
+        ngrokURL = configData.ngrok;
+        sessionStorage.setItem('tx41_ngrok', ngrokURL);
+      }
     }
   } catch(e) {
-    console.warn('config.json no disponible');
+    console.warn('config.json no disponible, usando ngrok guardada:', ngrokURL);
   }
 
   if (bar) { bar.style.width = '40%'; pct.textContent = '40%'; }
-
-  // Guardar ngrok URL para que el módulo de traspasos pueda usarla
-  if (ngrokURL) sessionStorage.setItem('tx41_ngrok', ngrokURL);
 
   // Paso 2: Intentar ngrok primero (datos frescos, sin delay de GitHub Pages)
   if (ngrokURL) {
