@@ -792,12 +792,8 @@ async function iniciarSesion() {
       document.getElementById('pantalla-login').style.display = 'none';
       mostrarHeaderUsuario();
       resetInactividad();
-      if (ES_GITHUB) {
-        // Cliente — cargar existencias directo
-        mostrarEsperaNube('Cargando existencias del almacén...');
-      } else {
-        mostrarInicio();
-      }
+      // Siempre ir al menú principal después del login
+      mostrarInicio();
     } else {
       errEl.textContent = data.msg || 'Usuario o contraseña incorrectos';
       errEl.style.display = 'block';
@@ -1048,6 +1044,9 @@ async function cargarDesdeNube() {
   }
 
   if (bar) { bar.style.width = '40%'; pct.textContent = '40%'; }
+
+  // Guardar ngrok URL para que el módulo de traspasos pueda usarla
+  if (ngrokURL) sessionStorage.setItem('tx41_ngrok', ngrokURL);
 
   // Paso 2: Intentar ngrok primero (datos frescos, sin delay de GitHub Pages)
   if (ngrokURL) {
@@ -2368,9 +2367,19 @@ function irAMenu() {
 
 function irAInventarios() {
   mvNavActivo('inventario');
-  document.getElementById('pantalla-inicio').style.display = 'none';
-  document.getElementById('pantalla-traspasos').style.display = 'none';
-  mostrarPantallaCarga();
+  ['pantalla-inicio','pantalla-traspasos','pantalla-admin'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.style.display = 'none';
+  });
+  if (ES_GITHUB) {
+    // Cliente: si ya tiene datos cargados, ir directo a áreas
+    if (Object.keys(siatelMap).length > 0) {
+      mostrarAreas(null);
+    } else {
+      mostrarPantallaCarga();
+    }
+  } else {
+    mostrarPantallaCarga();
+  }
 }
 
 function irAAdministracion() {
@@ -2912,9 +2921,11 @@ function mvRenderRenglones() {
       <div class="mv-renglon-footer">
         <label style="font-size:12px;color:var(--muted)">Cantidad:</label>
         <input type="number" class="mv-qty-input${sinExist?' warn':''}"
-          id="mv-qty-${r.id}" value="${r.cantidad}" min="1"
-          onchange="mvSetQty(${r.id},+this.value)"
-          oninput="mvSetQty(${r.id},+this.value)">
+          id="mv-qty-${r.id}" value="${r.cantidad}" min="1" step="1"
+          style="font-size:16px"
+          onchange="mvSetQty(${r.id},+this.value||1)"
+          onkeyup="mvSetQty(${r.id},+this.value||1)"
+          onclick="this.select()">
         ${r.um ? `<span style="font-size:12px;color:var(--muted)">${r.um}</span>` : ''}
         ${sinExist ? `<span style="font-size:11px;color:var(--rojo);font-weight:600">⚠️ Insuficiente</span>` : ''}
       </div>`;
@@ -2961,7 +2972,14 @@ function mvCerrar(id) {
 
 function mvSetQty(id, val) {
   const r = mvRenglones.find(x => x.id === id);
-  if (r) { r.cantidad = Math.max(1, val || 1); mvRenderRenglones(); }
+  if (!r) return;
+  const num = Math.max(1, parseInt(val) || 1);
+  r.cantidad = num;
+  // Actualizar solo la clase warn sin re-render completo
+  const inp = document.getElementById('mv-qty-'+id);
+  if (inp) {
+    inp.classList.toggle('warn', mvTipo==='salida' && r.existencia!==null && num > r.existencia);
+  }
 }
 
 // ── Limpiar ──
@@ -2984,6 +3002,12 @@ async function mvGuardar() {
 
   const almacen = mvGetAlmacen();
   if (!almacen) { errEl.textContent='Selecciona el almacén '+(mvTipo==='salida'?'destino':'origen'); errEl.style.display='block'; return; }
+
+  // Leer cantidades actuales del DOM antes de validar
+  mvRenglones.forEach(r => {
+    const inp = document.getElementById('mv-qty-'+r.id);
+    if (inp) r.cantidad = Math.max(1, parseInt(inp.value) || 1);
+  });
 
   const ren = mvRenglones.filter(r => r.cat);
   if (!ren.length) { errEl.textContent='Agrega al menos un catálogo'; errEl.style.display='block'; return; }
