@@ -670,31 +670,65 @@ async function iniciarSesion() {
   }
   btn.textContent = 'Verificando...'; btn.disabled = true;
   errEl.style.display = 'none';
+
   try {
-    const res = await fetch('/api/login', {
+    let loginUrl = '/api/login';
+
+    // Si es cliente GitHub Pages, obtener URL del servidor via config.json
+    if (ES_GITHUB) {
+      const GITHUB_CONFIG = 'https://ivanislasg.github.io/inventario-tx41/config.json';
+      try {
+        const ctrl  = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 6000);
+        const cfg   = await fetch(`${GITHUB_CONFIG}?t=${Date.now()}`, { signal: ctrl.signal });
+        clearTimeout(timer);
+        if (!cfg.ok) throw new Error('config no disponible');
+        const data  = await cfg.json();
+        const ngrok = data.ngrok || '';
+        if (!ngrok) throw new Error('servidor no disponible');
+        loginUrl = `${ngrok}/api/login`;
+      } catch(e) {
+        errEl.textContent = 'El sistema no está disponible en este momento. Contacta al administrador.';
+        errEl.style.display = 'block';
+        btn.textContent = 'Entrar'; btn.disabled = false;
+        return;
+      }
+    }
+
+    const res  = await fetch(loginUrl, {
       method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
       body:    JSON.stringify({ usuario, password })
     });
     const data = await res.json();
+
     if (data.ok) {
       sesionToken   = data.token;
       sesionRol     = data.rol;
       sesionUsuario = data.usuario;
+      // Guardar también la URL del servidor para llamadas posteriores
+      if (ES_GITHUB && data.ngrok_url) {
+        sessionStorage.setItem('tx41_ngrok', data.ngrok_url);
+      }
       sessionStorage.setItem('tx41_token',   sesionToken);
       sessionStorage.setItem('tx41_rol',     sesionRol);
       sessionStorage.setItem('tx41_usuario', sesionUsuario);
       document.getElementById('pantalla-login').style.display = 'none';
       mostrarHeaderUsuario();
       resetInactividad();
-      mostrarInicio();
+      if (ES_GITHUB) {
+        // Cliente — cargar existencias directo
+        mostrarEsperaNube('Cargando existencias del almacén...');
+      } else {
+        mostrarInicio();
+      }
     } else {
       errEl.textContent = data.msg || 'Usuario o contraseña incorrectos';
       errEl.style.display = 'block';
       btn.textContent = 'Entrar'; btn.disabled = false;
     }
   } catch(e) {
-    errEl.textContent = 'Error de conexión con el servidor';
+    errEl.textContent = 'Error de conexión. Verifica que el sistema esté activo.';
     errEl.style.display = 'block';
     btn.textContent = 'Entrar'; btn.disabled = false;
   }
@@ -706,9 +740,12 @@ async function cerrarSesion() {
   const modal = document.getElementById('modal-inactividad');
   if (modal) modal.style.display = 'none';
   try {
-    await fetch('/api/logout', {
+    const logoutUrl = ES_GITHUB
+      ? `${sessionStorage.getItem('tx41_ngrok') || ''}/api/logout`
+      : '/api/logout';
+    await fetch(logoutUrl, {
       method:  'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + sesionToken }
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + sesionToken, 'ngrok-skip-browser-warning': 'true' }
     });
   } catch(e) {}
   sesionToken = ''; sesionRol = ''; sesionUsuario = '';
@@ -735,9 +772,18 @@ async function verificarSesionExistente() {
   const usuario = sessionStorage.getItem('tx41_usuario');
   if (!token) return false;
   try {
-    const res = await fetch('/api/verificar', {
+    let verificarUrl = '/api/verificar';
+    if (ES_GITHUB) {
+      // Obtener ngrok URL del config
+      const cfg  = await fetch(`https://ivanislasg.github.io/inventario-tx41/config.json?t=${Date.now()}`);
+      const data = await cfg.json();
+      const ngrok = data.ngrok || '';
+      if (!ngrok) return false;
+      verificarUrl = `${ngrok}/api/verificar`;
+    }
+    const res = await fetch(verificarUrl, {
       method:  'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, 'ngrok-skip-browser-warning': 'true' }
     });
     const data = await res.json();
     if (data.ok) {
@@ -746,7 +792,11 @@ async function verificarSesionExistente() {
       sesionUsuario = usuario;
       mostrarHeaderUsuario();
       resetInactividad();
-      mostrarInicio();
+      if (ES_GITHUB) {
+        mostrarEsperaNube('Cargando existencias del almacén...');
+      } else {
+        mostrarInicio();
+      }
       return true;
     }
   } catch(e) {}
@@ -833,27 +883,29 @@ const ES_GITHUB = window.location.hostname.includes('github.io');
 window.addEventListener('DOMContentLoaded', async () => {
   baseMaestra = baseMaestraEmbebida;
 
-  // Restaurar URL ngrok si estaba guardada
-  if (NGROK_URL) {
-    const input = document.getElementById('ngrok-url');
-    if (input) {
-      input.value = NGROK_URL;
-      const st = document.getElementById('ngrok-status');
-      if (st) { st.textContent = '✅ Guardada'; st.style.color = '#065f46'; }
-    }
-  }
-
   if (ES_GITHUB) {
-    // Cliente GitHub Pages — no requiere login, carga directo
+    // Cliente GitHub Pages — requiere login via ngrok
     const btnCambiar = document.getElementById('btn-cambiar-archivo');
     if (btnCambiar) btnCambiar.style.display = 'none';
-    mostrarEsperaNube('Cargando existencias del almacén...');
+    // Verificar sesión existente
+    const sesionActiva = await verificarSesionExistente();
+    if (!sesionActiva) {
+      document.getElementById('pantalla-login').style.display = 'flex';
+    }
   } else {
-    // Servidor local — requiere login
-    // Verificar si hay sesión activa
+    // Servidor local — restaurar URL ngrok si estaba guardada
+    if (NGROK_URL) {
+      const input = document.getElementById('ngrok-url');
+      if (input) {
+        input.value = NGROK_URL;
+        const st = document.getElementById('ngrok-status');
+        if (st) { st.textContent = '✅ Guardada'; st.style.color = '#065f46'; }
+      }
+    }
+    // Verificar sesión activa
     const sesionActiva = await verificarSesionExistente();
     if (sesionActiva) {
-      mostrarPantallaCarga();
+      mostrarInicio();
     } else {
       document.getElementById('pantalla-login').style.display = 'flex';
     }
