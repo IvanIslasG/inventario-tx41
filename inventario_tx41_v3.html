@@ -2507,14 +2507,37 @@ function irAInventarios() {
       mostrarPantallaCarga();
     }
   } else {
-    // Admin local: si ya hay SIATEL cargado, ir directo a áreas
-    if (Object.keys(siatelMap).length > 0) {
-      document.getElementById('pantalla-carga').style.display = 'none';
-      document.getElementById('pantalla-area').style.display = 'flex';
-    } else {
-      mostrarPantallaCarga();
-    }
+    // Admin local: consultar al servidor si hay SIATEL cargado
+    irAInventariosAdmin();
   }
+}
+
+async function irAInventariosAdmin() {
+  // Si ya hay datos en memoria, ir directo
+  if (Object.keys(siatelMap).length > 0) {
+    document.getElementById('pantalla-carga').style.display = 'none';
+    document.getElementById('pantalla-area').style.display = 'flex';
+    return;
+  }
+  // Preguntar al servidor si tiene un SIATEL cargado
+  try {
+    const token = sesionToken || sessionStorage.getItem('tx41_token') || '';
+    const res = await fetch('/api/siatel', {
+      headers: { 'Authorization': 'Bearer ' + token, 'ngrok-skip-browser-warning': 'true' }
+    });
+    if (res.ok) {
+      const d = await res.json();
+      if (d.ok && d.datos && Object.keys(d.datos).length > 0) {
+        siatelMap    = d.datos;
+        nombreSiatel = d.nombre || 'SIATEL';
+        if (d.lotes && Object.keys(d.lotes).length > 0) lotesMap = d.lotes;
+        document.getElementById('pantalla-carga').style.display = 'none';
+        mostrarAreas(null);
+        return;
+      }
+    }
+  } catch(e) { /* sin servidor, mostrar carga */ }
+  mostrarPantallaCarga();
 }
 
 function irAAdministracion() {
