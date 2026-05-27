@@ -3280,6 +3280,8 @@ async function mvGuardar() {
 
   // Verificar que la URL de ngrok sea válida antes de hacer requests
   if (ES_GITHUB && baseURL) {
+    console.log('🔗 URL ngrok para movimiento:', baseURL);
+    console.log('🔑 Token:', token ? token.substring(0,20)+'...' : 'VACÍO');
     if (!baseURL.startsWith('https://')) {
       errEl.textContent = 'Error: URL del servidor no válida. Recarga la página.';
       errEl.style.display = 'block';
@@ -3311,7 +3313,9 @@ async function mvGuardar() {
       body
     });
     if (!res.ok) {
-      errEl.textContent = `Error del servidor: ${res.status}`;
+      const txt = await res.text().catch(() => '');
+      console.error('❌ Error servidor:', res.status, txt.substring(0,200));
+      errEl.textContent = `Error ${res.status}: ${res.statusText || 'servidor no disponible'}. URL: ${url}`;
       errEl.style.display = 'block';
       btn.textContent = '💾 Registrar movimiento'; btn.disabled = false;
       return;
