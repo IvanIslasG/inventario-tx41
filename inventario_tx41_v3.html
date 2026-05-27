@@ -1525,11 +1525,12 @@ function procesarSiatel(file) {
 function cambiarSiatel() {
   siatelMap    = {};
   nombreSiatel = '';
-  document.getElementById('pantalla-area').style.display = 'none';
-  document.getElementById('app').style.display = 'none';
+  ocultarTodo();
   document.getElementById('pantalla-carga').style.display = 'flex';
-  document.getElementById('area-label').style.display = 'none';
-  document.getElementById('file-siatel').value = '';
+  const al = document.getElementById('area-label');
+  if (al) al.style.display = 'none';
+  const fs = document.getElementById('file-siatel');
+  if (fs) fs.value = '';
 }
 
 // ── PANTALLA 1: ÁREAS ──
@@ -2454,25 +2455,28 @@ function actualizarLotesEnMateriales() {
 }
 
 // ── PANTALLA INICIO ──
+// ── Oculta TODAS las pantallas — llamar antes de mostrar cualquiera ──
+function ocultarTodo() {
+  ['pantalla-login','pantalla-carga','pantalla-area','pantalla-consulta','pantalla-captura','pantalla-admin','pantalla-traspasos','pantalla-inicio'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+}
+
 function mostrarInicio() {
-  // Nav: visible para TODOS después de login
+  ocultarTodo();
+  // Nav
   const nav = document.getElementById('nav-admin');
   if (nav) {
     nav.style.display = 'flex';
     const lbl = document.getElementById('nav-usuario-label');
     if (lbl) lbl.textContent = '👤 ' + (sesionUsuario || '');
-    // Botón Admin solo visible si es admin
     const btnAdmin = document.getElementById('nav-btn-admin');
     if (btnAdmin) btnAdmin.style.display = sesionRol === 'admin' ? 'inline-flex' : 'none';
   }
-  // Limpiar estado nav activo
   ['nav-btn-inventario','nav-btn-traspasos','nav-btn-admin'].forEach(id => {
     const b = document.getElementById(id);
     if (b) { b.style.background='transparent'; b.style.color='var(--texto)'; b.style.fontWeight='400'; }
-  });
-  ['pantalla-carga','pantalla-area','pantalla-consulta','pantalla-captura','pantalla-admin','pantalla-traspasos'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.style.display = 'none';
   });
   document.getElementById('pantalla-inicio').style.display = 'flex';
   document.getElementById('inicio-bienvenida').textContent = 'Bienvenido, ' + sesionUsuario;
@@ -2482,11 +2486,7 @@ function mostrarInicio() {
 }
 
 function irAMenu() {
-  // Volver a la pantalla de inicio (menú principal)
-  ['pantalla-carga','pantalla-area','pantalla-consulta','pantalla-captura',
-   'pantalla-admin','pantalla-traspasos'].forEach(id => {
-    const el = document.getElementById(id); if (el) el.style.display='none';
-  });
+  ocultarTodo();
   ['nav-btn-inventario','nav-btn-traspasos','nav-btn-admin'].forEach(id => {
     const b = document.getElementById(id);
     if (b) { b.style.background='transparent'; b.style.color='var(--texto)'; b.style.fontWeight='400'; }
@@ -2495,31 +2495,24 @@ function irAMenu() {
 }
 
 function irAInventarios() {
+  ocultarTodo();
   mvNavActivo('inventario');
-  ['pantalla-inicio','pantalla-traspasos','pantalla-admin'].forEach(id => {
-    const el = document.getElementById(id); if (el) el.style.display = 'none';
-  });
   if (ES_GITHUB) {
-    // Cliente: si ya tiene datos cargados, ir directo a áreas
     if (Object.keys(siatelMap).length > 0) {
       mostrarAreas(null);
     } else {
       mostrarPantallaCarga();
     }
   } else {
-    // Admin local: consultar al servidor si hay SIATEL cargado
     irAInventariosAdmin();
   }
 }
 
 async function irAInventariosAdmin() {
-  // Si ya hay datos en memoria, ir directo
   if (Object.keys(siatelMap).length > 0) {
-    document.getElementById('pantalla-carga').style.display = 'none';
     document.getElementById('pantalla-area').style.display = 'flex';
     return;
   }
-  // Preguntar al servidor si tiene un SIATEL cargado
   try {
     const token = sesionToken || sessionStorage.getItem('tx41_token') || '';
     const res = await fetch('/api/siatel', {
@@ -2531,7 +2524,6 @@ async function irAInventariosAdmin() {
         siatelMap    = d.datos;
         nombreSiatel = d.nombre || 'SIATEL';
         if (d.lotes && Object.keys(d.lotes).length > 0) lotesMap = d.lotes;
-        document.getElementById('pantalla-carga').style.display = 'none';
         mostrarAreas(null);
         return;
       }
@@ -2541,19 +2533,14 @@ async function irAInventariosAdmin() {
 }
 
 function irAAdministracion() {
+  ocultarTodo();
   mvNavActivo('admin');
-  ['pantalla-inicio','pantalla-traspasos'].forEach(id => {
-    const el = document.getElementById(id); if (el) el.style.display='none';
-  });
   document.getElementById('pantalla-admin').style.display = 'flex';
   cargarTablaUsuarios();
 }
 
 function volverInicio() {
-  ['pantalla-admin','pantalla-carga','pantalla-area','pantalla-consulta','pantalla-captura','pantalla-traspasos'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.style.display = 'none';
-  });
+  ocultarTodo();
   document.getElementById('pantalla-inicio').style.display = 'flex';
 }
 
@@ -2973,11 +2960,8 @@ let mvRenglonIdx  = 0;
 
 // ── Navegación ──
 function irATraspasos() {
+  ocultarTodo();
   mvNavActivo('traspasos');
-  ['pantalla-inicio','pantalla-admin','pantalla-carga','pantalla-area',
-   'pantalla-consulta','pantalla-captura'].forEach(id => {
-    const el = document.getElementById(id); if (el) el.style.display = 'none';
-  });
   document.getElementById('pantalla-traspasos').style.display = 'flex';
   mvInicializar();
 }
