@@ -2459,7 +2459,9 @@ function actualizarLotesEnMateriales() {
 // ── PANTALLA INICIO ──
 // ── Oculta TODAS las pantallas — llamar antes de mostrar cualquiera ──
 function ocultarTodo() {
-  ['pantalla-login','pantalla-carga','pantalla-area','pantalla-consulta','pantalla-captura','pantalla-admin','pantalla-traspasos','pantalla-inicio'].forEach(id => {
+  ['pantalla-login','pantalla-carga','pantalla-area','pantalla-consulta',
+   'pantalla-captura','pantalla-admin','pantalla-traspasos','pantalla-inicio',
+   'app'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
   });
