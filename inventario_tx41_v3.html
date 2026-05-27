@@ -782,17 +782,22 @@ async function iniciarSesion() {
       sesionToken   = data.token;
       sesionRol     = data.rol;
       sesionUsuario = data.usuario;
-      // Guardar también la URL del servidor para llamadas posteriores
-      if (ES_GITHUB && data.ngrok_url) {
-        sessionStorage.setItem('tx41_ngrok', data.ngrok_url);
-      }
       sessionStorage.setItem('tx41_token',   sesionToken);
       sessionStorage.setItem('tx41_rol',     sesionRol);
       sessionStorage.setItem('tx41_usuario', sesionUsuario);
+      // Guardar ngrok URL — viene en la respuesta del login
+      if (ES_GITHUB && data.ngrok) {
+        sessionStorage.setItem('tx41_ngrok', data.ngrok);
+      } else if (ES_GITHUB && !sessionStorage.getItem('tx41_ngrok')) {
+        // Fallback: leer config.json para obtener ngrok URL
+        fetch('https://ivanislasg.github.io/inventario-tx41/config.json?t=' + Date.now(), { cache: 'no-store' })
+          .then(r => r.json())
+          .then(cfg => { if (cfg.ngrok) sessionStorage.setItem('tx41_ngrok', cfg.ngrok); })
+          .catch(() => {});
+      }
       document.getElementById('pantalla-login').style.display = 'none';
       mostrarHeaderUsuario();
       resetInactividad();
-      // Siempre ir al menú principal después del login
       mostrarInicio();
     } else {
       errEl.textContent = data.msg || 'Usuario o contraseña incorrectos';
