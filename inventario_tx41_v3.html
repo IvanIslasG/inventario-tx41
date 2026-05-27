@@ -3278,9 +3278,15 @@ async function mvGuardar() {
   const url     = baseURL ? `${baseURL}/api/movimientos` : '/api/movimientos';
   const token   = sessionStorage.getItem('tx41_token') || sesionToken || '';
 
-  // Warm-up GET: evita que ngrok devuelva HTML en lugar de JSON
-  // (ngrok en plan gratuito intercepta la primera petición cross-origin)
+  // Verificar que la URL de ngrok sea válida antes de hacer requests
   if (ES_GITHUB && baseURL) {
+    if (!baseURL.startsWith('https://')) {
+      errEl.textContent = 'Error: URL del servidor no válida. Recarga la página.';
+      errEl.style.display = 'block';
+      btn.textContent = '💾 Registrar movimiento'; btn.disabled = false;
+      return;
+    }
+    // Warm-up GET
     try {
       await fetch(`${baseURL}/api/estado`, {
         method: 'GET',
@@ -3288,22 +3294,28 @@ async function mvGuardar() {
         mode: 'cors'
       });
     } catch(_) { /* solo warm-up */ }
-    // Pequeña pausa para que ngrok procese el warm-up antes del POST
     await new Promise(r => setTimeout(r, 300));
   }
 
   try {
+    const body = JSON.stringify({
+      tipo: mvTipo, almacen,
+      guia:   document.getElementById('mv-guia').value.trim(),
+      notas:  document.getElementById('mv-notas').value.trim(),
+      usuario: sesionUsuario,
+      renglones: ren.map(r => ({ cat:r.cat, desc:r.desc, cantidad:r.cantidad, existencia_antes:r.existencia }))
+    });
     const res = await fetch(url, {
       method:'POST', mode:'cors',
       headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+token, 'ngrok-skip-browser-warning':'true' },
-      body: JSON.stringify({
-        tipo: mvTipo, almacen,
-        guia:   document.getElementById('mv-guia').value.trim(),
-        notas:  document.getElementById('mv-notas').value.trim(),
-        usuario: sesionUsuario,
-        renglones: ren.map(r => ({ cat:r.cat, desc:r.desc, cantidad:r.cantidad, existencia_antes:r.existencia }))
-      })
+      body
     });
+    if (!res.ok) {
+      errEl.textContent = `Error del servidor: ${res.status}`;
+      errEl.style.display = 'block';
+      btn.textContent = '💾 Registrar movimiento'; btn.disabled = false;
+      return;
+    }
     const data = await res.json();
     if (data.ok) {
       ren.forEach(r => {
