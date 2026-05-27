@@ -911,6 +911,7 @@ function ocultarHeaderUsuario() {
 }
 
 function mostrarPantallaCarga() {
+  ocultarTodo();
   document.getElementById('pantalla-carga').style.display = 'flex';
   if (ES_GITHUB) {
     cargarDesdeNube();
@@ -1018,6 +1019,7 @@ function mostrarEsperaNube(msg) {
       </div>
       <button class="btn btn-outline btn-sm" onclick="cargarDesdeNube()">🔄 Verificar ahora</button>
     </div>`;
+  ocultarTodo();
   pc.style.display = 'flex';
   setTimeout(cargarDesdeNube, 1000);
 }
@@ -1231,7 +1233,7 @@ function mostrarAreas(rec) {
   }
 
   document.getElementById('base-status-txt').textContent = statusTxt;
-  document.getElementById('pantalla-carga').style.display = 'none';
+  ocultarTodo();
   construirPantallaAreas();
   document.getElementById('pantalla-area').style.display = 'flex';
   if (ES_GITHUB) iniciarRefreshAutomatico();
@@ -1415,7 +1417,7 @@ function continuarConArchivos() {
     nombreSiatel + ' · ' + total.toLocaleString() + ' materiales' +
     (lotesListo ? ' · 📦 ' + Object.keys(lotesMap).length + ' con lotes' : '') +
     ' · ' + ahora;
-  document.getElementById('pantalla-carga').style.display = 'none';
+  ocultarTodo();
   construirPantallaAreas();
   document.getElementById('pantalla-area').style.display = 'flex';
 }
@@ -1628,15 +1630,15 @@ function seleccionarArea(area) {
   const filtroLotes = document.getElementById('filtro-lotes-wrap');
   if (filtroLotes) filtroLotes.style.display = hayLotes ? '' : 'none';
   document.getElementById('btn-captura').style.display = 'inline-flex';
+  ocultarTodo();
   document.getElementById('app').style.display = 'block';
   renderTabla(materiales);
 }
 
 function volverAreas() {
-  materiales   = [];
-  capturaData  = {};
-  document.getElementById('app').style.display = 'none';
-  document.getElementById('pantalla-captura').style.display = 'none';
+  materiales  = [];
+  capturaData = {};
+  ocultarTodo();
   document.getElementById('pantalla-area').style.display = 'flex';
   document.getElementById('area-label').style.display = 'none';
   document.getElementById('btn-captura').style.display = 'none';
@@ -1795,7 +1797,7 @@ let capturaData = {}; // catalogo → fisico capturado
 let capLista    = []; // lista filtrada actual
 
 function entrarCaptura() {
-  // Ocultar app, mostrar captura
+  ocultarTodo();
   document.getElementById('app').style.display = 'none';
   document.getElementById('pantalla-captura').style.display = 'block';
 
