@@ -3091,7 +3091,7 @@ function mvTab(tab) {
 function mvSyncFromDOM() {
   mvRenglones.forEach(r => {
     const qtyEl = document.getElementById('mv-qty-' + r.id);
-    if (qtyEl) r.cantidad = Math.max(1, parseInt(qtyEl.value) || 1);
+    if (qtyEl) r.cantidad = Math.max(1, parseInt(qtyEl.value.replace(/[^0-9]/g,'')) || 1);
   });
 }
 
@@ -3155,10 +3155,12 @@ function mvRenderRenglones() {
       </div>
       <div class="mv-renglon-footer" style="margin-top:8px">
         <label style="font-size:12px;color:var(--muted);font-weight:500">Cantidad:</label>
-        <input type="number" class="mv-qty-input${sinExist?' warn':''}"
-          id="mv-qty-${r.id}" value="${r.cantidad}" min="1" step="1"
+        <input type="text" inputmode="numeric" pattern="[0-9]*"
+          class="mv-qty-input${sinExist?' warn':''}"
+          id="mv-qty-${r.id}" value="${r.cantidad}"
           style="font-size:16px;width:90px"
-          onchange="mvSetQty(${r.id},+this.value||1)"
+          onchange="mvSetQty(${r.id},parseInt(this.value)||1)"
+          oninput="this.value=this.value.replace(/[^0-9]/g,'')"
           onclick="this.select()"
           onkeydown="mvQtyKeydown(event,${r.id},${esUltimo})">
         ${r.um ? `<span style="font-size:12px;color:var(--muted)">${r.um}</span>` : ''}
