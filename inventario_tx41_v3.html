@@ -3188,17 +3188,21 @@ function mvBuscar(id, q) {
     }
   }
   if (!hits.length) { res.style.display='none'; return; }
-  res.innerHTML = hits.map((h, i) =>
-    `<div class="mv-cat-item"
-       data-cat="${h.cat.replace(/"/g,'&quot;')}"
-       data-desc="${h.desc.replace(/"/g,'&quot;').replace(/'/g,'&#39;').substring(0,80)}"
-       data-um="${(h.um||'').replace(/"/g,'&quot;')}"
-       data-lib="${h.lib !== null ? h.lib : ''}"
-       onpointerdown="mvSelFromEl(this)">
-       <span>${h.cat}</span>
-       <small>${h.desc.substring(0,70)}${h.lib!==null?' | Exist: '+h.lib:''}</small>
-     </div>`
-  ).join('');
+  // Escapar atributos HTML para evitar romper el DOM con comillas o caracteres especiales
+  function _esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+  res.innerHTML = hits.map(h => {
+    const libStr = h.lib !== null ? String(h.lib) : '';
+    const existTxt = h.lib !== null ? ' | Exist: ' + h.lib : '';
+    return '<div class="mv-cat-item"' +
+      ' data-cat="' + _esc(h.cat) + '"' +
+      ' data-desc="' + _esc(h.desc.substring(0,80)) + '"' +
+      ' data-um="' + _esc(h.um) + '"' +
+      ' data-lib="' + libStr + '"' +
+      ' onpointerdown="mvSelFromEl(this)">' +
+      '<span>' + h.cat + '</span>' +
+      '<small>' + h.desc.substring(0,70) + existTxt + '</small>' +
+      '</div>';
+  }).join('');
   res.style.display = 'block';
 }
 
