@@ -3207,8 +3207,10 @@ function mvTab(tab) {
 // Esto evita que cantidades escritas con teclado se pierdan al agregar renglones
 function mvSyncFromDOM() {
   mvRenglones.forEach(r => {
-    const qtyEl = document.getElementById('mv-qty-' + r.id);
+    const qtyEl  = document.getElementById('mv-qty-' + r.id);
     if (qtyEl) r.cantidad = Math.max(1, parseInt(qtyEl.value.replace(/[^0-9]/g,'')) || 1);
+    const loteEl = document.getElementById('mv-lote-' + r.id);
+    if (loteEl && loteEl.value.trim()) r.lote = loteEl.value.trim();
   });
 }
 
@@ -3282,9 +3284,110 @@ function mvRenderRenglones() {
           onclick="this.select()"
           onkeydown="mvQtyKeydown(event,${r.id},${esUltimo})">
         ${r.um ? `<span style="font-size:12px;color:var(--muted)">${r.um}</span>` : ''}
-      </div>`;
+      </div>
+      ${mvRenderLoteField(r)}`;
     cont.appendChild(div);
   });
+}
+
+// ── LOTES ──
+function mvTieneLotes(cat) {
+  return cat && lotesMap[cat] && lotesMap[cat].length > 0;
+}
+
+function mvRenderLoteField(r) {
+  if (!r.cat || !mvTieneLotes(r.cat)) return '';
+  const lotes = lotesMap[r.cat];
+  const sinLote = !r.lote;
+  const bgColor = sinLote ? '#fef2f2' : '#f0fdf4';
+  const borderColor = sinLote ? 'var(--rojo)' : '#16a34a';
+  let opts = lotes.map(l =>
+    '<div onpointerdown="mvSelLote(' + r.id + ',\'' + l.lote.replace(/'/g,"\'") + '\')"' +
+    ' style="padding:7px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between"' +
+    ' onmouseover="this.style.background=\'#EEF2FF\'" onmouseout="this.style.background=\'white\'">' +
+    '<span style="font-weight:600">' + l.lote + '</span>' +
+    '<span style="color:var(--muted)">' + l.lib + ' ' + (l.um||r.um) + '</span>' +
+    '</div>'
+  ).join('');
+  return '<div style="margin-top:8px;position:relative">' +
+    '<label style="font-size:11px;font-weight:700;color:' + (sinLote?'var(--rojo)':'#15803d') + ';display:block;margin-bottom:3px">' +
+    '📦 Lote ' + (sinLote ? '<span style="font-size:10px">(requerido)</span>' : '✅') + '</label>' +
+    '<input type="text" id="mv-lote-' + r.id + '"' +
+    ' value="' + (r.lote||'') + '"' +
+    ' placeholder="Selecciona o escribe el lote..."' +
+    ' style="width:100%;height:34px;border:1.5px solid ' + borderColor + ';border-radius:8px;padding:0 10px;font-size:13px;background:' + bgColor + ';box-sizing:border-box"' +
+    ' oninput="mvBuscarLote(' + r.id + ',this.value)"' +
+    ' onfocus="mvBuscarLote(' + r.id + ',this.value)"' +
+    ' onblur="setTimeout(()=>mvCerrarLote(' + r.id + '),350)"' +
+    ' onkeydown="mvLoteKeydown(event,' + r.id + ')">' +
+    '<div id="mv-lote-res-' + r.id + '" style="display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1.5px solid var(--borde);border-radius:8px;z-index:600;max-height:180px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.1);margin-top:2px">' +
+    opts + '</div></div>';
+}
+
+function mvBuscarLote(id, q) {
+  const res = document.getElementById('mv-lote-res-' + id);
+  const r   = mvRenglones.find(x => x.id === id);
+  if (!res || !r || !lotesMap[r.cat]) return;
+  const lotes = q
+    ? lotesMap[r.cat].filter(l => l.lote.toLowerCase().includes(q.toLowerCase()))
+    : lotesMap[r.cat];
+  if (!lotes.length) { res.style.display='none'; return; }
+  res.innerHTML = lotes.map(l =>
+    '<div onpointerdown="mvSelLote(' + id + ',\'' + l.lote.replace(/'/g,"\'") + '\')"' +
+    ' style="padding:7px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between"' +
+    ' onmouseover="this.style.background=\'#EEF2FF\'" onmouseout="this.style.background=\'white\'">' +
+    '<span style="font-weight:600">' + l.lote + '</span>' +
+    '<span style="color:var(--muted)">' + l.lib + ' ' + (l.um||r.um) + '</span>' +
+    '</div>'
+  ).join('');
+  res.style.display = 'block';
+}
+
+function mvSelLote(id, lote) {
+  const r = mvRenglones.find(x => x.id === id);
+  if (!r) return;
+  r.lote = lote;
+  mvCerrarLote(id);
+  // Actualizar visual del campo sin re-render completo
+  const inp = document.getElementById('mv-lote-' + id);
+  if (inp) {
+    inp.value = lote;
+    inp.style.borderColor = '#16a34a';
+    inp.style.background  = '#f0fdf4';
+  }
+  const lbl = inp ? inp.previousSibling : null;
+  // Mover foco a cantidad
+  const qty = document.getElementById('mv-qty-' + id);
+  if (qty) { qty.focus(); qty.select(); }
+}
+
+function mvCerrarLote(id) {
+  const res = document.getElementById('mv-lote-res-' + id);
+  if (res) res.style.display = 'none';
+  // Guardar lo que haya escrito en el campo como lote
+  const inp = document.getElementById('mv-lote-' + id);
+  const r   = mvRenglones.find(x => x.id === id);
+  if (inp && r && inp.value.trim()) {
+    r.lote = inp.value.trim();
+  }
+}
+
+function mvLoteKeydown(e, id) {
+  if (e.key !== 'Enter' && e.key !== 'Tab') return;
+  const res = document.getElementById('mv-lote-res-' + id);
+  if (res && res.style.display !== 'none') {
+    const primer = res.querySelector('[onpointerdown]');
+    if (primer) {
+      e.preventDefault();
+      primer.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+      return;
+    }
+  }
+  // Guardar texto escrito y pasar a cantidad
+  mvCerrarLote(id);
+  e.preventDefault();
+  const qty = document.getElementById('mv-qty-' + id);
+  if (qty) { qty.focus(); qty.select(); }
 }
 
 function mvBuscar(id, q) {
@@ -3376,13 +3479,19 @@ function mvSel(id, cat, desc, um, existencia) {
   const r = mvRenglones.find(x => x.id === id);
   if (!r) return;
   r.cat = cat; r.desc = desc; r.um = um;
+  r.lote = ''; // limpiar lote al cambiar catálogo
   r.existencia = (existencia !== null && existencia !== undefined) ? Number(existencia) : null;
   mvCerrar(id);
   mvRenderRenglones();
-  // Auto-enfocar cantidad al seleccionar catálogo
+  // Si tiene lotes: enfocar campo de lote; si no: enfocar cantidad
   setTimeout(() => {
-    const qty = document.getElementById('mv-qty-' + id);
-    if (qty) { qty.focus(); qty.select(); }
+    if (mvTieneLotes(cat)) {
+      const loteInp = document.getElementById('mv-lote-' + id);
+      if (loteInp) { loteInp.focus(); mvBuscarLote(id, ''); }
+    } else {
+      const qty = document.getElementById('mv-qty-' + id);
+      if (qty) { qty.focus(); qty.select(); }
+    }
   }, 60);
 }
 
@@ -3559,6 +3668,24 @@ async function mvGuardar() {
   const ren = mvRenglones.filter(r => r.cat);
   if (!ren.length) { errEl.textContent='Agrega al menos un catálogo'; errEl.style.display='block'; return; }
 
+  // Validar lotes requeridos
+  for (const r of ren) {
+    if (mvTieneLotes(r.cat) && !r.lote) {
+      // Guardar lo que haya en el campo de lote antes de validar
+      const loteInp = document.getElementById('mv-lote-' + r.id);
+      if (loteInp && loteInp.value.trim()) {
+        r.lote = loteInp.value.trim();
+      } else {
+        errEl.textContent = 'Cat. ' + r.cat + ': este material tiene lotes — selecciona o escribe el número de lote';
+        errEl.style.display = 'block';
+        // Enfocar el campo de lote
+        if (loteInp) loteInp.focus();
+        btn.textContent = '💾 Registrar movimiento'; btn.disabled = false;
+        return;
+      }
+    }
+  }
+
   if (mvTipo === 'salida') {
     for (const r of ren) {
       if (r.existencia !== null && r.cantidad > r.existencia) {
@@ -3602,7 +3729,7 @@ async function mvGuardar() {
       guia:   document.getElementById('mv-guia').value.trim(),
       notas:  document.getElementById('mv-notas').value.trim(),
       usuario: sesionUsuario,
-      renglones: ren.map(r => ({ cat:r.cat, desc:r.desc, cantidad:r.cantidad, existencia_antes:r.existencia }))
+      renglones: ren.map(r => ({ cat:r.cat, desc:r.desc, cantidad:r.cantidad, existencia_antes:r.existencia, lote:r.lote||'' }))
     });
     const res = await fetch(url, {
       method:'POST', mode:'cors',
@@ -3677,7 +3804,7 @@ function mvRenderHistorial() {
       <td>${m.almacen}</td>
       <td>${m.guia||'—'}</td>
       <td>${m.usuario}</td>
-      <td style="font-size:11px">${(m.renglones||[]).map(r=>`<b>${r.cat}</b> ×${r.cantidad}`).join('<br>')}</td>
+      <td style="font-size:11px">${(m.renglones||[]).map(r=>`<b>${r.cat}</b> ×${r.cantidad}${r.lote?' <span style="color:var(--muted)">Lote:'+r.lote+'</span>':''}`).join('<br>')}</td>
       <td style="font-size:11px;color:var(--muted)">${m.notas||'—'}</td>
       ${esAdmin ? `<td style="white-space:nowrap">
         <button onclick="mvEditarMovimiento('${m.id}')"
@@ -3758,11 +3885,11 @@ function mvFmt(iso) {
 
 function mvExportarExcel() {
   if (!mvMovimientos.length) { alert('No hay movimientos para exportar'); return; }
-  const filas = [['Folio','Fecha','Tipo','Almacén','Guía','Usuario','Catálogo','Descripción','Cantidad','Exist. Antes','Notas']];
+  const filas = [['Folio','Fecha','Tipo','Almacén','Guía','Usuario','Catálogo','Descripción','Lote','Cantidad','Exist. Antes','Notas']];
   mvMovimientos.forEach(m => {
     (m.renglones||[]).forEach(r => {
       filas.push([m.folio||'', mvFmt(m.fecha), m.tipo==='salida'?'Salida':'Entrada', m.almacen,
-        m.guia||'', m.usuario, r.cat, r.desc, r.cantidad, r.existencia_antes??'', m.notas||'']);
+        m.guia||'', m.usuario, r.cat, r.desc, r.lote||'', r.cantidad, r.existencia_antes??'', m.notas||'']);
     });
   });
   const wb = XLSX.utils.book_new();
