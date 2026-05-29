@@ -3353,7 +3353,8 @@ async function mvGuardar() {
           siatelMap[r.cat].lib = Math.max(0, (siatelMap[r.cat].lib||0) + (mvTipo==='entrada'?1:-1)*r.cantidad);
         }
       });
-      alert(`✅ ${mvTipo==='salida'?'Salida':'Entrada'} registrada correctamente.`);
+      const folioMsg = data.folio ? ` · Folio: ${data.folio}` : '';
+      alert(`✅ ${mvTipo==='salida'?'Salida':'Entrada'} registrada correctamente.${folioMsg}`);
       mvLimpiarForm();
       await mvCargarHistorial();
     } else {
@@ -3394,11 +3395,12 @@ function mvRenderHistorial() {
   const ord = [...lista].sort((a,b) => new Date(b.fecha)-new Date(a.fecha));
   cont.innerHTML = `<table class="mv-historial-tabla">
     <thead><tr>
-      <th>Fecha</th><th>Tipo</th><th>Almacén</th><th>Guía</th>
+      <th>Folio</th><th>Fecha</th><th>Tipo</th><th>Almacén</th><th>Guía</th>
       <th>Usuario</th><th>Catálogos</th><th>Notas</th>
       ${esAdmin ? '<th>Acciones</th>' : ''}
     </tr></thead>
     <tbody>${ord.map(m=>`<tr id="mv-fila-${m.id}">
+      <td style="font-weight:700;color:var(--azul);white-space:nowrap">${m.folio || '—'}</td>
       <td style="white-space:nowrap">${mvFmt(m.fecha)}</td>
       <td><span class="${m.tipo==='salida'?'mv-badge-salida':'mv-badge-entrada'}">${m.tipo==='salida'?'📤 Salida':'📥 Entrada'}</span></td>
       <td>${m.almacen}</td>
@@ -3419,7 +3421,8 @@ function mvRenderHistorial() {
 function mvEditarMovimiento(id) {
   const mov = mvMovimientos.find(m => m.id === id);
   if (!mov) return;
-  const nuevoAlmacen = prompt('Almacén ' + (mov.tipo==='salida'?'destino':'origen') + ':', mov.almacen || '');
+  const folioRef = mov.folio ? ` (Folio ${mov.folio})` : '';
+  const nuevoAlmacen = prompt('Almacén ' + (mov.tipo==='salida'?'destino':'origen') + folioRef + ':', mov.almacen || '');
   if (nuevoAlmacen === null) return; // canceló
   const nuevaGuia   = prompt('Guía de embarque / Folio:', mov.guia || '');
   if (nuevaGuia === null) return;
@@ -3484,10 +3487,10 @@ function mvFmt(iso) {
 
 function mvExportarExcel() {
   if (!mvMovimientos.length) { alert('No hay movimientos para exportar'); return; }
-  const filas = [['Fecha','Tipo','Almacén','Guía','Usuario','Catálogo','Descripción','Cantidad','Exist. Antes','Notas']];
+  const filas = [['Folio','Fecha','Tipo','Almacén','Guía','Usuario','Catálogo','Descripción','Cantidad','Exist. Antes','Notas']];
   mvMovimientos.forEach(m => {
     (m.renglones||[]).forEach(r => {
-      filas.push([mvFmt(m.fecha), m.tipo==='salida'?'Salida':'Entrada', m.almacen,
+      filas.push([m.folio||'', mvFmt(m.fecha), m.tipo==='salida'?'Salida':'Entrada', m.almacen,
         m.guia||'', m.usuario, r.cat, r.desc, r.cantidad, r.existencia_antes??'', m.notas||'']);
     });
   });
