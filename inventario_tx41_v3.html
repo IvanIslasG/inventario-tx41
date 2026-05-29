@@ -1324,10 +1324,22 @@ async function recargarExistencias() {
       bar.textContent = txt;
     }
     // Si hay una consulta abierta, refrescarla
-    if (document.getElementById('pantalla-consulta')?.style.display !== 'none') {
+    if (document.getElementById('app')?.style.display === 'block') {
       filtrar();
     }
-    console.log('✅ Existencias actualizadas desde servidor');
+    // Si hay renglones de traspaso abiertos, actualizar sus existencias y lotes
+    if (mvRenglones && mvRenglones.some(r => r.cat)) {
+      mvRenglones.forEach(r => {
+        if (!r.cat) return;
+        const ex = siatelMap[r.cat];
+        if (ex !== undefined) r.existencia = ex.lib !== undefined ? ex.lib : null;
+      });
+      // Re-render solo si el módulo está visible
+      if (document.getElementById('pantalla-traspasos')?.style.display !== 'none') {
+        mvRenderRenglones();
+      }
+    }
+    console.log('✅ Existencias actualizadas desde servidor:', new Date().toLocaleTimeString('es-MX'));
   } catch(e) {
     // Silencioso — la red puede fallar esporádicamente
   }
@@ -2494,6 +2506,9 @@ function mostrarInicio() {
   }
   // Cargar SIATEL en background para que todos los módulos lo tengan disponible
   cargarSiatelEnBackground();
+  // Arrancar auto-refresh para que las existencias se actualicen cada 30s
+  // independientemente del módulo que use el cliente
+  if (ES_GITHUB) iniciarRefreshAutomatico();
 }
 
 // Indicador visual de carga en la barra de navegación
