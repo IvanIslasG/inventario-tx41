@@ -2897,10 +2897,11 @@ function imprimir(ubi) {
         <label class="mv-label">Almacén <span id="mv-label-dir">destino</span> <span style="color:var(--rojo)">*</span></label>
         <div style="position:relative;margin-bottom:0">
           <input type="text" class="mv-input" id="mv-almacen-input"
-            placeholder="Buscar por nombre o siglas (ej. TX8H, Mocambo)..."
+            placeholder="Escribe o busca: nombre, siglas, o cualquier destino..."
             autocomplete="off"
             oninput="mvAlmacenBuscar(this.value)"
             onfocus="mvAlmacenBuscar(this.value)"
+            onkeydown="mvAlmacenKeydown(event)"
             onblur="setTimeout(mvAlmacenCerrar, 300)">
           <div id="mv-almacen-lista" style="display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1.5px solid var(--borde);border-radius:8px;z-index:600;max-height:220px;overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,.1);margin-top:2px"></div>
         </div>
@@ -2994,6 +2995,11 @@ function mvNavActivo(cual) {
 function mvInicializar() {
   if (mvRenglones.length === 0) mvAgregarRenglon();
   mvCargarHistorial();
+  // Enfocar el campo de almacén al abrir el módulo
+  setTimeout(() => {
+    const inp = document.getElementById('mv-almacen-input');
+    if (inp && !inp.value) inp.focus();
+  }, 150);
 }
 
 // ── Tipo ──
@@ -3069,6 +3075,11 @@ function mvAlmacenSel(valor) {
   const inp = document.getElementById('mv-almacen-input');
   if (inp) inp.value = valor;
   mvAlmacenCerrar();
+  // Pasar al campo de guía
+  setTimeout(() => {
+    const guia = document.getElementById('mv-guia');
+    if (guia) guia.focus();
+  }, 50);
 }
 
 function mvAlmacenCerrar() {
@@ -3148,10 +3159,11 @@ function mvRenderRenglones() {
       <div class="mv-renglon-header">
         <div style="flex:1;position:relative">
           <input type="text" class="mv-cat-input" id="mv-cat-${r.id}"
-            placeholder="Buscar catálogo o descripción..."
+            placeholder="Catálogo o descripción..."
             value="${valInput.replace(/"/g,'&quot;')}"
             oninput="mvBuscar(${r.id},this.value)"
             onfocus="mvBuscar(${r.id},this.value)"
+            onkeydown="mvCatKeydown(event,${r.id})"
             onblur="setTimeout(()=>mvCerrar(${r.id}),400)">
           <div id="mv-res-${r.id}" class="mv-cat-resultados" style="display:none"></div>
           ${existBadge}
@@ -3206,6 +3218,43 @@ function mvBuscar(id, q) {
   res.style.display = 'block';
 }
 
+// Enter/Tab en campo almacén: si hay primer resultado en lista, seleccionarlo
+function mvAlmacenKeydown(e) {
+  if (e.key !== 'Enter' && e.key !== 'Tab') return;
+  const lista = document.getElementById('mv-almacen-lista');
+  if (!lista || lista.style.display === 'none') return;
+  const primer = lista.querySelector('[onpointerdown],[data-val]');
+  if (primer) {
+    e.preventDefault();
+    primer.dispatchEvent(new Event('pointerdown'));
+  }
+}
+
+// Enter/Tab en campo catálogo:
+//   1. Si hay lista visible → seleccionar el primer resultado
+//   2. Pasar automáticamente al campo de cantidad
+function mvCatKeydown(e, id) {
+  if (e.key !== 'Enter' && e.key !== 'Tab') return;
+  const res = document.getElementById('mv-res-' + id);
+  if (res && res.style.display !== 'none') {
+    const primer = res.querySelector('[onpointerdown]');
+    if (primer) {
+      e.preventDefault();
+      primer.dispatchEvent(new Event('pointerdown'));
+      // Después de seleccionar, enfocar cantidad
+      setTimeout(() => {
+        const qty = document.getElementById('mv-qty-' + id);
+        if (qty) { qty.focus(); qty.select(); }
+      }, 80);
+      return;
+    }
+  }
+  // Si no hay lista o ya está seleccionado, pasar directo a cantidad
+  e.preventDefault();
+  const qty = document.getElementById('mv-qty-' + id);
+  if (qty) { qty.focus(); qty.select(); }
+}
+
 function mvSelFromEl(el) {
   // Leer datos del elemento sin problemas de caracteres especiales
   const cont = el.closest('.mv-cat-resultados');
@@ -3225,6 +3274,11 @@ function mvSel(id, cat, desc, um, existencia) {
   r.existencia = (existencia !== null && existencia !== undefined) ? Number(existencia) : null;
   mvCerrar(id);
   mvRenderRenglones();
+  // Auto-enfocar cantidad al seleccionar catálogo
+  setTimeout(() => {
+    const qty = document.getElementById('mv-qty-' + id);
+    if (qty) { qty.focus(); qty.select(); }
+  }, 60);
 }
 
 function mvCerrar(id) {
