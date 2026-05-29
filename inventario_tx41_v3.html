@@ -2492,6 +2492,89 @@ function mostrarInicio() {
   if (sesionRol === 'admin') {
     document.getElementById('btn-administracion').style.display = 'block';
   }
+  // Cargar SIATEL en background para que todos los módulos lo tengan disponible
+  cargarSiatelEnBackground();
+}
+
+// Indicador visual de carga en la barra de navegación
+let _siatelCargando = false;
+
+async function cargarSiatelEnBackground() {
+  // Solo para clientes GitHub — admin carga manualmente
+  if (!ES_GITHUB) return;
+  // Evitar cargas simultáneas
+  if (_siatelCargando) return;
+  _siatelCargando = true;
+
+  const lbl = document.getElementById('nav-usuario-label');
+  const textoOriginal = lbl ? lbl.textContent : '';
+  if (lbl) lbl.textContent = '⏳ Cargando datos...';
+
+  try {
+    const ngrokURL = sessionStorage.getItem('tx41_ngrok') || '';
+    const token    = sessionStorage.getItem('tx41_token') || sesionToken || '';
+
+    // Intentar ngrok primero (datos frescos con movimientos aplicados)
+    if (ngrokURL && token) {
+      try {
+        // Warm-up
+        await fetch(ngrokURL + '/api/estado', {
+          mode: 'cors', headers: { 'ngrok-skip-browser-warning': 'true' }
+        }).catch(() => {});
+
+        const res = await fetch(ngrokURL + '/api/siatel', {
+          mode: 'cors',
+          headers: {
+            'Authorization': 'Bearer ' + token,
+            'ngrok-skip-browser-warning': 'true'
+          }
+        });
+        if (res.ok) {
+          const d = await res.json();
+          if (d.ok && d.datos && Object.keys(d.datos).length > 0) {
+            siatelMap    = d.datos;
+            nombreSiatel = d.nombre || 'SIATEL';
+            if (d.lotes && Object.keys(d.lotes).length > 0) {
+              lotesMap = d.lotes;
+            }
+            if (d.timestamp && _configData) {
+              _configData = Object.assign({}, _configData, { ts_siatel: d.timestamp });
+            }
+            console.log('✅ SIATEL cargado en background:', Object.keys(siatelMap).length, 'materiales,', Object.keys(lotesMap).length, 'con lotes');
+            if (lbl) lbl.textContent = '👤 ' + (sesionUsuario || '');
+            _siatelCargando = false;
+            return;
+          }
+        }
+      } catch(e) {
+        console.warn('Ngrok no disponible, usando config.json:', e.message);
+      }
+    }
+
+    // Fallback: config.json de GitHub
+    const cfg = await fetch('https://ivanislasg.github.io/inventario-tx41/config.json?t=' + Date.now(), {
+      cache: 'no-store',
+      headers: { 'Cache-Control': 'no-cache' }
+    });
+    if (cfg.ok) {
+      const data = await cfg.json();
+      if (data.siatel && Object.keys(data.siatel).length > 0) {
+        siatelMap = {};
+        for (const cat in data.siatel) {
+          const v = data.siatel[cat];
+          siatelMap[cat] = { lib: v[0]||0, tras: v[1]||0, um: v[2]||'' };
+        }
+        if (data.lotes) lotesMap = data.lotes;
+        if (data.ngrok) sessionStorage.setItem('tx41_ngrok', data.ngrok);
+        console.log('✅ SIATEL cargado desde config.json:', Object.keys(siatelMap).length, 'materiales');
+      }
+    }
+  } catch(e) {
+    console.warn('Error cargando SIATEL en background:', e.message);
+  }
+
+  if (lbl) lbl.textContent = textoOriginal;
+  _siatelCargando = false;
 }
 
 function irAMenu() {
@@ -3054,7 +3137,7 @@ function mvNavActivo(cual) {
 async function mvInicializar() {
   if (mvRenglones.length === 0) mvAgregarRenglon();
   mvCargarHistorial();
-  // Si siatelMap está vacío, cargarlo antes de que el usuario busque catálogos
+  // Si por alguna razón el siatelMap aún no cargó, intentar de nuevo
   if (Object.keys(siatelMap).length === 0) {
     await mvCargarSiatel();
   }
