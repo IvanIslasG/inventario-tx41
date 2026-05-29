@@ -3051,14 +3051,56 @@ function mvNavActivo(cual) {
   }
 }
 
-function mvInicializar() {
+async function mvInicializar() {
   if (mvRenglones.length === 0) mvAgregarRenglon();
   mvCargarHistorial();
-  // Enfocar el campo de almacén al abrir el módulo
+  // Si siatelMap está vacío, cargarlo antes de que el usuario busque catálogos
+  if (Object.keys(siatelMap).length === 0) {
+    await mvCargarSiatel();
+  }
   setTimeout(() => {
     const inp = document.getElementById('mv-almacen-input');
     if (inp && !inp.value) inp.focus();
   }, 150);
+}
+
+async function mvCargarSiatel() {
+  try {
+    const ngrokURL = sessionStorage.getItem('tx41_ngrok') || '';
+    const token    = sessionStorage.getItem('tx41_token') || sesionToken || '';
+    if (ngrokURL && token) {
+      // Cargar desde servidor (datos frescos con movimientos aplicados)
+      const res = await fetch(ngrokURL + '/api/siatel', {
+        mode: 'cors',
+        headers: { 'Authorization': 'Bearer ' + token, 'ngrok-skip-browser-warning': 'true' }
+      });
+      if (res.ok) {
+        const d = await res.json();
+        if (d.ok && d.datos && Object.keys(d.datos).length > 0) {
+          siatelMap    = d.datos;
+          nombreSiatel = d.nombre || 'SIATEL';
+          if (d.lotes) lotesMap = d.lotes;
+          console.log('✅ siatelMap cargado para traspasos:', Object.keys(siatelMap).length, 'materiales');
+          return;
+        }
+      }
+    }
+    // Fallback: leer config.json de GitHub
+    const cfg = await fetch('https://ivanislasg.github.io/inventario-tx41/config.json?t=' + Date.now(), { cache: 'no-store' });
+    if (cfg.ok) {
+      const data = await cfg.json();
+      if (data.siatel && Object.keys(data.siatel).length > 0) {
+        siatelMap = {};
+        for (const cat in data.siatel) {
+          const v = data.siatel[cat];
+          siatelMap[cat] = { lib: v[0]||0, tras: v[1]||0, um: v[2]||'' };
+        }
+        console.log('✅ siatelMap cargado desde config.json:', Object.keys(siatelMap).length, 'materiales');
+      }
+    }
+  } catch(e) {
+    console.warn('No se pudo cargar siatelMap para traspasos:', e.message);
+  }
 }
 
 // ── Tipo ──
