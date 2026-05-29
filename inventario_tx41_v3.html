@@ -2922,7 +2922,66 @@ function imprimir(ubi) {
       <div style="margin-top:4px;margin-bottom:8px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
           <label class="mv-label" style="margin:0">Catálogos <span style="color:var(--rojo)">*</span></label>
-          <button class="btn btn-sm btn-outline" onclick="mvAgregarRenglon()" style="font-size:12px">+ Agregar catálogo</button>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-sm btn-outline" onclick="mvMostrarPegado()" style="font-size:12px;background:#f0fdf4;border-color:#16a34a;color:#15803d">📋 Pegar desde Excel</button>
+            <button class="btn btn-sm btn-outline" onclick="mvAgregarRenglon()" style="font-size:12px">+ Agregar catálogo</button>
+          </div>
+        </div>
+        <!-- Panel de pegado -->
+        <div id="mv-panel-pegado" style="display:none;background:#f8fafc;border:1.5px solid #16a34a33;border-radius:10px;padding:14px;margin-bottom:12px">
+          <div style="font-size:12px;font-weight:600;color:#15803d;margin-bottom:10px">📋 Pegar desde Excel</div>
+
+          <!-- Tabs catálogos / cantidades -->
+          <div style="display:flex;gap:4px;margin-bottom:12px;background:#e2e8f0;border-radius:8px;padding:3px">
+            <button id="mv-ptab-cats" onclick="mvPegadoTab('cats')"
+              style="flex:1;padding:6px;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;background:white;color:#15803d;box-shadow:0 1px 3px rgba(0,0,0,.1)">
+              1️⃣ Catálogos
+            </button>
+            <button id="mv-ptab-qtys" onclick="mvPegadoTab('qtys')"
+              style="flex:1;padding:6px;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;background:transparent;color:var(--muted)">
+              2️⃣ Cantidades
+            </button>
+          </div>
+
+          <!-- Panel catálogos -->
+          <div id="mv-ppanel-cats">
+            <div style="font-size:11px;color:var(--muted);margin-bottom:6px">
+              Pega la columna de <b>catálogos</b> de Excel. Se cargarán con cantidad 1 por defecto.
+            </div>
+            <textarea id="mv-txt-cats" rows="6"
+              style="width:100%;border:1.5px solid var(--borde);border-radius:8px;padding:8px 10px;font-size:13px;font-family:monospace;box-sizing:border-box;resize:vertical"
+              placeholder="1002447&#10;1034992&#10;1000005&#10;..."></textarea>
+          </div>
+
+          <!-- Panel cantidades -->
+          <div id="mv-ppanel-qtys" style="display:none">
+            <div style="font-size:11px;color:var(--muted);margin-bottom:6px">
+              Pega la columna de <b>cantidades</b> en el mismo orden que los catálogos cargados.
+            </div>
+            <textarea id="mv-txt-qtys" rows="6"
+              style="width:100%;border:1.5px solid var(--borde);border-radius:8px;padding:8px 10px;font-size:13px;font-family:monospace;box-sizing:border-box;resize:vertical"
+              placeholder="3&#10;1&#10;2&#10;..."></textarea>
+            <div id="mv-qtys-status" style="font-size:11px;color:var(--muted);margin-top:4px"></div>
+          </div>
+
+          <!-- También acepta dos columnas juntas -->
+          <details style="margin-top:10px">
+            <summary style="font-size:11px;color:var(--muted);cursor:pointer">📎 También puedo pegar las dos columnas juntas</summary>
+            <div style="margin-top:8px">
+              <textarea id="mv-txt-ambas" rows="4"
+                style="width:100%;border:1.5px solid var(--borde);border-radius:8px;padding:8px 10px;font-size:13px;font-family:monospace;box-sizing:border-box;resize:vertical"
+                placeholder="1002447&#9;3&#10;1034992&#9;1&#10;1000005&#9;2"></textarea>
+            </div>
+          </details>
+
+          <div id="mv-pegado-preview" style="margin-top:8px;font-size:11px"></div>
+          <div style="display:flex;gap:8px;margin-top:10px;justify-content:flex-end">
+            <button class="btn btn-sm btn-outline" onclick="mvCancelarPegado()" style="font-size:12px">Cancelar</button>
+            <button class="btn btn-sm" onclick="mvProcesarPegado()"
+              style="font-size:12px;background:#16a34a;color:white;border:none;padding:6px 16px;border-radius:8px;cursor:pointer;font-weight:600">
+              ✅ Cargar
+            </button>
+          </div>
         </div>
         <div id="mv-renglones" class="mv-renglones"></div>
       </div>
@@ -3222,11 +3281,20 @@ function mvBuscar(id, q) {
 function mvAlmacenKeydown(e) {
   if (e.key !== 'Enter' && e.key !== 'Tab') return;
   const lista = document.getElementById('mv-almacen-lista');
-  if (!lista || lista.style.display === 'none') return;
-  const primer = lista.querySelector('[onpointerdown],[data-val]');
-  if (primer) {
+  if (lista && lista.style.display !== 'none') {
+    const primer = lista.querySelector('[onpointerdown]');
+    if (primer) {
+      e.preventDefault();
+      primer.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+      return;
+    }
+  }
+  // Sin lista: cerrar y pasar a guía
+  mvAlmacenCerrar();
+  if (e.key === 'Enter') {
     e.preventDefault();
-    primer.dispatchEvent(new Event('pointerdown'));
+    const guia = document.getElementById('mv-guia');
+    if (guia) guia.focus();
   }
 }
 
@@ -3237,19 +3305,14 @@ function mvCatKeydown(e, id) {
   if (e.key !== 'Enter' && e.key !== 'Tab') return;
   const res = document.getElementById('mv-res-' + id);
   if (res && res.style.display !== 'none') {
-    const primer = res.querySelector('[onpointerdown]');
+    const primer = res.querySelector('[data-cat]');
     if (primer) {
       e.preventDefault();
-      primer.dispatchEvent(new Event('pointerdown'));
-      // Después de seleccionar, enfocar cantidad
-      setTimeout(() => {
-        const qty = document.getElementById('mv-qty-' + id);
-        if (qty) { qty.focus(); qty.select(); }
-      }, 80);
+      mvSelFromEl(primer); // selecciona catálogo + pone existencia + enfoca cantidad
       return;
     }
   }
-  // Si no hay lista o ya está seleccionado, pasar directo a cantidad
+  // Sin lista visible: pasar directo a cantidad
   e.preventDefault();
   const qty = document.getElementById('mv-qty-' + id);
   if (qty) { qty.focus(); qty.select(); }
@@ -3294,6 +3357,118 @@ function mvSetQty(id, val) {
   const inp = document.getElementById('mv-qty-'+id);
   if (inp) {
     inp.classList.toggle('warn', mvTipo==='salida' && r.existencia!==null && num > r.existencia);
+  }
+}
+
+// ── MODO PEGADO DESDE EXCEL ──
+let mvPegadoTabActual = 'cats';
+
+function mvMostrarPegado() {
+  const panel = document.getElementById('mv-panel-pegado');
+  if (panel) {
+    panel.style.display = 'block';
+    mvPegadoTab('cats');
+    setTimeout(() => { const t = document.getElementById('mv-txt-cats'); if (t) t.focus(); }, 80);
+  }
+}
+
+function mvPegadoTab(tab) {
+  mvPegadoTabActual = tab;
+  const isCats = tab === 'cats';
+  const pc = document.getElementById('mv-ppanel-cats');
+  const pq = document.getElementById('mv-ppanel-qtys');
+  if (pc) pc.style.display = isCats ? 'block' : 'none';
+  if (pq) pq.style.display = isCats ? 'none'  : 'block';
+  const bc = document.getElementById('mv-ptab-cats');
+  const bq = document.getElementById('mv-ptab-qtys');
+  if (bc) { bc.style.background = isCats?'white':'transparent'; bc.style.color=isCats?'#15803d':'var(--muted)'; bc.style.boxShadow=isCats?'0 1px 3px rgba(0,0,0,.1)':'none'; }
+  if (bq) { bq.style.background = isCats?'transparent':'white'; bq.style.color=isCats?'var(--muted)':'#15803d'; bq.style.boxShadow=isCats?'none':'0 1px 3px rgba(0,0,0,.1)'; }
+  if (!isCats) {
+    const st = document.getElementById('mv-qtys-status');
+    const n  = mvRenglones.filter(r => r.cat).length;
+    if (st) st.textContent = n > 0 ? n + ' catálogo(s) cargados — pega ' + n + ' cantidad(es) en el mismo orden' : '⚠️ Primero carga los catálogos en la pestaña 1️⃣';
+  }
+}
+
+function mvCancelarPegado() {
+  const panel = document.getElementById('mv-panel-pegado');
+  if (panel) panel.style.display = 'none';
+  ['mv-txt-cats','mv-txt-qtys','mv-txt-ambas'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+  const prev = document.getElementById('mv-pegado-preview');
+  if (prev) prev.innerHTML = '';
+}
+
+function _parsearLineas(texto) {
+  return texto.trim().split('\n')
+    .map(l => l.trim()).filter(Boolean)
+    .map((linea, i) => {
+      const partes = linea.split(/\t|;|,/).map(p => p.trim()).filter(Boolean);
+      const cat = partes[0] ? partes[0].replace(/\D/g, '') : '';
+      const qty = partes[1] ? parseInt(partes[1]) || 1 : 1;
+      return { cat, qty, lineaOrig: linea, idx: i };
+    });
+}
+
+function mvProcesarPegado() {
+  const prev = document.getElementById('mv-pegado-preview');
+
+  // Caso A: dos columnas juntas
+  const txtAmbas = document.getElementById('mv-txt-ambas');
+  if (txtAmbas && txtAmbas.value.trim()) { _cargarDesdeTexto(txtAmbas.value, true); return; }
+
+  // Caso B: solo cantidades
+  if (mvPegadoTabActual === 'qtys') {
+    const txtQ = document.getElementById('mv-txt-qtys');
+    if (!txtQ || !txtQ.value.trim()) return;
+    const cargados = mvRenglones.filter(r => r.cat);
+    if (!cargados.length) { if (prev) prev.innerHTML = '<span style="color:var(--rojo)">⚠️ Primero carga los catálogos en pestaña 1️⃣</span>'; return; }
+    const nums = txtQ.value.trim().split('\n').map(l => parseInt(l.trim()) || 1);
+    cargados.forEach((r, i) => { if (nums[i] !== undefined) r.cantidad = nums[i]; });
+    mvRenderRenglones();
+    mvCancelarPegado();
+    return;
+  }
+
+  // Caso C: solo catálogos
+  const txtC = document.getElementById('mv-txt-cats');
+  if (!txtC || !txtC.value.trim()) return;
+  _cargarDesdeTexto(txtC.value, false);
+}
+
+function _cargarDesdeTexto(texto, conCantidades) {
+  const prev = document.getElementById('mv-pegado-preview');
+  const filas = _parsearLineas(texto);
+  const validos = [], invalidos = [];
+
+  filas.forEach(function(f) {
+    if (!f.cat || f.cat.length < 4) { invalidos.push('Fila ' + (f.idx+1) + ': "' + f.lineaOrig + '" — inválido'); return; }
+    const mat = baseMaestra[f.cat];
+    if (!mat) { invalidos.push('Fila ' + (f.idx+1) + ': ' + f.cat + ' — no encontrado'); return; }
+    const ex = siatelMap[f.cat];
+    validos.push({ cat: f.cat, desc: mat.d||'', um: mat.u||'', cantidad: conCantidades ? f.qty : 1, existencia: ex ? (ex.lib !== undefined ? ex.lib : null) : null });
+  });
+
+  if (prev) {
+    var msg = '';
+    if (validos.length)   msg += '<span style="color:#15803d">✅ ' + validos.length + ' válido(s)</span>';
+    if (invalidos.length) msg += (validos.length?' · ':'') + '<span style="color:var(--rojo)">⚠️ ' + invalidos.length + ' no encontrado(s)</span><br><small style="color:var(--muted)">' + invalidos.join('<br>') + '</small>';
+    prev.innerHTML = msg;
+  }
+
+  if (!validos.length) return;
+
+  if (mvRenglones.some(r => r.cat) && !confirm('¿Reemplazar los ' + mvRenglones.filter(r=>r.cat).length + ' renglones actuales con los ' + validos.length + ' catálogos cargados?')) return;
+
+  mvRenglones = []; mvRenglonIdx = 0;
+  validos.forEach(function(v) { mvRenglones.push({ id: ++mvRenglonIdx, cat: v.cat, desc: v.desc, um: v.um, cantidad: v.cantidad, existencia: v.existencia }); });
+  mvRenderRenglones();
+
+  if (!conCantidades) {
+    mvPegadoTab('qtys');
+    if (prev) prev.innerHTML = '<span style="color:#15803d">✅ ' + validos.length + ' catálogos cargados</span> · <span style="color:#92400e">Ahora pega las cantidades en 2️⃣</span>';
+  } else {
+    mvCancelarPegado();
+    if (invalidos.length) setTimeout(function(){ alert('Cargados: ' + validos.length + '\nNo encontrados:\n' + invalidos.join('\n')); }, 100);
   }
 }
 
