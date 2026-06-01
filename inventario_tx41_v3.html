@@ -4014,6 +4014,128 @@ function mvExportarExcel() {
   XLSX.utils.book_append_sheet(wb, ws, 'Movimientos');
   XLSX.writeFile(wb, `Movimientos_TX41_${new Date().toISOString().slice(0,10)}.xlsx`);
 }
+
+// ════════════════════════════════════════════════════════
+// EXPORTACIÓN DE INVENTARIO A EXCEL
+// ════════════════════════════════════════════════════════
+
+function exportarInventarioActual() {
+  if (!materiales || !materiales.length) { alert('No hay materiales para exportar'); return; }
+  const filasMat = filtrarMaterialesExport();
+  exportarAExcel(filasMat, areaActual === '__TODO__' ? 'Todo_Inventario' : areaActual, true);
+}
+
+function exportarArea(area, soloConExistencia) {
+  const mats = Object.entries(baseMaestra)
+    .filter(([, b]) => b.area === area)
+    .map(([cat, b]) => {
+      const s = siatelMap[cat];
+      return { catalogo: cat, descripcion: b.d, um: s?s.um:'', existencia: s?s.lib:null, traslado: s?s.tras:null, ubicacion: b.u, area: b.area, lotes: lotesMap[cat]||[] };
+    })
+    .filter(m => !soloConExistencia || (m.existencia !== null && m.existencia > 0));
+  if (!mats.length) { alert('No hay materiales para exportar en ' + area); return; }
+  exportarAExcel(mats, area, true);
+}
+
+function abrirModalExportacion() {
+  const cont = document.getElementById('exp-areas-checks');
+  if (!cont) return;
+  cont.innerHTML = '';
+  Object.entries(AREA_CONFIG).filter(([,c]) => c.enMenu).forEach(([area]) => {
+    const lbl = document.createElement('label');
+    lbl.style.cssText = 'display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;background:#f8fafc;border:1px solid var(--borde);border-radius:6px;padding:4px 8px';
+    lbl.innerHTML = '<input type="checkbox" data-area="' + area + '" checked style="width:14px;height:14px"> ' + area;
+    cont.appendChild(lbl);
+  });
+  document.getElementById('modal-exportacion').style.display = 'flex';
+}
+
+function cerrarModalExportacion() {
+  document.getElementById('modal-exportacion').style.display = 'none';
+}
+
+function expSelTodas(val) {
+  document.querySelectorAll('#exp-areas-checks input[type=checkbox]').forEach(function(cb) { cb.checked = val; });
+}
+
+function ejecutarExportacion() {
+  const areasSeleccionadas = Array.from(document.querySelectorAll('#exp-areas-checks input[type=checkbox]'))
+    .filter(function(cb) { return cb.checked; }).map(function(cb) { return cb.dataset.area; });
+  if (!areasSeleccionadas.length) { alert('Selecciona al menos un área'); return; }
+
+  const fExist    = document.getElementById('exp-f-existencias').checked;
+  const fTraslado = document.getElementById('exp-f-traslado').checked;
+  const fLotes    = document.getElementById('exp-f-lotes').checked;
+  const incLotes  = document.getElementById('exp-incluir-lotes').checked;
+
+  const mats = Object.entries(baseMaestra)
+    .filter(function(e) { return areasSeleccionadas.includes(e[1].area); })
+    .map(function(e) {
+      const cat = e[0], b = e[1], s = siatelMap[cat];
+      return { catalogo: cat, descripcion: b.d, um: s?s.um:'', existencia: s?s.lib:null, traslado: s?s.tras:null, ubicacion: b.u, area: b.area, lotes: lotesMap[cat]||[] };
+    })
+    .filter(function(m) {
+      if (fExist    && !(m.existencia > 0)) return false;
+      if (fTraslado && !(m.traslado   > 0)) return false;
+      if (fLotes    && !m.lotes.length)     return false;
+      return true;
+    });
+
+  if (!mats.length) { alert('No hay materiales con los filtros seleccionados'); return; }
+
+  const totalAreas = Object.keys(AREA_CONFIG).filter(function(k) { return AREA_CONFIG[k].enMenu; }).length;
+  const nombre = areasSeleccionadas.length === totalAreas ? 'Todo_Inventario' : areasSeleccionadas.join('_').substring(0,30);
+
+  exportarAExcel(mats, nombre, incLotes);
+  cerrarModalExportacion();
+}
+
+function filtrarMaterialesExport() {
+  const q         = (document.getElementById('buscar') ? document.getElementById('buscar').value : '').toLowerCase();
+  const ubic      = document.getElementById('f-ubic')  ? document.getElementById('f-ubic').value  : '';
+  const ocZero    = document.getElementById('f-zero')  ? document.getElementById('f-zero').checked : false;
+  const soloTras  = document.getElementById('f-tras')  ? document.getElementById('f-tras').checked : false;
+  const soloLotes = document.getElementById('f-lotes') ? document.getElementById('f-lotes').checked: false;
+
+  return materiales.filter(function(m) {
+    if (q && !((m.catalogo + ' ' + m.descripcion).toLowerCase().includes(q))) return false;
+    if (ubic && m.ubicacion !== ubic) return false;
+    if (ocZero && !(m.existencia > 0)) return false;
+    if (soloTras && !(m.traslado > 0)) return false;
+    if (soloLotes && !m.lotes.length)  return false;
+    return true;
+  });
+}
+
+function exportarAExcel(mats, nombreHoja, incluirLotes) {
+  const wb    = XLSX.utils.book_new();
+  const fecha = new Date().toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric'}).replace(/[/]/g,'-');
+  const header = ['Área','Catálogo','Descripción','U.M.','Ubicación','Exist. SIATEL','Traslado'];
+  const filas  = [header];
+
+  mats.forEach(function(m) {
+    filas.push([
+      m.area || '',
+      m.catalogo,
+      m.descripcion,
+      m.um || '',
+      m.ubicacion || '',
+      m.existencia !== null ? m.existencia : '',
+      m.traslado   !== null ? m.traslado   : ''
+    ]);
+    if (incluirLotes && m.lotes && m.lotes.length > 0) {
+      m.lotes.forEach(function(l) {
+        filas.push(['', '  > ' + l.lote, '', l.um || m.um || '', '', l.lib !== undefined ? l.lib : '', l.tras !== undefined ? l.tras : '']);
+      });
+    }
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(filas);
+  ws['!cols'] = [14,12,50,6,16,14,10].map(function(w) { return {wch:w}; });
+  XLSX.utils.book_append_sheet(wb, ws, (nombreHoja||'Inventario').substring(0,31));
+  XLSX.writeFile(wb, 'Inventario_' + (nombreHoja||'Export') + '_' + fecha + '.xlsx');
+}
+
 </script>
 
 
