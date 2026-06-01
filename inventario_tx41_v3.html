@@ -555,6 +555,7 @@ table.pt tr:nth-child(even) td{background:#f7f7f7}
       <button class="btn btn-outline" onclick="volverAreas()">↩ Cambiar área</button>
       <button class="btn btn-primary" onclick="entrarCaptura()" id="btn-captura" style="display:none">📝 Iniciar captura</button>
       <button class="btn btn-success" onclick="abrirImp()">🖨 Imprimir listados</button>
+      <button class="btn btn-sm" onclick="exportarInventarioActual()" style="background:#0369a1;color:white;border:none;padding:7px 14px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500">📊 Exportar Excel</button>
     </div>
   </div>
 
@@ -1238,6 +1239,7 @@ function mostrarAreas(rec) {
   }
 
   document.getElementById('base-status-txt').textContent = statusTxt;
+  if (ES_GITHUB && rec) actualizarBarraEstado(rec.ts_siatel, rec.ts_lotes);
   ocultarTodo();
   construirPantallaAreas();
   document.getElementById('pantalla-area').style.display = 'flex';
@@ -1308,21 +1310,9 @@ async function recargarExistencias() {
         ts_lotes:  d.lotes && Object.keys(d.lotes).length > 0 ? d.timestamp : (_configData.ts_lotes || '')
       });
     }
-    const bar = document.getElementById('base-status-txt');
-    if (bar) {
-      // Re-construir el status text con el timestamp correcto
-      let txt = 'Última actualización de existencias';
-      const ts = d.timestamp || (_configData && _configData.ts_siatel);
-      if (ts) {
-        const fmt = new Date(ts).toLocaleString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
-        txt += ' · SIATEL: ' + fmt;
-      }
-      if (_configData && _configData.ts_lotes && Object.keys(lotesMap).length > 0) {
-        const fmt2 = new Date(_configData.ts_lotes).toLocaleString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
-        txt += ' · Lotes: ' + fmt2;
-      }
-      bar.textContent = txt;
-    }
+    const ts      = d.timestamp || (_configData && _configData.ts_siatel);
+    const ts_lotes = _configData && _configData.ts_lotes;
+    actualizarBarraEstado(ts, ts_lotes);
     // Si hay una consulta abierta, refrescarla
     if (document.getElementById('app')?.style.display === 'block') {
       filtrar();
@@ -1573,7 +1563,11 @@ function construirPantallaAreas() {
         <div class="icono">${cfg.icono}</div>
         <div class="nombre">${area}</div>
         <div class="estado">${count.toLocaleString()} materiales</div>
-        <span class="count-badge">${count}</span>`;
+        <span class="count-badge">${count}</span>
+        <button onclick="event.stopPropagation();exportarArea('${area.replace(/'/g,"\'")}',false)"
+          style="position:absolute;bottom:8px;right:8px;font-size:10px;padding:2px 7px;background:#0369a1;color:white;border:none;border-radius:6px;cursor:pointer">
+          📊
+        </button>`;
       card.onclick = () => seleccionarArea(area);
       grid.appendChild(card);
     });
@@ -1586,7 +1580,11 @@ function construirPantallaAreas() {
     <div class="icono">📊</div>
     <div class="nombre">Todo el inventario</div>
     <div class="estado">${totalSiatel.toLocaleString()} materiales</div>
-    <span class="count-badge" style="background:#ede9fe;color:#5b21b6">${totalSiatel}</span>`;
+    <span class="count-badge" style="background:#ede9fe;color:#5b21b6">${totalSiatel}</span>
+    <button onclick="event.stopPropagation();abrirModalExportacion()"
+      style="position:absolute;bottom:8px;right:8px;font-size:10px;padding:2px 7px;background:#0369a1;color:white;border:none;border-radius:6px;cursor:pointer">
+      📊 Exportar
+    </button>`;
   cardTodo.onclick = () => seleccionarArea('__TODO__');
   grid.appendChild(cardTodo);
 }
@@ -2552,9 +2550,10 @@ async function cargarSiatelEnBackground() {
             if (d.lotes && Object.keys(d.lotes).length > 0) {
               lotesMap = d.lotes;
             }
-            if (d.timestamp && _configData) {
-              _configData = Object.assign({}, _configData, { ts_siatel: d.timestamp });
+            if (d.timestamp) {
+              _configData = Object.assign({}, _configData||{}, { ts_siatel: d.timestamp });
             }
+            actualizarBarraEstado(d.timestamp, _configData && _configData.ts_lotes);
             console.log('✅ SIATEL cargado en background:', Object.keys(siatelMap).length, 'materiales,', Object.keys(lotesMap).length, 'con lotes');
             if (lbl) lbl.textContent = '👤 ' + (sesionUsuario || '');
             _siatelCargando = false;
@@ -2581,6 +2580,9 @@ async function cargarSiatelEnBackground() {
         }
         if (data.lotes) lotesMap = data.lotes;
         if (data.ngrok) sessionStorage.setItem('tx41_ngrok', data.ngrok);
+        // Guardar config para timestamp
+        _configData = data;
+        actualizarBarraEstado(data.ts_siatel, data.ts_lotes);
         console.log('✅ SIATEL cargado desde config.json:', Object.keys(siatelMap).length, 'materiales');
       }
     }
@@ -2588,8 +2590,24 @@ async function cargarSiatelEnBackground() {
     console.warn('Error cargando SIATEL en background:', e.message);
   }
 
-  if (lbl) lbl.textContent = textoOriginal;
+  if (lbl) lbl.textContent = '👤 ' + (sesionUsuario || '');
   _siatelCargando = false;
+}
+
+// Actualiza la barra de estado con el timestamp correcto
+function actualizarBarraEstado(ts_siatel, ts_lotes) {
+  const bar = document.getElementById('base-status-txt');
+  if (!bar) return;
+  let txt = 'Última actualización de existencias';
+  if (ts_siatel) {
+    const fmt = new Date(ts_siatel).toLocaleString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+    txt += ' · SIATEL: ' + fmt;
+  }
+  if (ts_lotes && Object.keys(lotesMap).length > 0) {
+    const fmt2 = new Date(ts_lotes).toLocaleString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+    txt += ' · Lotes: ' + fmt2;
+  }
+  bar.textContent = txt;
 }
 
 function irAMenu() {
@@ -3997,6 +4015,55 @@ function mvExportarExcel() {
   XLSX.writeFile(wb, `Movimientos_TX41_${new Date().toISOString().slice(0,10)}.xlsx`);
 }
 </script>
+
+
+<!-- ════════ MODAL EXPORTACIÓN ════════ -->
+<div id="modal-exportacion" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;align-items:center;justify-content:center">
+  <div style="background:white;border-radius:16px;padding:28px;max-width:480px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <h3 style="margin:0;font-size:16px;color:var(--azul)">📊 Exportar inventario a Excel</h3>
+      <button onclick="cerrarModalExportacion()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted)">✕</button>
+    </div>
+
+    <!-- Selección de áreas -->
+    <div style="margin-bottom:16px">
+      <div style="font-size:12px;font-weight:700;color:var(--azul);margin-bottom:8px">Áreas a incluir</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap" id="exp-areas-checks"></div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button onclick="expSelTodas(true)" style="font-size:11px;padding:3px 10px;background:#EEF2FF;color:var(--azul);border:none;border-radius:6px;cursor:pointer">Todas</button>
+        <button onclick="expSelTodas(false)" style="font-size:11px;padding:3px 10px;background:#f1f5f9;color:var(--muted);border:none;border-radius:6px;cursor:pointer">Ninguna</button>
+      </div>
+    </div>
+
+    <!-- Filtros -->
+    <div style="margin-bottom:20px">
+      <div style="font-size:12px;font-weight:700;color:var(--azul);margin-bottom:8px">Filtros</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
+          <input type="checkbox" id="exp-f-existencias" style="width:16px;height:16px">
+          Solo materiales con existencia &gt; 0
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
+          <input type="checkbox" id="exp-f-traslado" style="width:16px;height:16px">
+          Solo materiales con traslado &gt; 0
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
+          <input type="checkbox" id="exp-f-lotes" style="width:16px;height:16px">
+          Solo materiales con lotes
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
+          <input type="checkbox" id="exp-incluir-lotes" checked style="width:16px;height:16px">
+          Incluir detalle de lotes en filas separadas
+        </label>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button onclick="cerrarModalExportacion()" class="btn btn-outline" style="font-size:13px">Cancelar</button>
+      <button onclick="ejecutarExportacion()" style="background:#0369a1;color:white;border:none;padding:8px 20px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">📊 Exportar</button>
+    </div>
+  </div>
+</div>
 
 </body>
 </html>
