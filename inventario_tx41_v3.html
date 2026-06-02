@@ -2572,7 +2572,9 @@ function ocultarTodo() {
 }
 
 function mostrarInicio() {
+  console.log('🏠 mostrarInicio() llamada');
   ocultarTodo();
+  console.log('🔍 pantalla-inicio display:', document.getElementById('pantalla-inicio')?.style.display);
   // Nav
   const nav = document.getElementById('nav-admin');
   if (nav) {
@@ -2587,6 +2589,8 @@ function mostrarInicio() {
     if (b) { b.style.background='transparent'; b.style.color='var(--texto)'; b.style.fontWeight='400'; }
   });
   document.getElementById('pantalla-inicio').style.display = 'flex';
+  console.log('✅ pantalla-inicio display seteado a flex, valor real:', document.getElementById('pantalla-inicio').style.display);
+  console.log('✅ pantalla-inicio offsetHeight:', document.getElementById('pantalla-inicio').offsetHeight);
   document.getElementById('inicio-bienvenida').textContent = 'Bienvenido, ' + sesionUsuario;
   if (sesionRol === 'admin') {
     document.getElementById('btn-administracion').style.display = 'block';
