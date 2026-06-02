@@ -439,7 +439,7 @@ button[onclick*="exportar"]{transition:all .15s}
   <div style="flex:1"></div>
   <span id="nav-usuario-label" style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px"></span>
 </nav>
-<div id="pantalla-inicio" style="display:none;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 60px);padding:32px;background:var(--fondo)">
+<div id="pantalla-inicio" style="display:none;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:32px;background:var(--fondo)">
   <div style="text-align:center;margin-bottom:32px">
     <div style="font-size:48px;margin-bottom:8px">🏭</div>
     <h2 style="margin:0 0 4px;color:var(--azul)">TX41 Puebla</h2>
@@ -471,7 +471,7 @@ button[onclick*="exportar"]{transition:all .15s}
 </div>
 
 <!-- PANTALLA ADMINISTRACIÓN -->
-<div id="pantalla-admin" style="display:none;flex-direction:column;min-height:calc(100vh - 60px);padding:24px;background:var(--fondo)">
+<div id="pantalla-admin" style="display:none;flex-direction:column;min-height:100vh;padding:24px;background:var(--fondo)">
   <div style="display:flex;align-items:center;gap:16px;margin-bottom:24px">
     <button class="btn btn-outline" onclick="volverInicio()" style="font-size:13px">← Volver</button>
     <h2 style="margin:0;color:var(--azul)">⚙️ Administración</h2>
@@ -2572,9 +2572,7 @@ function ocultarTodo() {
 }
 
 function mostrarInicio() {
-  console.log('🏠 mostrarInicio() llamada');
   ocultarTodo();
-  console.log('🔍 pantalla-inicio display:', document.getElementById('pantalla-inicio')?.style.display);
   // Nav
   const nav = document.getElementById('nav-admin');
   if (nav) {
@@ -2589,8 +2587,6 @@ function mostrarInicio() {
     if (b) { b.style.background='transparent'; b.style.color='var(--texto)'; b.style.fontWeight='400'; }
   });
   document.getElementById('pantalla-inicio').style.display = 'flex';
-  console.log('✅ pantalla-inicio display seteado a flex, valor real:', document.getElementById('pantalla-inicio').style.display);
-  console.log('✅ pantalla-inicio offsetHeight:', document.getElementById('pantalla-inicio').offsetHeight);
   document.getElementById('inicio-bienvenida').textContent = 'Bienvenido, ' + sesionUsuario;
   if (sesionRol === 'admin') {
     document.getElementById('btn-administracion').style.display = 'block';
@@ -3195,7 +3191,7 @@ function exportarAExcel(mats, nombreHoja, incluirLotes) {
 </script>
 
 <!-- ════════ MÓDULO TRASPASOS / RECEPCIONES ════════ -->
-<div id="pantalla-traspasos" style="display:none;flex-direction:column;min-height:calc(100vh - 60px);padding:20px 24px;background:var(--fondo)">
+<div id="pantalla-traspasos" style="display:none;flex-direction:column;min-height:100vh;padding:20px 24px;background:var(--fondo)">
 
   <!-- Tabs -->
   <div class="mv-tabs">
