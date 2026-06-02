@@ -345,6 +345,64 @@ button[onclick*="exportar"]{transition:all .15s}
 ::-webkit-scrollbar-track{background:#F2F6FA}
 ::-webkit-scrollbar-thumb{background:#0096D6;border-radius:3px}
 ::-webkit-scrollbar-thumb:hover{background:#007AB8}
+
+/* ── MÓDULO ANÁLISIS Y DISTRIBUCIONES ── */
+.an-panel{display:none}
+.an-panel.activo{display:block}
+.an-tab-bar{display:flex;gap:4px;border-bottom:2px solid var(--borde);margin-bottom:20px}
+.an-tab{padding:8px 16px;cursor:pointer;font-size:13px;font-weight:500;color:var(--muted);border:none;background:none;border-bottom:2px solid transparent;margin-bottom:-2px}
+.an-tab.activo{color:#0096D6;border-bottom-color:#0096D6;font-weight:700}
+.an-params{display:flex;align-items:center;gap:16px;background:white;border-radius:var(--radio);border:1.5px solid var(--borde);padding:14px 20px;margin-bottom:16px;flex-wrap:wrap;box-shadow:var(--sombra)}
+.an-params label{font-size:12px;font-weight:600;color:#0096D6;white-space:nowrap}
+.an-num-input{height:34px;border:1.5px solid var(--borde);border-radius:8px;padding:0 10px;font-size:14px;font-weight:600;text-align:center;width:70px;font-family:inherit}
+.an-num-input:focus{border-color:#0096D6;outline:none;box-shadow:0 0 0 3px rgba(0,150,214,.12)}
+.an-card{background:white;border-radius:var(--radio);border:1.5px solid var(--borde);padding:20px;margin-bottom:16px;box-shadow:var(--sombra)}
+.an-card h3{font-size:13px;font-weight:700;color:#0096D6;margin-bottom:14px}
+.an-file-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap}
+.an-file-btn{background:#0096D6;color:white;border:none;padding:7px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer}
+.an-file-btn:hover{background:#007AB8}
+.an-file-st{font-size:12px;color:var(--muted);flex:1}
+.an-file-st.ok{color:var(--verde);font-weight:500}
+.an-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.an-chip{background:#E8F5FC;border:1px solid #B0D8F0;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;color:#005A8E}
+.an-cat-wrap{position:relative}
+.an-cat-input{width:100%;height:40px;border:2px solid var(--borde);border-radius:8px;padding:0 12px;font-size:15px;font-family:inherit;font-weight:600}
+.an-cat-input:focus{border-color:#0096D6;outline:none;box-shadow:0 0 0 3px rgba(0,150,214,.12)}
+.an-cat-sugs{position:absolute;top:100%;left:0;right:0;background:white;border:1.5px solid var(--borde);border-radius:8px;z-index:300;max-height:200px;overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,.1);margin-top:2px;display:none}
+.an-cat-sug{padding:8px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid #f1f5f9}
+.an-cat-sug:hover{background:#E8F5FC}
+.an-cat-sug b{color:#0096D6}
+.an-desc{font-size:12px;color:var(--muted);margin-top:5px;min-height:16px}
+.an-desc.ok{color:var(--verde);font-weight:500}
+.an-tx41-banner{display:none;align-items:center;gap:14px;padding:14px 18px;border-radius:var(--radio);margin-bottom:16px;font-size:13px;font-weight:500;border:1.5px solid}
+.an-tx41-banner.ok{background:var(--verde-bg);border-color:#a7d9be;color:var(--verde)}
+.an-tx41-banner.warn{background:var(--amarillo-bg);border-color:#f0c060;color:var(--amarillo)}
+.an-tx41-banner.err{background:var(--rojo-bg);border-color:#f5a5a0;color:var(--rojo)}
+.an-tx41-num{font-size:22px;font-weight:700;white-space:nowrap}
+.an-table-wrap{background:white;border-radius:var(--radio);border:1.5px solid var(--borde);overflow:auto;box-shadow:var(--sombra)}
+.an-table{width:100%;border-collapse:collapse;font-size:13px}
+.an-table th{background:#0096D6;color:white;padding:9px 12px;text-align:left;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap}
+.an-table th.r{text-align:right}
+.an-table td{padding:8px 12px;border-bottom:1px solid #f0f5f9;vertical-align:middle}
+.an-table td.r{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+.an-table tr:hover td{background:#f8fbff}
+.an-table tr:last-child td{border-bottom:none}
+.an-alm-code{font-weight:700;color:#0096D6;font-size:12px}
+.an-alm-name{font-size:11px;color:var(--muted)}
+.an-badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700}
+.an-badge.v{background:var(--verde-bg);color:var(--verde)}
+.an-badge.a{background:var(--amarillo-bg);color:var(--amarillo)}
+.an-badge.r{background:var(--rojo-bg);color:var(--rojo)}
+.an-badge.g{background:#f1f5f9;color:var(--muted)}
+.an-empty{text-align:center;padding:48px 20px;color:var(--muted)}
+.an-empty .ic{font-size:40px;margin-bottom:12px}
+.an-select{height:38px;border:1.5px solid var(--borde);border-radius:8px;padding:0 12px;font-size:13px;background:white;font-family:inherit;min-width:220px}
+.an-select:focus{border-color:#0096D6;outline:none}
+.an-search{height:38px;border:1.5px solid var(--borde);border-radius:8px;padding:0 12px;font-size:13px;flex:1;font-family:inherit}
+.an-search:focus{border-color:#0096D6;outline:none}
+.an-listo{display:none;background:var(--verde-bg);border:1.5px solid #a7d9be;color:var(--verde);border-radius:var(--radio);padding:14px 18px;font-size:13px;font-weight:500;margin-top:4px}
+input[type=file].an-hidden{display:none}
+
 </style>
 </head>
 <body>
@@ -417,6 +475,9 @@ button[onclick*="exportar"]{transition:all .15s}
   <button id="nav-btn-traspasos" onclick="irATraspasos()" class="btn btn-sm" style="font-size:13px;background:transparent;color:var(--texto);border:none;padding:6px 12px;border-radius:8px;cursor:pointer;transition:background .15s;white-space:nowrap">
     🔄 Traspasos
   </button>
+  <button id="nav-btn-analisis" onclick="irAAnalisis()" class="btn btn-sm" style="font-size:13px;background:transparent;color:var(--texto);border:none;padding:6px 12px;border-radius:8px;cursor:pointer;transition:background .15s;white-space:nowrap">
+    📊 Análisis
+  </button>
   <button id="nav-btn-admin" onclick="irAAdministracion()" class="btn btn-sm" style="display:none;font-size:13px;background:transparent;color:var(--texto);border:none;padding:6px 12px;border-radius:8px;cursor:pointer;transition:background .15s;white-space:nowrap">
     ⚙️ Admin
   </button>
@@ -443,6 +504,13 @@ button[onclick*="exportar"]{transition:all .15s}
       <div style="font-size:52px;margin-bottom:12px">🔄</div>
       <div style="font-size:18px;font-weight:700;color:#ea580c;margin-bottom:6px">Traspasos</div>
       <div style="font-size:12px;color:var(--muted)">Salidas y recepciones de material</div>
+    </div>
+    <!-- Análisis y distribuciones (todos) -->
+    <div onclick="irAAnalisis()" style="background:white;border:2px solid #0096D6;border-radius:16px;padding:32px 28px;text-align:center;cursor:pointer;flex:1;min-width:200px;transition:all .2s;border-top:4px solid #0096D6"
+      onmouseover="this.style.background='#E8F5FC'" onmouseout="this.style.background='white'">
+      <div style="font-size:52px;margin-bottom:12px">📊</div>
+      <div style="font-size:18px;font-weight:700;color:#0096D6;margin-bottom:6px">Análisis y distribuciones</div>
+      <div style="font-size:12px;color:var(--muted)">Cálculo de distribución por catálogo y almacén</div>
     </div>
     <!-- Administración (solo admin) -->
     <div id="btn-administracion" onclick="irAAdministracion()" style="display:none;background:white;border:2px solid #7c3aed;border-radius:16px;padding:32px 28px;text-align:center;cursor:pointer;flex:1;min-width:200px;transition:all .2s"
@@ -2547,7 +2615,7 @@ function ocultarTodo() {
   // Nota: pantalla-login NO se incluye aquí — se controla por separado
   ['pantalla-carga','pantalla-area','pantalla-consulta',
    'pantalla-captura','pantalla-admin','pantalla-traspasos','pantalla-inicio',
-   'app'].forEach(id => {
+   'pantalla-analisis','app'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
   });
@@ -2564,7 +2632,7 @@ function mostrarInicio() {
     const btnAdmin = document.getElementById('nav-btn-admin');
     if (btnAdmin) btnAdmin.style.display = sesionRol === 'admin' ? 'inline-flex' : 'none';
   }
-  ['nav-btn-inventario','nav-btn-traspasos','nav-btn-admin'].forEach(id => {
+  ['nav-btn-inventario','nav-btn-traspasos','nav-btn-admin','nav-btn-analisis'].forEach(id => {
     const b = document.getElementById(id);
     if (b) { b.style.background='transparent'; b.style.color='var(--texto)'; b.style.fontWeight='400'; }
   });
@@ -2683,7 +2751,7 @@ function actualizarBarraEstado(ts_siatel, ts_lotes) {
 
 function irAMenu() {
   ocultarTodo();
-  ['nav-btn-inventario','nav-btn-traspasos','nav-btn-admin'].forEach(id => {
+  ['nav-btn-inventario','nav-btn-traspasos','nav-btn-admin','nav-btn-analisis'].forEach(id => {
     const b = document.getElementById(id);
     if (b) { b.style.background='transparent'; b.style.color='var(--texto)'; b.style.fontWeight='400'; }
   });
@@ -4327,6 +4395,371 @@ function mvExportarExcel() {
   XLSX.writeFile(wb, `Movimientos_TX41_${new Date().toISOString().slice(0,10)}.xlsx`);
 }
 
+
+// ════════════════════════════════════════════════════════
+// MÓDULO ANÁLISIS Y DISTRIBUCIONES
+// ════════════════════════════════════════════════════════
+
+const AN_ORDEN = [
+  'TX9O','TX9Q','TX8E','TX9R','TX8J','TX9T','TX8Y','TX8X',
+  'TX8A','TX8B','TX9U','TX8K','TX8L','TX8H','TX84','TX8F',
+  'TX8G','TX8I','TX8M','TX8C','TX8D','TX9P','TX85'
+];
+
+const AN_NOMBRES = {
+  TX41:'Distribuidor Puebla', TX84:'Teziutlán',    TX85:'Puerto Escondido',
+  TX8A:'San Pedro',           TX8B:'Zaragoza',      TX8C:'Orizaba',
+  TX8D:'Tlaxcala',            TX8E:'Tehuacán',      TX8F:'San Bruno',
+  TX8G:'Xalapa Cristal',      TX8H:'Mocambo',       TX8I:'Córdoba Dos Caminos',
+  TX8J:'Aquiles Serdán',      TX8K:'Altamirano',    TX8L:'Lerdo',
+  TX8M:'Peñuela',             TX8X:'Atlixco',       TX8Y:'Mayorazgo',
+  TX9O:'Oaxaca I Belisario',  TX9P:'Pinotepa Nacional',
+  TX9Q:'Oaxaca II',           TX9R:'Huajuapan',     TX9T:'Cholula',
+  TX9U:'Amalucan',
+};
+
+let anBaseMat    = {};   // {cat: {desc, um}}
+let anExistencias = {};  // {almacen: {cat: lib}}
+let anConsumos   = {};   // {almacen: {cat: total}}
+let anCatSel     = null;
+let anCatActual  = null;
+
+// ── Navegación ──
+function irAAnalisis() {
+  mvNavActivo('analisis');
+  ocultarTodo();
+  document.getElementById('pantalla-analisis').style.display = 'flex';
+}
+
+function anTab(tab) {
+  ['arch','cat','alm'].forEach(t => {
+    document.getElementById('an-panel-' + t).classList.toggle('activo', t === tab);
+    document.getElementById('an-tab-'   + t).classList.toggle('activo', t === tab);
+  });
+  if (tab === 'alm') anPoblarSelect();
+}
+
+// ── Carga TOTAL ──
+function anCargarTotal(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const el = document.getElementById('an-st-total');
+  el.textContent = '⏳ Procesando...'; el.className = 'an-file-st';
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const lines = e.target.result.split(/\r?\n/);
+      anExistencias = {}; anBaseMat = {};
+      for (const line of lines.slice(4)) {
+        const p = line.split('\t');
+        if (p.length < 10) continue;
+        const alm = p[3]?.trim(), cat = p[5]?.trim(),
+              um  = p[6]?.trim(), desc = p[8]?.trim();
+        if (!alm || !cat || !/^\d+$/.test(cat)) continue;
+        const lib = parseFloat((p[9]||'').replace(/,/g,'')) || 0;
+        if (!anExistencias[alm]) anExistencias[alm] = {};
+        anExistencias[alm][cat] = lib;
+        if (!anBaseMat[cat]) anBaseMat[cat] = { desc: desc||'', um: um||'' };
+      }
+      const nA = Object.keys(anExistencias).length;
+      const nC = Object.keys(anBaseMat).length;
+      el.textContent = `✅ ${nA} almacenes · ${nC.toLocaleString()} catálogos`;
+      el.className = 'an-file-st ok';
+      anVerificarListo();
+    } catch(err) {
+      el.textContent = '❌ Error: ' + err.message;
+      el.className = 'an-file-st';
+    }
+  };
+  reader.readAsText(file, 'ISO-8859-1');
+}
+
+// ── Carga Consumos ──
+function anCargarConsumos(event) {
+  const files = Array.from(event.target.files);
+  const chips = document.getElementById('an-chips-cons');
+  files.forEach(file => {
+    const nom = file.name.toUpperCase();
+    let alm = AN_ORDEN.find(s => nom.startsWith(s));
+    if (!alm) alm = Object.keys(AN_NOMBRES).find(s => nom.startsWith(s));
+    const reader = new FileReader();
+    reader.onload = e => {
+      const lines = e.target.result.split(/\r?\n/);
+      const datos = {};
+      for (const line of lines.slice(5)) {
+        const p = line.split('\t');
+        if (p.length < 3) continue;
+        const cat = p[1]?.trim();
+        const val = parseFloat((p[2]||'').replace(/,/g,'')) || 0;
+        if (cat && /^\d{5,}$/.test(cat)) datos[cat] = val;
+      }
+      const key = alm || file.name.replace(/\.[^.]+$/, '').toUpperCase();
+      anConsumos[key] = datos;
+      // Chip
+      const id = 'an-chip-' + key;
+      let chip = document.getElementById(id);
+      if (!chip) { chip = document.createElement('div'); chip.id = id; chip.className = 'an-chip'; chips.appendChild(chip); }
+      chip.textContent = `${key} · ${Object.keys(datos).length} cats`;
+      document.getElementById('an-st-cons').textContent =
+        `✅ ${Object.keys(anConsumos).length} almacén(es)`;
+      document.getElementById('an-st-cons').className = 'an-file-st ok';
+      anVerificarListo();
+    };
+    reader.readAsText(file, 'ISO-8859-1');
+  });
+}
+
+function anVerificarListo() {
+  const ok = Object.keys(anExistencias).length > 0 && Object.keys(anConsumos).length > 0;
+  document.getElementById('an-listo').style.display = ok ? 'block' : 'none';
+}
+
+// ── Buscador catálogo ──
+function anOnCatInput(q) {
+  anCatSel = null;
+  document.getElementById('an-btn-analizar').disabled = true;
+  document.getElementById('an-btn-exp-cat').style.display = 'none';
+  const sugs = document.getElementById('an-cat-sugs');
+  const desc = document.getElementById('an-cat-desc');
+  if (!q || q.length < 3) { sugs.style.display = 'none'; desc.textContent = 'Escribe para buscar'; desc.className = 'an-desc'; return; }
+  const qL = q.toLowerCase();
+  const hits = [];
+  for (const [cat, mat] of Object.entries(anBaseMat)) {
+    if (cat.includes(q) || mat.desc.toLowerCase().includes(qL)) {
+      hits.push({ cat, desc: mat.desc, um: mat.um });
+      if (hits.length >= 10) break;
+    }
+  }
+  if (!hits.length) { sugs.style.display = 'none'; desc.textContent = 'No encontrado'; desc.className = 'an-desc'; return; }
+  sugs.innerHTML = hits.map(h =>
+    `<div class="an-cat-sug" onpointerdown="anSelCat('${h.cat}','${h.desc.replace(/'/g,"\\'")}','${h.um}')">
+      <b>${h.cat}</b> · ${h.desc.substring(0,65)}
+    </div>`).join('');
+  sugs.style.display = 'block';
+}
+
+function anSelCat(cat, desc, um) {
+  anCatSel = { cat, desc, um };
+  document.getElementById('an-cat-input').value = cat + ' — ' + desc.substring(0, 50);
+  document.getElementById('an-cat-sugs').style.display = 'none';
+  document.getElementById('an-cat-desc').textContent = desc + (um ? ' · ' + um : '');
+  document.getElementById('an-cat-desc').className = 'an-desc ok';
+  document.getElementById('an-btn-analizar').disabled = false;
+}
+
+function anOnCatKey(e) {
+  if (e.key !== 'Enter') return;
+  const primer = document.querySelector('#an-cat-sugs .an-cat-sug');
+  if (primer) primer.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+}
+
+// ── Análisis por catálogo ──
+function anAnalizarCat() {
+  if (!anCatSel) return;
+  anCatActual = anCatSel.cat;
+  const per   = parseFloat(document.getElementById('an-periodo').value)    || 6;
+  const obj   = parseFloat(document.getElementById('an-stock-obj').value)  || 1.5;
+  const cat   = anCatSel.cat;
+  const um    = anCatSel.um;
+
+  // TX41
+  const exTX41 = (anExistencias['TX41']||{})[cat] || 0;
+  const totalNec = AN_ORDEN.reduce((s, alm) => {
+    const cons = (anConsumos[alm]||{})[cat] || 0;
+    const ex   = (anExistencias[alm]||{})[cat] || 0;
+    return s + Math.ceil(Math.max(0, (cons/per)*obj - ex));
+  }, 0);
+
+  const banner = document.getElementById('an-tx41-banner');
+  banner.style.display = 'flex';
+  document.getElementById('an-tx41-num').textContent = anFmt(exTX41) + ' ' + um;
+  document.getElementById('an-tx41-sub').textContent =
+    `Total a distribuir: ${anFmt(totalNec)} · Remanente TX41: ${anFmt(exTX41 - totalNec)}`;
+  if (totalNec === 0) {
+    banner.className = 'an-tx41-banner ok';
+    document.getElementById('an-tx41-msg').textContent = 'No se requiere distribución — todos tienen stock suficiente';
+  } else if (exTX41 >= totalNec) {
+    banner.className = 'an-tx41-banner ok';
+    document.getElementById('an-tx41-msg').textContent = '✅ TX41 cubre toda la distribución requerida';
+  } else if (exTX41 > 0) {
+    banner.className = 'an-tx41-banner warn';
+    document.getElementById('an-tx41-msg').textContent = `⚠️ TX41 cubre parcialmente — faltan ${anFmt(totalNec - exTX41)}`;
+  } else {
+    banner.className = 'an-tx41-banner err';
+    document.getElementById('an-tx41-msg').textContent = '❌ TX41 sin existencia';
+  }
+
+  // Tabla
+  const filas = AN_ORDEN.map(alm => {
+    const cons = (anConsumos[alm]||{})[cat] || 0;
+    const ex   = (anExistencias[alm]||{})[cat] || 0;
+    const mens = cons / per;
+    const nec  = mens * obj;
+    const dist = Math.ceil(Math.max(0, nec - ex));
+    return { alm, cons, mens, ex, nec, dist };
+  });
+
+  let t = `<div class="an-table-wrap"><table class="an-table">
+    <thead><tr>
+      <th>Almacén</th>
+      <th class="r">Consumo total</th>
+      <th class="r">Consumo mensual</th>
+      <th class="r">Existencia</th>
+      <th class="r">Stock obj. (${obj}m)</th>
+      <th class="r">Distribución</th>
+      <th>Estado</th>
+    </tr></thead><tbody>`;
+
+  filas.forEach(({alm, cons, mens, ex, nec, dist}) => {
+    const nc = cons === 0;
+    const badge = nc          ? '<span class="an-badge g">Sin consumo</span>'
+                : dist === 0  ? '<span class="an-badge v">✓ Suficiente</span>'
+                : dist <= mens ? '<span class="an-badge a">↑ Bajo</span>'
+                :               '<span class="an-badge r">⚠ Déficit</span>';
+    t += `<tr>
+      <td><div class="an-alm-code">${alm}</div><div class="an-alm-name">${AN_NOMBRES[alm]||alm}</div></td>
+      <td class="r">${nc?'—':anFmt(cons)}</td>
+      <td class="r">${nc?'—':anFmt(mens,1)}</td>
+      <td class="r">${anFmt(ex)}</td>
+      <td class="r">${nc?'—':anFmt(nec,1)}</td>
+      <td class="r" style="font-size:15px;color:${dist>0?'var(--rojo)':'var(--verde)'}">${dist>0?anFmt(dist):'—'}</td>
+      <td>${badge}</td>
+    </tr>`;
+  });
+  t += '</tbody></table></div>';
+  document.getElementById('an-tabla-cat').innerHTML = t;
+  document.getElementById('an-btn-exp-cat').style.display = 'inline-flex';
+}
+
+// ── Análisis por almacén ──
+function anPoblarSelect() {
+  const sel = document.getElementById('an-alm-sel');
+  const disp = AN_ORDEN.filter(a => anConsumos[a]);
+  sel.innerHTML = '<option value="">Selecciona un almacén...</option>';
+  disp.forEach(alm => {
+    const o = document.createElement('option');
+    o.value = alm; o.textContent = `${alm} — ${AN_NOMBRES[alm]||alm}`;
+    sel.appendChild(o);
+  });
+}
+
+function anRenderAlm() {
+  const alm     = document.getElementById('an-alm-sel').value;
+  const q       = document.getElementById('an-alm-buscar').value.toLowerCase();
+  const solPos  = document.getElementById('an-solo-pos').checked;
+  const wrap    = document.getElementById('an-tabla-alm');
+  const btnExp  = document.getElementById('an-btn-exp-alm');
+  if (!alm) { wrap.innerHTML = '<div class="an-empty"><div class="ic">📦</div><p>Selecciona un almacén</p></div>'; btnExp.style.display='none'; return; }
+
+  const per  = parseFloat(document.getElementById('an-periodo').value)   || 6;
+  const obj  = parseFloat(document.getElementById('an-stock-obj').value) || 1.5;
+  const cAlm = anConsumos[alm] || {};
+  const eAlm = anExistencias[alm] || {};
+
+  const filas = Object.keys(cAlm)
+    .filter(cat => {
+      const mat = anBaseMat[cat]; if (!mat) return false;
+      if (q && !(cat.includes(q) || mat.desc.toLowerCase().includes(q))) return false;
+      const dist = Math.ceil(Math.max(0, (cAlm[cat]/per)*obj - (eAlm[cat]||0)));
+      if (solPos && dist === 0) return false;
+      return true;
+    })
+    .map(cat => {
+      const cons = cAlm[cat]||0, ex = eAlm[cat]||0;
+      const mens = cons/per, nec = mens*obj;
+      const dist = Math.ceil(Math.max(0, nec - ex));
+      const exTX = (anExistencias['TX41']||{})[cat]||0;
+      return { cat, ...anBaseMat[cat], cons, mens, ex, nec, dist, exTX };
+    })
+    .sort((a,b) => b.dist - a.dist);
+
+  if (!filas.length) { wrap.innerHTML = '<div class="an-empty"><div class="ic">🔍</div><p>Sin resultados</p></div>'; btnExp.style.display='none'; return; }
+
+  let t = `<div class="an-table-wrap"><table class="an-table">
+    <thead><tr>
+      <th>Catálogo</th><th>Descripción</th><th class="r">UM</th>
+      <th class="r">Cons. mensual</th><th class="r">Existencia</th>
+      <th class="r">Stock obj.(${obj}m)</th><th class="r">Distribución</th>
+      <th class="r">TX41 disponible</th><th>TX41</th>
+    </tr></thead><tbody>`;
+
+  filas.forEach(({cat,desc,um,mens,ex,nec,dist,exTX}) => {
+    const txBadge = dist===0 ? '' : exTX>=dist ? '<span class="an-badge v">✓</span>' : '<span class="an-badge r">Insuf.</span>';
+    t += `<tr>
+      <td class="an-alm-code">${cat}</td>
+      <td style="font-size:12px;max-width:220px">${desc||''}</td>
+      <td class="r" style="font-size:11px;color:var(--muted)">${um||''}</td>
+      <td class="r">${anFmt(mens,1)}</td>
+      <td class="r">${anFmt(ex)}</td>
+      <td class="r">${anFmt(nec,1)}</td>
+      <td class="r" style="font-size:15px;font-weight:700;color:${dist>0?'var(--rojo)':'var(--verde)'}">${dist>0?anFmt(dist):'—'}</td>
+      <td class="r">${anFmt(exTX)}</td>
+      <td>${txBadge}</td>
+    </tr>`;
+  });
+  t += '</tbody></table></div>';
+  wrap.innerHTML = t;
+  btnExp.style.display = 'inline-flex';
+}
+
+// ── Exportaciones ──
+function anExportarCat() {
+  if (!anCatActual) return;
+  const per = parseFloat(document.getElementById('an-periodo').value)||6;
+  const obj = parseFloat(document.getElementById('an-stock-obj').value)||1.5;
+  const cat = anCatActual;
+  const mat = anBaseMat[cat]||{};
+  const filas = [
+    [`Catálogo: ${cat} — ${mat.desc||''}`,'','','','','','',''],
+    [`Periodo: ${per} meses | Stock objetivo: ${obj} meses`,'','','','','','',''],
+    [],
+    ['Almacén','Nombre','Consumo total','Consumo mensual','Existencia',`Stock obj.(${obj}m)`,'Distribución','TX41 disponible']
+  ];
+  AN_ORDEN.forEach(alm => {
+    const cons=(anConsumos[alm]||{})[cat]||0, ex=(anExistencias[alm]||{})[cat]||0;
+    const mens=cons/per, nec=mens*obj, dist=Math.ceil(Math.max(0,nec-ex));
+    const exTX=(anExistencias['TX41']||{})[cat]||0;
+    filas.push([alm,AN_NOMBRES[alm]||alm,cons,+mens.toFixed(2),ex,+nec.toFixed(2),dist,exTX]);
+  });
+  const wb=XLSX.utils.book_new(), ws=XLSX.utils.aoa_to_sheet(filas);
+  ws['!cols']=[8,20,14,16,12,16,14,16].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb,ws,'Distribución');
+  XLSX.writeFile(wb,`Dist_${cat}_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+function anExportarAlm() {
+  const alm=document.getElementById('an-alm-sel').value; if(!alm) return;
+  const per=parseFloat(document.getElementById('an-periodo').value)||6;
+  const obj=parseFloat(document.getElementById('an-stock-obj').value)||1.5;
+  const cAlm=anConsumos[alm]||{}, eAlm=anExistencias[alm]||{};
+  const header=[`Almacén: ${alm} — ${AN_NOMBRES[alm]||alm}`,'','','','','','','',''];
+  const subh=[`Periodo: ${per} meses | Stock objetivo: ${obj} meses`,'','','','','','','',''];
+  const cols=['Catálogo','Descripción','UM','Consumo total','Consumo mensual','Existencia',`Stock obj.(${obj}m)`,'Distribución','TX41 disponible'];
+  const filas=[[...header],[...subh],[],[...cols]];
+  Object.keys(cAlm).forEach(cat => {
+    const mat=anBaseMat[cat]||{}, cons=cAlm[cat]||0, ex=eAlm[cat]||0;
+    const mens=cons/per, nec=mens*obj, dist=Math.ceil(Math.max(0,nec-ex));
+    const exTX=(anExistencias['TX41']||{})[cat]||0;
+    filas.push([cat,mat.desc||'',mat.um||'',cons,+mens.toFixed(2),ex,+nec.toFixed(2),dist,exTX]);
+  });
+  filas.splice(4).sort((a,b)=>b[7]-a[7]).forEach(r=>filas.push(r));
+  const wb=XLSX.utils.book_new(), ws=XLSX.utils.aoa_to_sheet(filas);
+  ws['!cols']=[10,40,6,14,16,12,16,12,16].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb,ws,alm);
+  XLSX.writeFile(wb,`Dist_${alm}_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+function anFmt(n, dec=0) {
+  if(n===null||n===undefined||isNaN(n)) return '—';
+  return Number(n).toLocaleString('es-MX',{minimumFractionDigits:dec,maximumFractionDigits:dec});
+}
+
+// Cerrar sugerencias al hacer clic fuera
+document.addEventListener('pointerdown', e => {
+  if (!e.target.closest('.an-cat-wrap'))
+    document.getElementById('an-cat-sugs').style.display = 'none';
+});
+
 </script>
 
 
@@ -4376,6 +4809,113 @@ function mvExportarExcel() {
       <button onclick="ejecutarExportacion()" style="background:#0369a1;color:white;border:none;padding:8px 20px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">📊 Exportar</button>
     </div>
   </div>
+</div>
+
+
+<!-- ════════ MÓDULO ANÁLISIS Y DISTRIBUCIONES ════════ -->
+<div id="pantalla-analisis" style="display:none;flex-direction:column;min-height:calc(100vh - 108px);padding:20px 24px;background:var(--fondo)">
+
+  <!-- Tabs internos -->
+  <div class="an-tab-bar">
+    <button class="an-tab activo" id="an-tab-arch" onclick="anTab('arch')">📁 Archivos</button>
+    <button class="an-tab" id="an-tab-cat"  onclick="anTab('cat')">🔍 Por catálogo</button>
+    <button class="an-tab" id="an-tab-alm"  onclick="anTab('alm')">📦 Por almacén</button>
+  </div>
+
+  <!-- Parámetros globales (visibles en todos los tabs) -->
+  <div class="an-params">
+    <div style="display:flex;align-items:center;gap:8px">
+      <label>Periodo de consumos (meses):</label>
+      <input type="number" class="an-num-input" id="an-periodo" value="6" min="1" max="24" step="1">
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <label>Meses de stock objetivo:</label>
+      <input type="number" class="an-num-input" id="an-stock-obj" value="1.5" min="0.5" max="12" step="0.5">
+    </div>
+    <div style="font-size:11px;color:var(--muted);flex:1">
+      Distribución = (Consumo ÷ periodo) × meses objetivo − Existencia actual
+    </div>
+  </div>
+
+  <!-- ─── PANEL: ARCHIVOS ─── -->
+  <div class="an-panel activo" id="an-panel-arch">
+    <div class="an-card" style="max-width:700px">
+      <h3>📊 Archivo TOTAL — Existencias de todos los almacenes</h3>
+      <div class="an-file-row">
+        <button class="an-file-btn" onclick="document.getElementById('an-f-total').click()">📂 Seleccionar TOTAL</button>
+        <input type="file" class="an-hidden" id="an-f-total" accept=".txt,.csv" onchange="anCargarTotal(event)">
+        <span class="an-file-st" id="an-st-total">Sin cargar</span>
+      </div>
+      <div style="font-size:11px;color:var(--muted)">Exportado de SIATEL — existencias de todos los almacenes en formato tabulado</div>
+    </div>
+
+    <div class="an-card" style="max-width:700px">
+      <h3>📈 Archivos de Consumos — Uno por almacén</h3>
+      <div class="an-file-row">
+        <button class="an-file-btn" onclick="document.getElementById('an-f-cons').click()">📂 Agregar consumos</button>
+        <input type="file" class="an-hidden" id="an-f-cons" accept=".txt,.csv" multiple onchange="anCargarConsumos(event)">
+        <span class="an-file-st" id="an-st-cons">Sin cargar</span>
+      </div>
+      <div class="an-chips" id="an-chips-cons"></div>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px">Puedes seleccionar varios archivos a la vez. El sistema detecta el almacén desde el nombre del archivo (ej. TX8A, TX8H…)</div>
+    </div>
+
+    <div class="an-listo" id="an-listo">✅ Archivos cargados correctamente. Ve a <b>Por catálogo</b> o <b>Por almacén</b> para iniciar el análisis.</div>
+  </div>
+
+  <!-- ─── PANEL: POR CATÁLOGO ─── -->
+  <div class="an-panel" id="an-panel-cat">
+    <div class="an-card" style="max-width:700px">
+      <h3>🔍 Buscar catálogo</h3>
+      <div style="display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap">
+        <div class="an-cat-wrap" style="flex:1;min-width:220px">
+          <input type="text" class="an-cat-input" id="an-cat-input"
+            placeholder="Número o descripción del catálogo..."
+            oninput="anOnCatInput(this.value)"
+            onkeydown="anOnCatKey(event)"
+            autocomplete="off">
+          <div class="an-cat-sugs" id="an-cat-sugs"></div>
+          <div class="an-desc" id="an-cat-desc">Escribe para buscar</div>
+        </div>
+        <button class="btn btn-primary" id="an-btn-analizar" onclick="anAnalizarCat()" disabled style="height:40px;white-space:nowrap;background:#0096D6">Analizar</button>
+        <button id="an-btn-exp-cat" onclick="anExportarCat()" style="display:none;height:40px;background:#0D7A3E;color:white;border:none;padding:0 14px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">📊 Exportar</button>
+      </div>
+    </div>
+
+    <!-- Banner TX41 -->
+    <div class="an-tx41-banner" id="an-tx41-banner">
+      <div>
+        <div style="font-size:10px;font-weight:700;opacity:.7;letter-spacing:.08em">TX41 PUEBLA — STOCK DISPONIBLE</div>
+        <div class="an-tx41-num" id="an-tx41-num">—</div>
+      </div>
+      <div style="flex:1">
+        <div id="an-tx41-msg" style="font-size:13px"></div>
+        <div id="an-tx41-sub" style="font-size:11px;margin-top:3px;opacity:.8"></div>
+      </div>
+    </div>
+
+    <div id="an-tabla-cat">
+      <div class="an-empty"><div class="ic">🔍</div><p>Busca un catálogo para ver la distribución por almacén</p></div>
+    </div>
+  </div>
+
+  <!-- ─── PANEL: POR ALMACÉN ─── -->
+  <div class="an-panel" id="an-panel-alm">
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap">
+      <select class="an-select" id="an-alm-sel" onchange="anRenderAlm()">
+        <option value="">Selecciona un almacén...</option>
+      </select>
+      <input type="text" class="an-search" id="an-alm-buscar" placeholder="🔍 Filtrar catálogo o descripción..." oninput="anRenderAlm()">
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;white-space:nowrap">
+        <input type="checkbox" id="an-solo-pos" onchange="anRenderAlm()"> Solo distribución &gt; 0
+      </label>
+      <button id="an-btn-exp-alm" onclick="anExportarAlm()" style="display:none;background:#0D7A3E;color:white;border:none;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600">📊 Exportar</button>
+    </div>
+    <div id="an-tabla-alm">
+      <div class="an-empty"><div class="ic">📦</div><p>Selecciona un almacén para ver sus catálogos</p></div>
+    </div>
+  </div>
+
 </div>
 
 </body>
