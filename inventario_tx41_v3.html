@@ -698,16 +698,20 @@ const CUENTA_REGRESIVA_S = 60;           // 60 segundos para responder
 });
 
 function resetInactividad() {
+  if (!sesionToken && !sessionStorage.getItem('tx41_token')) return;
   clearTimeout(inactividadTimer);
   inactividadTimer = setTimeout(mostrarAvisoInactividad, INACTIVIDAD_MS);
 }
 
 function mostrarAvisoInactividad() {
+  // Si no hay sesión activa, no hacer nada
+  if (!sesionToken && !sessionStorage.getItem('tx41_token')) return;
   const modal = document.getElementById('modal-inactividad');
   if (!modal) return;
   modal.style.display = 'flex';
   let seg = CUENTA_REGRESIVA_S;
   document.getElementById('cuenta-regresiva').textContent = seg;
+  clearInterval(cuentaRegresivaTimer); // limpiar cualquier timer previo
   cuentaRegresivaTimer = setInterval(() => {
     seg--;
     const el = document.getElementById('cuenta-regresiva');
@@ -813,8 +817,11 @@ async function iniciarSesion() {
 }
 
 async function cerrarSesion() {
+  // Limpiar timers de inactividad definitivamente
   clearTimeout(inactividadTimer);
   clearInterval(cuentaRegresivaTimer);
+  inactividadTimer     = null;
+  cuentaRegresivaTimer = null;
   const modal = document.getElementById('modal-inactividad');
   if (modal) modal.style.display = 'none';
   try {
