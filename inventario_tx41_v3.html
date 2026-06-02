@@ -8,46 +8,22 @@
 <style>
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
 :root{
-  /* ── Paleta Telmex (basada en logo y web telmex.com) ── */
-  --azul:      #0096D6;   /* Azul icónico del logo Telmex */
-  --azul-mid:  #007AB8;   /* Azul medio hover */
-  --azul-dark: #005A8E;   /* Azul oscuro */
-  --azul-navy: #003366;   /* Azul marino corporativo */
-  --azul-light:#E8F5FC;   /* Fondo azul suave */
-  --negro:     #1A1A1A;   /* Negro del wordmark TELMEX */
-  --rojo:      #E63B2E;   /* Rojo señalización */
-  --rojo-light:#FEF0EF;
-  /* ── Neutros corporativos ── */
-  --fondo:     #F2F6FA;
-  --fondo-2:   #FFFFFF;
-  --borde:     #D0DDE8;
-  --borde-mid: #A8BECF;
-  --texto:     #1A2533;
-  --muted:     #5A7080;
-  --blanco:    #FFFFFF;
-  /* ── Semáforo ── */
-  --verde:     #0D7A3E;
-  --verde-bg:  #E3F5EC;
-  --amarillo:  #A05C00;
-  --amarillo-bg:#FEF3C7;
-  --rojo-bg:   #FEE9E8;
-  --naranja:   #C05000;
-  --naranja-bg:#FFF0E6;
-  /* ── Sistema ── */
-  --sombra:    0 1px 4px rgba(0,100,180,.07), 0 4px 16px rgba(0,100,180,.06);
-  --sombra-md: 0 2px 8px rgba(0,100,180,.1), 0 8px 32px rgba(0,100,180,.08);
-  --sombra-lg: 0 4px 16px rgba(0,100,180,.12), 0 16px 48px rgba(0,100,180,.1);
-  --radio:     10px;
-  --tap:       44px;
+  --azul:#001F5B;--azul-mid:#003087;--azul-light:#e8eef8;
+  --rojo:#C8102E;--gris:#f4f4f4;--borde:#d0d8e8;
+  --texto:#1a1a2e;--muted:#6b7280;
+  --verde:#15803d;--verde-bg:#dcfce7;
+  --amarillo-bg:#fffde7;--rojo-bg:#ffebee;
+  --naranja:#f97316;--naranja-bg:#fff7ed;
+  --tap:44px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{-webkit-text-size-adjust:100%}
-body{font-family:'IBM Plex Sans',sans-serif;background:var(--fondo);color:var(--texto);min-height:100vh;-webkit-font-smoothing:antialiased}
+body{font-family:'IBM Plex Sans',sans-serif;background:#f0f2f7;color:var(--texto);min-height:100vh}
 
 /* HEADER */
-header{background:#0096D6;color:#fff;border-bottom:none;position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(0,120,200,.3)}
+header{background:var(--azul);color:#fff;border-bottom:4px solid var(--rojo);position:sticky;top:0;z-index:100}
 .header-inner{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;gap:8px}
-.logo h1{font-size:14px;font-weight:700;letter-spacing:.08em;line-height:1.3;text-transform:uppercase}
+.logo h1{font-size:15px;font-weight:600;letter-spacing:.03em;line-height:1.3}
 .logo span{font-size:9px;opacity:.6;font-family:'IBM Plex Mono',monospace}
 .header-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
 .badge{background:var(--rojo);color:#fff;font-size:9px;font-weight:600;padding:3px 8px;border-radius:20px;letter-spacing:.1em;font-family:'IBM Plex Mono',monospace;white-space:nowrap}
@@ -56,7 +32,7 @@ header{background:#0096D6;color:#fff;border-bottom:none;position:sticky;top:0;z-
 
 /* PANTALLA CARGA */
 #pantalla-carga{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 60px);padding:20px}
-.base-card{background:var(--blanco);border-radius:14px;padding:32px 24px;max-width:540px;width:100%;text-align:center;box-shadow:var(--sombra-md);border:1px solid var(--borde)}
+.base-card{background:white;border-radius:14px;padding:32px 24px;max-width:540px;width:100%;text-align:center;box-shadow:0 4px 24px rgba(0,0,50,.08)}
 .base-card .icono{font-size:48px;margin-bottom:16px}
 .base-card h2{font-size:20px;font-weight:600;color:var(--azul);margin-bottom:10px}
 .base-card p{font-size:14px;color:var(--muted);margin-bottom:24px;line-height:1.7}
@@ -70,8 +46,8 @@ header{background:#0096D6;color:#fff;border-bottom:none;position:sticky;top:0;z-
 .area-titulo{font-size:20px;font-weight:600;color:var(--azul);margin-bottom:6px;text-align:center}
 .area-sub{font-size:13px;color:var(--muted);margin-bottom:20px;text-align:center}
 .areas-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;width:100%;max-width:720px}
-.area-card{background:var(--blanco);border:1.5px solid var(--borde);border-radius:var(--radio);padding:22px 16px;text-align:center;cursor:pointer;transition:all .18s;position:relative;box-shadow:var(--sombra)}
-.area-card:hover{border-color:#0096D6;box-shadow:0 6px 20px rgba(0,150,214,.18);transform:translateY(-2px)}.area-card:active{transform:scale(.97)}
+.area-card{background:#fff;border:2px solid var(--borde);border-radius:12px;padding:22px 16px;text-align:center;cursor:pointer;transition:all .15s;position:relative}
+.area-card:active{transform:scale(.97)}
 .area-card.disponible{border-color:#86efac}
 .area-card.todo-card{border-color:#c4b5fd}
 .area-card .icono{font-size:28px;margin-bottom:8px}
@@ -82,8 +58,8 @@ header{background:#0096D6;color:#fff;border-bottom:none;position:sticky;top:0;z-
 
 /* BOTONES — compactos en desktop, táctiles en móvil */
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:0 16px;height:36px;border-radius:8px;font-size:13px;font-weight:500;font-family:'IBM Plex Sans',sans-serif;cursor:pointer;border:none;transition:all .15s;white-space:nowrap;-webkit-tap-highlight-color:transparent}
-.btn-primary{background:#0096D6;color:#fff;box-shadow:0 2px 8px rgba(0,150,214,.3)}
-.btn-primary:hover{background:#007AB8;box-shadow:0 4px 12px rgba(0,120,180,.35)}
+.btn-primary{background:var(--azul);color:#fff}
+.btn-primary:hover{background:var(--azul-mid)}
 .btn-primary:active{opacity:.85}
 .btn-success{background:var(--verde);color:#fff}
 .btn-success:hover{opacity:.9}
@@ -285,7 +261,7 @@ table.pt tr:nth-child(even) td{background:#f7f7f7}
 .mv-btn-del-renglon{background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:4px;border-radius:6px}
 .mv-btn-del-renglon:hover{background:#fef2f2;color:var(--rojo)}
 .mv-historial-tabla{width:100%;border-collapse:collapse;font-size:12px}
-.mv-historial-tabla th{background:#f8fafc;color:var(--texto);padding:8px 10px;text-align:left;font-weight:600;border-bottom:2px solid var(--borde);white-space:nowrap}
+.mv-historial-tabla th{background:#f8fafc;padding:8px 10px;text-align:left;font-weight:600;border-bottom:2px solid var(--borde);white-space:nowrap}
 .mv-historial-tabla td{padding:8px 10px;border-bottom:1px solid #f1f5f9;vertical-align:top}
 .mv-historial-tabla tr:hover td{background:#f8fafc}
 .mv-badge-salida{background:#fff1f2;color:var(--rojo);padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
@@ -301,50 +277,6 @@ table.pt tr:nth-child(even) td{background:#f7f7f7}
 .mv-tabs{display:flex;gap:4px;border-bottom:2px solid var(--borde);margin-bottom:20px}
 .mv-tab{padding:8px 16px;cursor:pointer;font-size:13px;font-weight:500;color:var(--muted);border:none;background:none;border-bottom:2px solid transparent;margin-bottom:-2px}
 .mv-tab.activo{color:var(--azul);border-bottom-color:var(--azul);font-weight:600}
-
-/* ── REFINAMIENTOS TELMEX ── */
-.mv-historial-tabla thead tr{background:#0096D6;color:#fff}
-.mv-historial-tabla th{background:#0096D6!important;color:#fff!important;padding:9px 10px;font-size:11px;letter-spacing:.04em;text-transform:uppercase}
-.mv-renglon{background:#FAFBFE;border:1.5px solid var(--borde);border-radius:var(--radio);padding:14px;position:relative;transition:border-color .15s}
-.mv-renglon:focus-within{border-color:var(--azul-mid)}
-.mv-tab.activo{color:var(--azul);border-bottom-color:var(--azul);font-weight:700}
-.base-status{background:var(--blanco);border-radius:var(--radio);padding:10px 16px;margin-bottom:20px;display:flex;align-items:center;gap:8px;font-size:12px;border:1px solid var(--borde);flex-wrap:wrap;width:100%;max-width:720px;box-shadow:var(--sombra)}
-
-/* ── TELMEX BRAND REFINEMENTS ── */
-/* Área título y textos azul Telmex */
-.area-titulo{color:#0096D6!important}
-.base-card h2{color:#0096D6!important}
-/* Badge de versión */
-.badge{background:#0096D6!important}
-/* Dot de estado verde */
-.base-status .dot{background:#0D7A3E}
-/* Botón outline con azul Telmex */
-.btn-outline{color:#0096D6!important;border-color:#0096D6!important}
-.btn-outline:hover{background:#E8F5FC!important}
-/* Input focus */
-input[type=text]:focus,input[type=number]:focus,select:focus{border-color:#0096D6!important;box-shadow:0 0 0 3px rgba(0,150,214,.12)!important}
-/* Tabla inventario header */
-.tabla-wrap th{background:#0096D6!important;color:#fff!important}
-/* Nav botones activos */
-#nav-btn-inventario,#nav-btn-traspasos,#nav-btn-admin{font-weight:500;border-radius:6px;transition:all .15s}
-/* Separador rojo en cards Telmex — detalle de marca */
-.area-card.disponible{border-top:3px solid #0096D6!important}
-.area-card.todo-card{border-top:3px solid #0096D6!important}
-/* Links azul Telmex */
-a{color:#0096D6}
-/* Stat bar números */
-.stat.az .stat-n{color:#0096D6!important}
-/* Tabs módulo traspasos */
-.mv-tab.activo{color:#0096D6!important;border-bottom-color:#0096D6!important}
-/* Módulo traspasos label */
-.mv-label{color:#0096D6!important}
-/* Botón exportar */
-button[onclick*="exportar"]{transition:all .15s}
-/* Scrollbar personalizada */
-::-webkit-scrollbar{width:6px;height:6px}
-::-webkit-scrollbar-track{background:#F2F6FA}
-::-webkit-scrollbar-thumb{background:#0096D6;border-radius:3px}
-::-webkit-scrollbar-thumb:hover{background:#007AB8}
 </style>
 </head>
 <body>
@@ -364,37 +296,39 @@ button[onclick*="exportar"]{transition:all .15s}
 </header>
 
 <!-- PANTALLA LOGIN -->
-<div id="pantalla-login" style="display:none;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:20px;background:linear-gradient(160deg,#001A33 0%,#003A70 40%,#0078B8 80%,#0096D6 100%)">
-  <div style="display:flex;align-items:center;justify-content:center;gap:20px;margin-bottom:24px">
-    <img src="data:image/png;base64,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" alt="Telmex" style="height:60px;width:auto">
-    <div style="width:1px;height:50px;background:rgba(255,255,255,.3)"></div>
-    <img src="data:image/png;base64,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" alt="Red Nacional Ultima Milla" style="height:50px;width:auto">
-  </div>
-  <div class="base-card" style="max-width:380px;width:100%;background:rgba(255,255,255,.97)">
+<div id="pantalla-login" style="display:none;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 60px);padding:20px;background:var(--fondo)">
+  <div class="base-card" style="max-width:380px;width:100%">
     <div style="text-align:center;margin-bottom:20px">
-      <div style="font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#0096D6;margin-bottom:4px">Sistema de Inventario</div>
-      <h2 style="margin:0 0 4px;color:#001A33">TX41 Puebla</h2>
-      <div style="width:36px;height:3px;background:#0096D6;border-radius:2px;margin:8px auto 0"></div>
+      <div style="font-size:52px;margin-bottom:8px">🔐</div>
+      <h2 style="margin:0 0 4px">Iniciar sesión</h2>
+      <p style="font-size:13px;color:var(--muted);margin:0">Sistema de Inventario TX41 Puebla</p>
     </div>
     <div style="display:flex;flex-direction:column;gap:14px">
       <div>
-        <label style="font-size:12px;font-weight:600;color:#0096D6;display:block;margin-bottom:5px">Usuario</label>
-        <input type="text" id="login-usuario" placeholder="usuario" autocomplete="username" style="width:100%;height:42px;border:1.5px solid var(--borde);border-radius:8px;padding:0 12px;box-sizing:border-box;font-size:15px" onkeydown="if(event.key==='Enter')document.getElementById('login-password').focus()">
+        <label style="font-size:12px;font-weight:600;color:var(--azul);display:block;margin-bottom:5px">Usuario</label>
+        <input type="text" id="login-usuario" placeholder="usuario" autocomplete="username"
+          style="width:100%;height:42px;font-size:15px;border:1.5px solid var(--borde);border-radius:8px;padding:0 12px;box-sizing:border-box"
+          onkeydown="if(event.key==='Enter')document.getElementById('login-password').focus()">
       </div>
       <div>
-        <label style="font-size:12px;font-weight:600;color:#0096D6;display:block;margin-bottom:5px">Contraseña</label>
-        <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" style="width:100%;height:42px;border:1.5px solid var(--borde);border-radius:8px;padding:0 12px;box-sizing:border-box;font-size:15px" onkeydown="if(event.key==='Enter')iniciarSesion()">
+        <label style="font-size:12px;font-weight:600;color:var(--azul);display:block;margin-bottom:5px">Contraseña</label>
+        <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password"
+          style="width:100%;height:42px;font-size:15px;border:1.5px solid var(--borde);border-radius:8px;padding:0 12px;box-sizing:border-box"
+          onkeydown="if(event.key==='Enter')iniciarSesion()">
       </div>
-      <div id="login-error" style="display:none;background:#fef2f2;color:#dc2626;font-size:13px;padding:10px 12px;border-radius:8px;text-align:center"></div>
-      <button id="btn-login" class="btn btn-primary" onclick="iniciarSesion()" style="height:44px;font-size:15px;width:100%;background:#0096D6;margin-top:4px">Entrar</button>
+      <div id="login-error" style="display:none;background:#fef2f2;color:#dc2626;font-size:12px;padding:10px 12px;border-radius:8px;border:1px solid #fecaca"></div>
+      <button id="btn-login" class="btn btn-primary" onclick="iniciarSesion()" style="height:44px;font-size:15px;width:100%">
+        Entrar
+      </button>
     </div>
   </div>
 </div>
+
 <!-- MODAL INACTIVIDAD -->
 <div id="modal-inactividad" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center">
   <div class="base-card" style="max-width:360px;width:90%;text-align:center">
     <div style="font-size:48px;margin-bottom:12px">⏳</div>
-    <h3 style="margin:0 0 8px;color:var(--azul)">Sesión por expirar</h3>
+    <h3 style="margin:0 0 8px">¿Sigues ahí?</h3>
     <p style="font-size:13px;color:var(--muted);margin:0 0 16px">Tu sesión cerrará por inactividad en <span id="cuenta-regresiva" style="font-weight:700;color:var(--rojo);font-size:16px">60</span> segundos</p>
     <div style="display:flex;gap:10px;justify-content:center">
       <button class="btn btn-primary" onclick="continuarSesion()" style="flex:1">Continuar sesión</button>
@@ -403,10 +337,11 @@ button[onclick*="exportar"]{transition:all .15s}
   </div>
 </div>
 
+
 <!-- PANTALLA INICIO -->
 
 <!-- BARRA NAVEGACIÓN GLOBAL (admin y usuarios) -->
-<nav id="nav-admin" style="display:none;background:#FFFFFF;border-bottom:3px solid #0096D6;padding:0 16px;height:46px;align-items:center;gap:2px;position:sticky;top:60px;z-index:900;box-shadow:0 2px 6px rgba(0,120,200,.1)">
+<nav id="nav-admin" style="display:none;background:white;border-bottom:1.5px solid var(--borde);padding:0 12px;height:48px;align-items:center;gap:4px;position:sticky;top:60px;z-index:900;box-shadow:0 1px 4px rgba(0,0,0,.06)">
   <button onclick="irAMenu()" class="btn btn-sm" style="font-size:12px;background:#EEF2FF;color:var(--azul);border:none;padding:6px 12px;border-radius:8px;cursor:pointer;font-weight:600;flex-shrink:0">
     ☰ Menú
   </button>
@@ -423,7 +358,7 @@ button[onclick*="exportar"]{transition:all .15s}
   <div style="flex:1"></div>
   <span id="nav-usuario-label" style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px"></span>
 </nav>
-<div id="pantalla-inicio" style="display:none;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:32px;background:var(--fondo)">
+<div id="pantalla-inicio" style="display:none;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 60px);padding:32px;background:var(--fondo)">
   <div style="text-align:center;margin-bottom:32px">
     <div style="font-size:48px;margin-bottom:8px">🏭</div>
     <h2 style="margin:0 0 4px;color:var(--azul)">TX41 Puebla</h2>
@@ -455,7 +390,7 @@ button[onclick*="exportar"]{transition:all .15s}
 </div>
 
 <!-- PANTALLA ADMINISTRACIÓN -->
-<div id="pantalla-admin" style="display:none;flex-direction:column;min-height:100vh;padding:24px;background:var(--fondo)">
+<div id="pantalla-admin" style="display:none;flex-direction:column;min-height:calc(100vh - 60px);padding:24px;background:var(--fondo)">
   <div style="display:flex;align-items:center;gap:16px;margin-bottom:24px">
     <button class="btn btn-outline" onclick="volverInicio()" style="font-size:13px">← Volver</button>
     <h2 style="margin:0;color:var(--azul)">⚙️ Administración</h2>
@@ -567,6 +502,8 @@ button[onclick*="exportar"]{transition:all .15s}
       </div>
       <div style="font-size:11px;margin-top:4px;opacity:.8">Pega la URL de ngrok antes de cargar el SIATEL</div>
     </div>
+  </div>
+</div>
 
 <!-- PANTALLA 1: SELECCIÓN DE ÁREA -->
 <div id="pantalla-area" style="display:none;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 60px);padding:32px">
@@ -618,7 +555,6 @@ button[onclick*="exportar"]{transition:all .15s}
       <button class="btn btn-outline" onclick="volverAreas()">↩ Cambiar área</button>
       <button class="btn btn-primary" onclick="entrarCaptura()" id="btn-captura" style="display:none">📝 Iniciar captura</button>
       <button class="btn btn-success" onclick="abrirImp()">🖨 Imprimir listados</button>
-      <button class="btn btn-sm" onclick="exportarInventarioActual()" style="background:#0369a1;color:white;border:none;padding:7px 14px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500">📊 Exportar Excel</button>
     </div>
   </div>
 
@@ -761,20 +697,16 @@ const CUENTA_REGRESIVA_S = 60;           // 60 segundos para responder
 });
 
 function resetInactividad() {
-  if (!sesionToken && !sessionStorage.getItem('tx41_token')) return;
   clearTimeout(inactividadTimer);
   inactividadTimer = setTimeout(mostrarAvisoInactividad, INACTIVIDAD_MS);
 }
 
 function mostrarAvisoInactividad() {
-  // Si no hay sesión activa, no hacer nada
-  if (!sesionToken && !sessionStorage.getItem('tx41_token')) return;
   const modal = document.getElementById('modal-inactividad');
   if (!modal) return;
   modal.style.display = 'flex';
   let seg = CUENTA_REGRESIVA_S;
   document.getElementById('cuenta-regresiva').textContent = seg;
-  clearInterval(cuentaRegresivaTimer); // limpiar cualquier timer previo
   cuentaRegresivaTimer = setInterval(() => {
     seg--;
     const el = document.getElementById('cuenta-regresiva');
@@ -880,11 +812,8 @@ async function iniciarSesion() {
 }
 
 async function cerrarSesion() {
-  // Limpiar timers de inactividad definitivamente
   clearTimeout(inactividadTimer);
   clearInterval(cuentaRegresivaTimer);
-  inactividadTimer     = null;
-  cuentaRegresivaTimer = null;
   const modal = document.getElementById('modal-inactividad');
   if (modal) modal.style.display = 'none';
   try {
@@ -1309,7 +1238,6 @@ function mostrarAreas(rec) {
   }
 
   document.getElementById('base-status-txt').textContent = statusTxt;
-  if (ES_GITHUB && rec) actualizarBarraEstado(rec.ts_siatel, rec.ts_lotes);
   ocultarTodo();
   construirPantallaAreas();
   document.getElementById('pantalla-area').style.display = 'flex';
@@ -1380,26 +1308,26 @@ async function recargarExistencias() {
         ts_lotes:  d.lotes && Object.keys(d.lotes).length > 0 ? d.timestamp : (_configData.ts_lotes || '')
       });
     }
-    const ts      = d.timestamp || (_configData && _configData.ts_siatel);
-    const ts_lotes = _configData && _configData.ts_lotes;
-    actualizarBarraEstado(ts, ts_lotes);
+    const bar = document.getElementById('base-status-txt');
+    if (bar) {
+      // Re-construir el status text con el timestamp correcto
+      let txt = 'Última actualización de existencias';
+      const ts = d.timestamp || (_configData && _configData.ts_siatel);
+      if (ts) {
+        const fmt = new Date(ts).toLocaleString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+        txt += ' · SIATEL: ' + fmt;
+      }
+      if (_configData && _configData.ts_lotes && Object.keys(lotesMap).length > 0) {
+        const fmt2 = new Date(_configData.ts_lotes).toLocaleString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+        txt += ' · Lotes: ' + fmt2;
+      }
+      bar.textContent = txt;
+    }
     // Si hay una consulta abierta, refrescarla
-    if (document.getElementById('app')?.style.display === 'block') {
+    if (document.getElementById('pantalla-consulta')?.style.display !== 'none') {
       filtrar();
     }
-    // Si hay renglones de traspaso abiertos, actualizar sus existencias y lotes
-    if (mvRenglones && mvRenglones.some(r => r.cat)) {
-      mvRenglones.forEach(r => {
-        if (!r.cat) return;
-        const ex = siatelMap[r.cat];
-        if (ex !== undefined) r.existencia = ex.lib !== undefined ? ex.lib : null;
-      });
-      // Re-render solo si el módulo está visible
-      if (document.getElementById('pantalla-traspasos')?.style.display !== 'none') {
-        mvRenderRenglones();
-      }
-    }
-    console.log('✅ Existencias actualizadas desde servidor:', new Date().toLocaleTimeString('es-MX'));
+    console.log('✅ Existencias actualizadas desde servidor');
   } catch(e) {
     // Silencioso — la red puede fallar esporádicamente
   }
@@ -1633,11 +1561,7 @@ function construirPantallaAreas() {
         <div class="icono">${cfg.icono}</div>
         <div class="nombre">${area}</div>
         <div class="estado">${count.toLocaleString()} materiales</div>
-        <span class="count-badge">${count}</span>
-        <button onclick="event.stopPropagation();exportarArea('${area.replace(/'/g,"\'")}',false)"
-          style="position:absolute;bottom:8px;right:8px;font-size:10px;padding:2px 7px;background:#0369a1;color:white;border:none;border-radius:6px;cursor:pointer">
-          📊
-        </button>`;
+        <span class="count-badge">${count}</span>`;
       card.onclick = () => seleccionarArea(area);
       grid.appendChild(card);
     });
@@ -1650,11 +1574,7 @@ function construirPantallaAreas() {
     <div class="icono">📊</div>
     <div class="nombre">Todo el inventario</div>
     <div class="estado">${totalSiatel.toLocaleString()} materiales</div>
-    <span class="count-badge" style="background:#ede9fe;color:#5b21b6">${totalSiatel}</span>
-    <button onclick="event.stopPropagation();abrirModalExportacion()"
-      style="position:absolute;bottom:8px;right:8px;font-size:10px;padding:2px 7px;background:#0369a1;color:white;border:none;border-radius:6px;cursor:pointer">
-      📊 Exportar
-    </button>`;
+    <span class="count-badge" style="background:#ede9fe;color:#5b21b6">${totalSiatel}</span>`;
   cardTodo.onclick = () => seleccionarArea('__TODO__');
   grid.appendChild(cardTodo);
 }
@@ -2544,8 +2464,7 @@ function actualizarLotesEnMateriales() {
 // ── PANTALLA INICIO ──
 // ── Oculta TODAS las pantallas — llamar antes de mostrar cualquiera ──
 function ocultarTodo() {
-  // Nota: pantalla-login NO se incluye aquí — se controla por separado
-  ['pantalla-carga','pantalla-area','pantalla-consulta',
+  ['pantalla-login','pantalla-carga','pantalla-area','pantalla-consulta',
    'pantalla-captura','pantalla-admin','pantalla-traspasos','pantalla-inicio',
    'app'].forEach(id => {
     const el = document.getElementById(id);
@@ -2573,112 +2492,6 @@ function mostrarInicio() {
   if (sesionRol === 'admin') {
     document.getElementById('btn-administracion').style.display = 'block';
   }
-  // Cargar SIATEL en background para que todos los módulos lo tengan disponible
-  cargarSiatelEnBackground();
-  // Arrancar auto-refresh para que las existencias se actualicen cada 30s
-  // independientemente del módulo que use el cliente
-  if (ES_GITHUB) iniciarRefreshAutomatico();
-}
-
-// Indicador visual de carga en la barra de navegación
-let _siatelCargando = false;
-
-async function cargarSiatelEnBackground() {
-  // Solo para clientes GitHub — admin carga manualmente
-  if (!ES_GITHUB) return;
-  // Evitar cargas simultáneas
-  if (_siatelCargando) return;
-  _siatelCargando = true;
-
-  const lbl = document.getElementById('nav-usuario-label');
-  const textoOriginal = lbl ? lbl.textContent : '';
-  if (lbl) lbl.textContent = '⏳ Cargando datos...';
-
-  try {
-    const ngrokURL = sessionStorage.getItem('tx41_ngrok') || '';
-    const token    = sessionStorage.getItem('tx41_token') || sesionToken || '';
-
-    // Intentar ngrok primero (datos frescos con movimientos aplicados)
-    if (ngrokURL && token) {
-      try {
-        // Warm-up
-        await fetch(ngrokURL + '/api/estado', {
-          mode: 'cors', headers: { 'ngrok-skip-browser-warning': 'true' }
-        }).catch(() => {});
-
-        const res = await fetch(ngrokURL + '/api/siatel', {
-          mode: 'cors',
-          headers: {
-            'Authorization': 'Bearer ' + token,
-            'ngrok-skip-browser-warning': 'true'
-          }
-        });
-        if (res.ok) {
-          const d = await res.json();
-          if (d.ok && d.datos && Object.keys(d.datos).length > 0) {
-            siatelMap    = d.datos;
-            nombreSiatel = d.nombre || 'SIATEL';
-            if (d.lotes && Object.keys(d.lotes).length > 0) {
-              lotesMap = d.lotes;
-            }
-            if (d.timestamp) {
-              _configData = Object.assign({}, _configData||{}, { ts_siatel: d.timestamp });
-            }
-            actualizarBarraEstado(d.timestamp, _configData && _configData.ts_lotes);
-            console.log('✅ SIATEL cargado en background:', Object.keys(siatelMap).length, 'materiales,', Object.keys(lotesMap).length, 'con lotes');
-            if (lbl) lbl.textContent = '👤 ' + (sesionUsuario || '');
-            _siatelCargando = false;
-            return;
-          }
-        }
-      } catch(e) {
-        console.warn('Ngrok no disponible, usando config.json:', e.message);
-      }
-    }
-
-    // Fallback: config.json de GitHub
-    const cfg = await fetch('https://ivanislasg.github.io/inventario-tx41/config.json?t=' + Date.now(), {
-      cache: 'no-store',
-      headers: { 'Cache-Control': 'no-cache' }
-    });
-    if (cfg.ok) {
-      const data = await cfg.json();
-      if (data.siatel && Object.keys(data.siatel).length > 0) {
-        siatelMap = {};
-        for (const cat in data.siatel) {
-          const v = data.siatel[cat];
-          siatelMap[cat] = { lib: v[0]||0, tras: v[1]||0, um: v[2]||'' };
-        }
-        if (data.lotes) lotesMap = data.lotes;
-        if (data.ngrok) sessionStorage.setItem('tx41_ngrok', data.ngrok);
-        // Guardar config para timestamp
-        _configData = data;
-        actualizarBarraEstado(data.ts_siatel, data.ts_lotes);
-        console.log('✅ SIATEL cargado desde config.json:', Object.keys(siatelMap).length, 'materiales');
-      }
-    }
-  } catch(e) {
-    console.warn('Error cargando SIATEL en background:', e.message);
-  }
-
-  if (lbl) lbl.textContent = '👤 ' + (sesionUsuario || '');
-  _siatelCargando = false;
-}
-
-// Actualiza la barra de estado con el timestamp correcto
-function actualizarBarraEstado(ts_siatel, ts_lotes) {
-  const bar = document.getElementById('base-status-txt');
-  if (!bar) return;
-  let txt = 'Última actualización de existencias';
-  if (ts_siatel) {
-    const fmt = new Date(ts_siatel).toLocaleString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
-    txt += ' · SIATEL: ' + fmt;
-  }
-  if (ts_lotes && Object.keys(lotesMap).length > 0) {
-    const fmt2 = new Date(ts_lotes).toLocaleString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
-    txt += ' · Lotes: ' + fmt2;
-  }
-  bar.textContent = txt;
 }
 
 function irAMenu() {
@@ -3049,131 +2862,10 @@ function imprimir(ubi) {
     setTimeout(() => { pa.style.display = 'none'; }, 1000);
   }, 300);
 }
-// ════════════════════════════════════════════════════════
-// EXPORTACIÓN DE INVENTARIO A EXCEL
-// ════════════════════════════════════════════════════════
-
-function exportarInventarioActual() {
-  if (!materiales || !materiales.length) { alert('No hay materiales para exportar'); return; }
-  const filasMat = filtrarMaterialesExport();
-  exportarAExcel(filasMat, areaActual === '__TODO__' ? 'Todo_Inventario' : areaActual, true);
-}
-
-function exportarArea(area, soloConExistencia) {
-  const mats = Object.entries(baseMaestra)
-    .filter(([, b]) => b.area === area)
-    .map(([cat, b]) => {
-      const s = siatelMap[cat];
-      return { catalogo: cat, descripcion: b.d, um: s?s.um:'', existencia: s?s.lib:null, traslado: s?s.tras:null, ubicacion: b.u, area: b.area, lotes: lotesMap[cat]||[] };
-    })
-    .filter(m => !soloConExistencia || (m.existencia !== null && m.existencia > 0));
-  if (!mats.length) { alert('No hay materiales para exportar en ' + area); return; }
-  exportarAExcel(mats, area, true);
-}
-
-function abrirModalExportacion() {
-  const cont = document.getElementById('exp-areas-checks');
-  if (!cont) return;
-  cont.innerHTML = '';
-  Object.entries(AREA_CONFIG).filter(([,c]) => c.enMenu).forEach(([area]) => {
-    const lbl = document.createElement('label');
-    lbl.style.cssText = 'display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;background:#f8fafc;border:1px solid var(--borde);border-radius:6px;padding:4px 8px';
-    lbl.innerHTML = '<input type="checkbox" data-area="' + area + '" checked style="width:14px;height:14px"> ' + area;
-    cont.appendChild(lbl);
-  });
-  document.getElementById('modal-exportacion').style.display = 'flex';
-}
-
-function cerrarModalExportacion() {
-  document.getElementById('modal-exportacion').style.display = 'none';
-}
-
-function expSelTodas(val) {
-  document.querySelectorAll('#exp-areas-checks input[type=checkbox]').forEach(function(cb) { cb.checked = val; });
-}
-
-function ejecutarExportacion() {
-  const areasSeleccionadas = Array.from(document.querySelectorAll('#exp-areas-checks input[type=checkbox]'))
-    .filter(function(cb) { return cb.checked; }).map(function(cb) { return cb.dataset.area; });
-  if (!areasSeleccionadas.length) { alert('Selecciona al menos un área'); return; }
-
-  const fExist    = document.getElementById('exp-f-existencias').checked;
-  const fTraslado = document.getElementById('exp-f-traslado').checked;
-  const fLotes    = document.getElementById('exp-f-lotes').checked;
-  const incLotes  = document.getElementById('exp-incluir-lotes').checked;
-
-  const mats = Object.entries(baseMaestra)
-    .filter(function(e) { return areasSeleccionadas.includes(e[1].area); })
-    .map(function(e) {
-      const cat = e[0], b = e[1], s = siatelMap[cat];
-      return { catalogo: cat, descripcion: b.d, um: s?s.um:'', existencia: s?s.lib:null, traslado: s?s.tras:null, ubicacion: b.u, area: b.area, lotes: lotesMap[cat]||[] };
-    })
-    .filter(function(m) {
-      if (fExist    && !(m.existencia > 0)) return false;
-      if (fTraslado && !(m.traslado   > 0)) return false;
-      if (fLotes    && !m.lotes.length)     return false;
-      return true;
-    });
-
-  if (!mats.length) { alert('No hay materiales con los filtros seleccionados'); return; }
-
-  const totalAreas = Object.keys(AREA_CONFIG).filter(function(k) { return AREA_CONFIG[k].enMenu; }).length;
-  const nombre = areasSeleccionadas.length === totalAreas ? 'Todo_Inventario' : areasSeleccionadas.join('_').substring(0,30);
-
-  exportarAExcel(mats, nombre, incLotes);
-  cerrarModalExportacion();
-}
-
-function filtrarMaterialesExport() {
-  const q         = (document.getElementById('buscar') ? document.getElementById('buscar').value : '').toLowerCase();
-  const ubic      = document.getElementById('f-ubic')  ? document.getElementById('f-ubic').value  : '';
-  const ocZero    = document.getElementById('f-zero')  ? document.getElementById('f-zero').checked : false;
-  const soloTras  = document.getElementById('f-tras')  ? document.getElementById('f-tras').checked : false;
-  const soloLotes = document.getElementById('f-lotes') ? document.getElementById('f-lotes').checked: false;
-
-  return materiales.filter(function(m) {
-    if (q && !((m.catalogo + ' ' + m.descripcion).toLowerCase().includes(q))) return false;
-    if (ubic && m.ubicacion !== ubic) return false;
-    if (ocZero && !(m.existencia > 0)) return false;
-    if (soloTras && !(m.traslado > 0)) return false;
-    if (soloLotes && !m.lotes.length)  return false;
-    return true;
-  });
-}
-
-function exportarAExcel(mats, nombreHoja, incluirLotes) {
-  const wb    = XLSX.utils.book_new();
-  const fecha = new Date().toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric'}).replace(/[/]/g,'-');
-  const header = ['Área','Catálogo','Descripción','U.M.','Ubicación','Exist. SIATEL','Traslado'];
-  const filas  = [header];
-
-  mats.forEach(function(m) {
-    filas.push([
-      m.area || '',
-      m.catalogo,
-      m.descripcion,
-      m.um || '',
-      m.ubicacion || '',
-      m.existencia !== null ? m.existencia : '',
-      m.traslado   !== null ? m.traslado   : ''
-    ]);
-    if (incluirLotes && m.lotes && m.lotes.length > 0) {
-      m.lotes.forEach(function(l) {
-        filas.push(['', '  > ' + l.lote, '', l.um || m.um || '', '', l.lib !== undefined ? l.lib : '', l.tras !== undefined ? l.tras : '']);
-      });
-    }
-  });
-
-  const ws = XLSX.utils.aoa_to_sheet(filas);
-  ws['!cols'] = [14,12,50,6,16,14,10].map(function(w) { return {wch:w}; });
-  XLSX.utils.book_append_sheet(wb, ws, (nombreHoja||'Inventario').substring(0,31));
-  XLSX.writeFile(wb, 'Inventario_' + (nombreHoja||'Export') + '_' + fecha + '.xlsx');
-}
-
 </script>
 
 <!-- ════════ MÓDULO TRASPASOS / RECEPCIONES ════════ -->
-<div id="pantalla-traspasos" style="display:none;flex-direction:column;min-height:100vh;padding:20px 24px;background:var(--fondo)">
+<div id="pantalla-traspasos" style="display:none;flex-direction:column;min-height:calc(100vh - 60px);padding:20px 24px;background:var(--fondo)">
 
   <!-- Tabs -->
   <div class="mv-tabs">
@@ -3205,11 +2897,10 @@ function exportarAExcel(mats, nombreHoja, incluirLotes) {
         <label class="mv-label">Almacén <span id="mv-label-dir">destino</span> <span style="color:var(--rojo)">*</span></label>
         <div style="position:relative;margin-bottom:0">
           <input type="text" class="mv-input" id="mv-almacen-input"
-            placeholder="Escribe o busca: nombre, siglas, o cualquier destino..."
+            placeholder="Buscar por nombre o siglas (ej. TX8H, Mocambo)..."
             autocomplete="off"
             oninput="mvAlmacenBuscar(this.value)"
             onfocus="mvAlmacenBuscar(this.value)"
-            onkeydown="mvAlmacenKeydown(event)"
             onblur="setTimeout(mvAlmacenCerrar, 300)">
           <div id="mv-almacen-lista" style="display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1.5px solid var(--borde);border-radius:8px;z-index:600;max-height:220px;overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,.1);margin-top:2px"></div>
         </div>
@@ -3230,66 +2921,7 @@ function exportarAExcel(mats, nombreHoja, incluirLotes) {
       <div style="margin-top:4px;margin-bottom:8px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
           <label class="mv-label" style="margin:0">Catálogos <span style="color:var(--rojo)">*</span></label>
-          <div style="display:flex;gap:8px">
-            <button class="btn btn-sm btn-outline" onclick="mvMostrarPegado()" style="font-size:12px;background:#f0fdf4;border-color:#16a34a;color:#15803d">📋 Pegar desde Excel</button>
-            <button class="btn btn-sm btn-outline" onclick="mvAgregarRenglon()" style="font-size:12px">+ Agregar catálogo</button>
-          </div>
-        </div>
-        <!-- Panel de pegado -->
-        <div id="mv-panel-pegado" style="display:none;background:#f8fafc;border:1.5px solid #16a34a33;border-radius:10px;padding:14px;margin-bottom:12px">
-          <div style="font-size:12px;font-weight:600;color:#15803d;margin-bottom:10px">📋 Pegar desde Excel</div>
-
-          <!-- Tabs catálogos / cantidades -->
-          <div style="display:flex;gap:4px;margin-bottom:12px;background:#e2e8f0;border-radius:8px;padding:3px">
-            <button id="mv-ptab-cats" onclick="mvPegadoTab('cats')"
-              style="flex:1;padding:6px;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;background:white;color:#15803d;box-shadow:0 1px 3px rgba(0,0,0,.1)">
-              1️⃣ Catálogos
-            </button>
-            <button id="mv-ptab-qtys" onclick="mvPegadoTab('qtys')"
-              style="flex:1;padding:6px;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;background:transparent;color:var(--muted)">
-              2️⃣ Cantidades
-            </button>
-          </div>
-
-          <!-- Panel catálogos -->
-          <div id="mv-ppanel-cats">
-            <div style="font-size:11px;color:var(--muted);margin-bottom:6px">
-              Pega la columna de <b>catálogos</b> de Excel. Se cargarán con cantidad 1 por defecto.
-            </div>
-            <textarea id="mv-txt-cats" rows="6"
-              style="width:100%;border:1.5px solid var(--borde);border-radius:8px;padding:8px 10px;font-size:13px;font-family:monospace;box-sizing:border-box;resize:vertical"
-              placeholder="1002447&#10;1034992&#10;1000005&#10;..."></textarea>
-          </div>
-
-          <!-- Panel cantidades -->
-          <div id="mv-ppanel-qtys" style="display:none">
-            <div style="font-size:11px;color:var(--muted);margin-bottom:6px">
-              Pega la columna de <b>cantidades</b> en el mismo orden que los catálogos cargados.
-            </div>
-            <textarea id="mv-txt-qtys" rows="6"
-              style="width:100%;border:1.5px solid var(--borde);border-radius:8px;padding:8px 10px;font-size:13px;font-family:monospace;box-sizing:border-box;resize:vertical"
-              placeholder="3&#10;1&#10;2&#10;..."></textarea>
-            <div id="mv-qtys-status" style="font-size:11px;color:var(--muted);margin-top:4px"></div>
-          </div>
-
-          <!-- También acepta dos columnas juntas -->
-          <details style="margin-top:10px">
-            <summary style="font-size:11px;color:var(--muted);cursor:pointer">📎 También puedo pegar las dos columnas juntas</summary>
-            <div style="margin-top:8px">
-              <textarea id="mv-txt-ambas" rows="4"
-                style="width:100%;border:1.5px solid var(--borde);border-radius:8px;padding:8px 10px;font-size:13px;font-family:monospace;box-sizing:border-box;resize:vertical"
-                placeholder="1002447&#9;3&#10;1034992&#9;1&#10;1000005&#9;2"></textarea>
-            </div>
-          </details>
-
-          <div id="mv-pegado-preview" style="margin-top:8px;font-size:11px"></div>
-          <div style="display:flex;gap:8px;margin-top:10px;justify-content:flex-end">
-            <button class="btn btn-sm btn-outline" onclick="mvCancelarPegado()" style="font-size:12px">Cancelar</button>
-            <button class="btn btn-sm" onclick="mvProcesarPegado()"
-              style="font-size:12px;background:#16a34a;color:white;border:none;padding:6px 16px;border-radius:8px;cursor:pointer;font-weight:600">
-              ✅ Cargar
-            </button>
-          </div>
+          <button class="btn btn-sm btn-outline" onclick="mvAgregarRenglon()" style="font-size:12px">+ Agregar catálogo</button>
         </div>
         <div id="mv-renglones" class="mv-renglones"></div>
       </div>
@@ -3359,56 +2991,9 @@ function mvNavActivo(cual) {
   }
 }
 
-async function mvInicializar() {
+function mvInicializar() {
   if (mvRenglones.length === 0) mvAgregarRenglon();
   mvCargarHistorial();
-  // Si por alguna razón el siatelMap aún no cargó, intentar de nuevo
-  if (Object.keys(siatelMap).length === 0) {
-    await mvCargarSiatel();
-  }
-  setTimeout(() => {
-    const inp = document.getElementById('mv-almacen-input');
-    if (inp && !inp.value) inp.focus();
-  }, 150);
-}
-
-async function mvCargarSiatel() {
-  try {
-    const ngrokURL = sessionStorage.getItem('tx41_ngrok') || '';
-    const token    = sessionStorage.getItem('tx41_token') || sesionToken || '';
-    if (ngrokURL && token) {
-      // Cargar desde servidor (datos frescos con movimientos aplicados)
-      const res = await fetch(ngrokURL + '/api/siatel', {
-        mode: 'cors',
-        headers: { 'Authorization': 'Bearer ' + token, 'ngrok-skip-browser-warning': 'true' }
-      });
-      if (res.ok) {
-        const d = await res.json();
-        if (d.ok && d.datos && Object.keys(d.datos).length > 0) {
-          siatelMap    = d.datos;
-          nombreSiatel = d.nombre || 'SIATEL';
-          if (d.lotes) lotesMap = d.lotes;
-          console.log('✅ siatelMap cargado para traspasos:', Object.keys(siatelMap).length, 'materiales');
-          return;
-        }
-      }
-    }
-    // Fallback: leer config.json de GitHub
-    const cfg = await fetch('https://ivanislasg.github.io/inventario-tx41/config.json?t=' + Date.now(), { cache: 'no-store' });
-    if (cfg.ok) {
-      const data = await cfg.json();
-      if (data.siatel && Object.keys(data.siatel).length > 0) {
-        siatelMap = {};
-        for (const cat in data.siatel) {
-          const v = data.siatel[cat];
-          siatelMap[cat] = { lib: v[0]||0, tras: v[1]||0, um: v[2]||'' };
-        }
-        console.log('✅ siatelMap cargado desde config.json:', Object.keys(siatelMap).length, 'materiales');
-      }
-    }
-  } catch(e) {
-    console.warn('No se pudo cargar siatelMap para traspasos:', e.message);
-  }
 }
 
 // ── Tipo ──
@@ -3484,11 +3069,6 @@ function mvAlmacenSel(valor) {
   const inp = document.getElementById('mv-almacen-input');
   if (inp) inp.value = valor;
   mvAlmacenCerrar();
-  // Pasar al campo de guía
-  setTimeout(() => {
-    const guia = document.getElementById('mv-guia');
-    if (guia) guia.focus();
-  }, 50);
 }
 
 function mvAlmacenCerrar() {
@@ -3515,10 +3095,8 @@ function mvTab(tab) {
 // Esto evita que cantidades escritas con teclado se pierdan al agregar renglones
 function mvSyncFromDOM() {
   mvRenglones.forEach(r => {
-    const qtyEl  = document.getElementById('mv-qty-' + r.id);
+    const qtyEl = document.getElementById('mv-qty-' + r.id);
     if (qtyEl) r.cantidad = Math.max(1, parseInt(qtyEl.value.replace(/[^0-9]/g,'')) || 1);
-    const loteEl = document.getElementById('mv-lote-' + r.id);
-    if (loteEl && loteEl.value.trim()) r.lote = loteEl.value.trim();
   });
 }
 
@@ -3570,11 +3148,10 @@ function mvRenderRenglones() {
       <div class="mv-renglon-header">
         <div style="flex:1;position:relative">
           <input type="text" class="mv-cat-input" id="mv-cat-${r.id}"
-            placeholder="Catálogo o descripción..."
+            placeholder="Buscar catálogo o descripción..."
             value="${valInput.replace(/"/g,'&quot;')}"
             oninput="mvBuscar(${r.id},this.value)"
             onfocus="mvBuscar(${r.id},this.value)"
-            onkeydown="mvCatKeydown(event,${r.id})"
             onblur="setTimeout(()=>mvCerrar(${r.id}),400)">
           <div id="mv-res-${r.id}" class="mv-cat-resultados" style="display:none"></div>
           ${existBadge}
@@ -3592,110 +3169,9 @@ function mvRenderRenglones() {
           onclick="this.select()"
           onkeydown="mvQtyKeydown(event,${r.id},${esUltimo})">
         ${r.um ? `<span style="font-size:12px;color:var(--muted)">${r.um}</span>` : ''}
-      </div>
-      ${mvRenderLoteField(r)}`;
+      </div>`;
     cont.appendChild(div);
   });
-}
-
-// ── LOTES ──
-function mvTieneLotes(cat) {
-  return cat && lotesMap[cat] && lotesMap[cat].length > 0;
-}
-
-function mvRenderLoteField(r) {
-  if (!r.cat || !mvTieneLotes(r.cat)) return '';
-  const lotes = lotesMap[r.cat];
-  const sinLote = !r.lote;
-  const bgColor = sinLote ? '#fef2f2' : '#f0fdf4';
-  const borderColor = sinLote ? 'var(--rojo)' : '#16a34a';
-  let opts = lotes.map(l =>
-    '<div onpointerdown="mvSelLote(' + r.id + ',\'' + l.lote.replace(/'/g,"\'") + '\')"' +
-    ' style="padding:7px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between"' +
-    ' onmouseover="this.style.background=\'#EEF2FF\'" onmouseout="this.style.background=\'white\'">' +
-    '<span style="font-weight:600">' + l.lote + '</span>' +
-    '<span style="color:var(--muted)">' + l.lib + ' ' + (l.um||r.um) + '</span>' +
-    '</div>'
-  ).join('');
-  return '<div style="margin-top:8px;position:relative">' +
-    '<label style="font-size:11px;font-weight:700;color:' + (sinLote?'var(--rojo)':'#15803d') + ';display:block;margin-bottom:3px">' +
-    '📦 Lote ' + (sinLote ? '<span style="font-size:10px">(requerido)</span>' : '✅') + '</label>' +
-    '<input type="text" id="mv-lote-' + r.id + '"' +
-    ' value="' + (r.lote||'') + '"' +
-    ' placeholder="Selecciona o escribe el lote..."' +
-    ' style="width:100%;height:34px;border:1.5px solid ' + borderColor + ';border-radius:8px;padding:0 10px;font-size:13px;background:' + bgColor + ';box-sizing:border-box"' +
-    ' oninput="mvBuscarLote(' + r.id + ',this.value)"' +
-    ' onfocus="mvBuscarLote(' + r.id + ',this.value)"' +
-    ' onblur="setTimeout(()=>mvCerrarLote(' + r.id + '),350)"' +
-    ' onkeydown="mvLoteKeydown(event,' + r.id + ')">' +
-    '<div id="mv-lote-res-' + r.id + '" style="display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1.5px solid var(--borde);border-radius:8px;z-index:600;max-height:180px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.1);margin-top:2px">' +
-    opts + '</div></div>';
-}
-
-function mvBuscarLote(id, q) {
-  const res = document.getElementById('mv-lote-res-' + id);
-  const r   = mvRenglones.find(x => x.id === id);
-  if (!res || !r || !lotesMap[r.cat]) return;
-  const lotes = q
-    ? lotesMap[r.cat].filter(l => l.lote.toLowerCase().includes(q.toLowerCase()))
-    : lotesMap[r.cat];
-  if (!lotes.length) { res.style.display='none'; return; }
-  res.innerHTML = lotes.map(l =>
-    '<div onpointerdown="mvSelLote(' + id + ',\'' + l.lote.replace(/'/g,"\'") + '\')"' +
-    ' style="padding:7px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between"' +
-    ' onmouseover="this.style.background=\'#EEF2FF\'" onmouseout="this.style.background=\'white\'">' +
-    '<span style="font-weight:600">' + l.lote + '</span>' +
-    '<span style="color:var(--muted)">' + l.lib + ' ' + (l.um||r.um) + '</span>' +
-    '</div>'
-  ).join('');
-  res.style.display = 'block';
-}
-
-function mvSelLote(id, lote) {
-  const r = mvRenglones.find(x => x.id === id);
-  if (!r) return;
-  r.lote = lote;
-  mvCerrarLote(id);
-  // Actualizar visual del campo sin re-render completo
-  const inp = document.getElementById('mv-lote-' + id);
-  if (inp) {
-    inp.value = lote;
-    inp.style.borderColor = '#16a34a';
-    inp.style.background  = '#f0fdf4';
-  }
-  const lbl = inp ? inp.previousSibling : null;
-  // Mover foco a cantidad
-  const qty = document.getElementById('mv-qty-' + id);
-  if (qty) { qty.focus(); qty.select(); }
-}
-
-function mvCerrarLote(id) {
-  const res = document.getElementById('mv-lote-res-' + id);
-  if (res) res.style.display = 'none';
-  // Guardar lo que haya escrito en el campo como lote
-  const inp = document.getElementById('mv-lote-' + id);
-  const r   = mvRenglones.find(x => x.id === id);
-  if (inp && r && inp.value.trim()) {
-    r.lote = inp.value.trim();
-  }
-}
-
-function mvLoteKeydown(e, id) {
-  if (e.key !== 'Enter' && e.key !== 'Tab') return;
-  const res = document.getElementById('mv-lote-res-' + id);
-  if (res && res.style.display !== 'none') {
-    const primer = res.querySelector('[onpointerdown]');
-    if (primer) {
-      e.preventDefault();
-      primer.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
-      return;
-    }
-  }
-  // Guardar texto escrito y pasar a cantidad
-  mvCerrarLote(id);
-  e.preventDefault();
-  const qty = document.getElementById('mv-qty-' + id);
-  if (qty) { qty.focus(); qty.select(); }
 }
 
 function mvBuscar(id, q) {
@@ -3730,47 +3206,6 @@ function mvBuscar(id, q) {
   res.style.display = 'block';
 }
 
-// Enter/Tab en campo almacén: si hay primer resultado en lista, seleccionarlo
-function mvAlmacenKeydown(e) {
-  if (e.key !== 'Enter' && e.key !== 'Tab') return;
-  const lista = document.getElementById('mv-almacen-lista');
-  if (lista && lista.style.display !== 'none') {
-    const primer = lista.querySelector('[onpointerdown]');
-    if (primer) {
-      e.preventDefault();
-      primer.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
-      return;
-    }
-  }
-  // Sin lista: cerrar y pasar a guía
-  mvAlmacenCerrar();
-  if (e.key === 'Enter') {
-    e.preventDefault();
-    const guia = document.getElementById('mv-guia');
-    if (guia) guia.focus();
-  }
-}
-
-// Enter/Tab en campo catálogo:
-//   1. Si hay lista visible → seleccionar el primer resultado
-//   2. Pasar automáticamente al campo de cantidad
-function mvCatKeydown(e, id) {
-  if (e.key !== 'Enter' && e.key !== 'Tab') return;
-  const res = document.getElementById('mv-res-' + id);
-  if (res && res.style.display !== 'none') {
-    const primer = res.querySelector('[data-cat]');
-    if (primer) {
-      e.preventDefault();
-      mvSelFromEl(primer); // selecciona catálogo + pone existencia + enfoca cantidad
-      return;
-    }
-  }
-  // Sin lista visible: pasar directo a cantidad
-  e.preventDefault();
-  const qty = document.getElementById('mv-qty-' + id);
-  if (qty) { qty.focus(); qty.select(); }
-}
-
 function mvSelFromEl(el) {
   // Leer datos del elemento sin problemas de caracteres especiales
   const cont = el.closest('.mv-cat-resultados');
@@ -3787,20 +3222,9 @@ function mvSel(id, cat, desc, um, existencia) {
   const r = mvRenglones.find(x => x.id === id);
   if (!r) return;
   r.cat = cat; r.desc = desc; r.um = um;
-  r.lote = ''; // limpiar lote al cambiar catálogo
   r.existencia = (existencia !== null && existencia !== undefined) ? Number(existencia) : null;
   mvCerrar(id);
   mvRenderRenglones();
-  // Si tiene lotes: enfocar campo de lote; si no: enfocar cantidad
-  setTimeout(() => {
-    if (mvTieneLotes(cat)) {
-      const loteInp = document.getElementById('mv-lote-' + id);
-      if (loteInp) { loteInp.focus(); mvBuscarLote(id, ''); }
-    } else {
-      const qty = document.getElementById('mv-qty-' + id);
-      if (qty) { qty.focus(); qty.select(); }
-    }
-  }, 60);
 }
 
 function mvCerrar(id) {
@@ -3816,118 +3240,6 @@ function mvSetQty(id, val) {
   const inp = document.getElementById('mv-qty-'+id);
   if (inp) {
     inp.classList.toggle('warn', mvTipo==='salida' && r.existencia!==null && num > r.existencia);
-  }
-}
-
-// ── MODO PEGADO DESDE EXCEL ──
-let mvPegadoTabActual = 'cats';
-
-function mvMostrarPegado() {
-  const panel = document.getElementById('mv-panel-pegado');
-  if (panel) {
-    panel.style.display = 'block';
-    mvPegadoTab('cats');
-    setTimeout(() => { const t = document.getElementById('mv-txt-cats'); if (t) t.focus(); }, 80);
-  }
-}
-
-function mvPegadoTab(tab) {
-  mvPegadoTabActual = tab;
-  const isCats = tab === 'cats';
-  const pc = document.getElementById('mv-ppanel-cats');
-  const pq = document.getElementById('mv-ppanel-qtys');
-  if (pc) pc.style.display = isCats ? 'block' : 'none';
-  if (pq) pq.style.display = isCats ? 'none'  : 'block';
-  const bc = document.getElementById('mv-ptab-cats');
-  const bq = document.getElementById('mv-ptab-qtys');
-  if (bc) { bc.style.background = isCats?'white':'transparent'; bc.style.color=isCats?'#15803d':'var(--muted)'; bc.style.boxShadow=isCats?'0 1px 3px rgba(0,0,0,.1)':'none'; }
-  if (bq) { bq.style.background = isCats?'transparent':'white'; bq.style.color=isCats?'var(--muted)':'#15803d'; bq.style.boxShadow=isCats?'none':'0 1px 3px rgba(0,0,0,.1)'; }
-  if (!isCats) {
-    const st = document.getElementById('mv-qtys-status');
-    const n  = mvRenglones.filter(r => r.cat).length;
-    if (st) st.textContent = n > 0 ? n + ' catálogo(s) cargados — pega ' + n + ' cantidad(es) en el mismo orden' : '⚠️ Primero carga los catálogos en la pestaña 1️⃣';
-  }
-}
-
-function mvCancelarPegado() {
-  const panel = document.getElementById('mv-panel-pegado');
-  if (panel) panel.style.display = 'none';
-  ['mv-txt-cats','mv-txt-qtys','mv-txt-ambas'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
-  const prev = document.getElementById('mv-pegado-preview');
-  if (prev) prev.innerHTML = '';
-}
-
-function _parsearLineas(texto) {
-  return texto.trim().split('\n')
-    .map(l => l.trim()).filter(Boolean)
-    .map((linea, i) => {
-      const partes = linea.split(/\t|;|,/).map(p => p.trim()).filter(Boolean);
-      const cat = partes[0] ? partes[0].replace(/\D/g, '') : '';
-      const qty = partes[1] ? parseInt(partes[1]) || 1 : 1;
-      return { cat, qty, lineaOrig: linea, idx: i };
-    });
-}
-
-function mvProcesarPegado() {
-  const prev = document.getElementById('mv-pegado-preview');
-
-  // Caso A: dos columnas juntas
-  const txtAmbas = document.getElementById('mv-txt-ambas');
-  if (txtAmbas && txtAmbas.value.trim()) { _cargarDesdeTexto(txtAmbas.value, true); return; }
-
-  // Caso B: solo cantidades
-  if (mvPegadoTabActual === 'qtys') {
-    const txtQ = document.getElementById('mv-txt-qtys');
-    if (!txtQ || !txtQ.value.trim()) return;
-    const cargados = mvRenglones.filter(r => r.cat);
-    if (!cargados.length) { if (prev) prev.innerHTML = '<span style="color:var(--rojo)">⚠️ Primero carga los catálogos en pestaña 1️⃣</span>'; return; }
-    const nums = txtQ.value.trim().split('\n').map(l => parseInt(l.trim()) || 1);
-    cargados.forEach((r, i) => { if (nums[i] !== undefined) r.cantidad = nums[i]; });
-    mvRenderRenglones();
-    mvCancelarPegado();
-    return;
-  }
-
-  // Caso C: solo catálogos
-  const txtC = document.getElementById('mv-txt-cats');
-  if (!txtC || !txtC.value.trim()) return;
-  _cargarDesdeTexto(txtC.value, false);
-}
-
-function _cargarDesdeTexto(texto, conCantidades) {
-  const prev = document.getElementById('mv-pegado-preview');
-  const filas = _parsearLineas(texto);
-  const validos = [], invalidos = [];
-
-  filas.forEach(function(f) {
-    if (!f.cat || f.cat.length < 4) { invalidos.push('Fila ' + (f.idx+1) + ': "' + f.lineaOrig + '" — inválido'); return; }
-    const mat = baseMaestra[f.cat];
-    if (!mat) { invalidos.push('Fila ' + (f.idx+1) + ': ' + f.cat + ' — no encontrado'); return; }
-    const ex = siatelMap[f.cat];
-    validos.push({ cat: f.cat, desc: mat.d||'', um: mat.u||'', cantidad: conCantidades ? f.qty : 1, existencia: ex ? (ex.lib !== undefined ? ex.lib : null) : null });
-  });
-
-  if (prev) {
-    var msg = '';
-    if (validos.length)   msg += '<span style="color:#15803d">✅ ' + validos.length + ' válido(s)</span>';
-    if (invalidos.length) msg += (validos.length?' · ':'') + '<span style="color:var(--rojo)">⚠️ ' + invalidos.length + ' no encontrado(s)</span><br><small style="color:var(--muted)">' + invalidos.join('<br>') + '</small>';
-    prev.innerHTML = msg;
-  }
-
-  if (!validos.length) return;
-
-  if (mvRenglones.some(r => r.cat) && !confirm('¿Reemplazar los ' + mvRenglones.filter(r=>r.cat).length + ' renglones actuales con los ' + validos.length + ' catálogos cargados?')) return;
-
-  mvRenglones = []; mvRenglonIdx = 0;
-  validos.forEach(function(v) { mvRenglones.push({ id: ++mvRenglonIdx, cat: v.cat, desc: v.desc, um: v.um, cantidad: v.cantidad, existencia: v.existencia }); });
-  mvRenderRenglones();
-
-  if (!conCantidades) {
-    mvPegadoTab('qtys');
-    if (prev) prev.innerHTML = '<span style="color:#15803d">✅ ' + validos.length + ' catálogos cargados</span> · <span style="color:#92400e">Ahora pega las cantidades en 2️⃣</span>';
-  } else {
-    mvCancelarPegado();
-    if (invalidos.length) setTimeout(function(){ alert('Cargados: ' + validos.length + '\nNo encontrados:\n' + invalidos.join('\n')); }, 100);
   }
 }
 
@@ -3976,24 +3288,6 @@ async function mvGuardar() {
   const ren = mvRenglones.filter(r => r.cat);
   if (!ren.length) { errEl.textContent='Agrega al menos un catálogo'; errEl.style.display='block'; return; }
 
-  // Validar lotes requeridos
-  for (const r of ren) {
-    if (mvTieneLotes(r.cat) && !r.lote) {
-      // Guardar lo que haya en el campo de lote antes de validar
-      const loteInp = document.getElementById('mv-lote-' + r.id);
-      if (loteInp && loteInp.value.trim()) {
-        r.lote = loteInp.value.trim();
-      } else {
-        errEl.textContent = 'Cat. ' + r.cat + ': este material tiene lotes — selecciona o escribe el número de lote';
-        errEl.style.display = 'block';
-        // Enfocar el campo de lote
-        if (loteInp) loteInp.focus();
-        btn.textContent = '💾 Registrar movimiento'; btn.disabled = false;
-        return;
-      }
-    }
-  }
-
   if (mvTipo === 'salida') {
     for (const r of ren) {
       if (r.existencia !== null && r.cantidad > r.existencia) {
@@ -4037,7 +3331,7 @@ async function mvGuardar() {
       guia:   document.getElementById('mv-guia').value.trim(),
       notas:  document.getElementById('mv-notas').value.trim(),
       usuario: sesionUsuario,
-      renglones: ren.map(r => ({ cat:r.cat, desc:r.desc, cantidad:r.cantidad, existencia_antes:r.existencia, lote:r.lote||'' }))
+      renglones: ren.map(r => ({ cat:r.cat, desc:r.desc, cantidad:r.cantidad, existencia_antes:r.existencia }))
     });
     const res = await fetch(url, {
       method:'POST', mode:'cors',
@@ -4059,8 +3353,7 @@ async function mvGuardar() {
           siatelMap[r.cat].lib = Math.max(0, (siatelMap[r.cat].lib||0) + (mvTipo==='entrada'?1:-1)*r.cantidad);
         }
       });
-      const folioMsg = data.folio ? ` · Folio: ${data.folio}` : '';
-      alert(`✅ ${mvTipo==='salida'?'Salida':'Entrada'} registrada correctamente.${folioMsg}`);
+      alert(`✅ ${mvTipo==='salida'?'Salida':'Entrada'} registrada correctamente.`);
       mvLimpiarForm();
       await mvCargarHistorial();
     } else {
@@ -4101,18 +3394,17 @@ function mvRenderHistorial() {
   const ord = [...lista].sort((a,b) => new Date(b.fecha)-new Date(a.fecha));
   cont.innerHTML = `<table class="mv-historial-tabla">
     <thead><tr>
-      <th>Folio</th><th>Fecha</th><th>Tipo</th><th>Almacén</th><th>Guía</th>
+      <th>Fecha</th><th>Tipo</th><th>Almacén</th><th>Guía</th>
       <th>Usuario</th><th>Catálogos</th><th>Notas</th>
       ${esAdmin ? '<th>Acciones</th>' : ''}
     </tr></thead>
     <tbody>${ord.map(m=>`<tr id="mv-fila-${m.id}">
-      <td style="font-weight:700;color:var(--azul);white-space:nowrap">${m.folio || '—'}</td>
       <td style="white-space:nowrap">${mvFmt(m.fecha)}</td>
       <td><span class="${m.tipo==='salida'?'mv-badge-salida':'mv-badge-entrada'}">${m.tipo==='salida'?'📤 Salida':'📥 Entrada'}</span></td>
       <td>${m.almacen}</td>
       <td>${m.guia||'—'}</td>
       <td>${m.usuario}</td>
-      <td style="font-size:11px">${(m.renglones||[]).map(r=>`<b>${r.cat}</b> ×${r.cantidad}${r.lote?' <span style="color:var(--muted)">Lote:'+r.lote+'</span>':''}`).join('<br>')}</td>
+      <td style="font-size:11px">${(m.renglones||[]).map(r=>`<b>${r.cat}</b> ×${r.cantidad}`).join('<br>')}</td>
       <td style="font-size:11px;color:var(--muted)">${m.notas||'—'}</td>
       ${esAdmin ? `<td style="white-space:nowrap">
         <button onclick="mvEditarMovimiento('${m.id}')"
@@ -4127,138 +3419,17 @@ function mvRenderHistorial() {
 function mvEditarMovimiento(id) {
   const mov = mvMovimientos.find(m => m.id === id);
   if (!mov) return;
-  // Construir modal de edición completa
-  const folio = mov.folio ? ' · Folio ' + mov.folio : '';
-  let renglonRows = (mov.renglones||[]).map((r,i) =>
-    `<tr>
-      <td style="padding:4px 6px"><input type="text" value="${r.cat}" id="ed-cat-${i}"
-        style="width:90px;height:30px;border:1px solid var(--borde);border-radius:6px;padding:0 6px;font-size:12px;font-family:inherit"></td>
-      <td style="padding:4px 6px;font-size:11px;color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.desc||''}</td>
-      <td style="padding:4px 6px">${r.lote||'—'}</td>
-      <td style="padding:4px 6px"><input type="text" inputmode="numeric" value="${r.cantidad}" id="ed-qty-${i}"
-        style="width:60px;height:30px;border:1px solid var(--borde);border-radius:6px;padding:0 6px;font-size:13px;font-weight:600;text-align:center;font-family:inherit"
-        oninput="this.value=this.value.replace(/[^0-9]/g,'')"></td>
-      <td style="padding:4px 6px">
-        <button onclick="mvEdEliminarRenglon(${i})" style="background:none;border:none;color:var(--rojo);cursor:pointer;font-size:14px;padding:2px 4px">✕</button>
-      </td>
-    </tr>`
-  ).join('');
-
-  const modal = document.createElement('div');
-  modal.id = 'mv-modal-edicion';
-  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:3000;display:flex;align-items:center;justify-content:center';
-  modal.innerHTML = `
-    <div style="background:white;border-radius:16px;padding:24px;max-width:620px;width:95%;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
-        <h3 style="margin:0;font-size:15px;color:var(--azul)">✏️ Editar movimiento${folio}</h3>
-        <button onclick="document.getElementById('mv-modal-edicion').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted)">✕</button>
-      </div>
-
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
-        <div>
-          <label style="font-size:11px;font-weight:700;color:var(--azul);display:block;margin-bottom:4px">Almacén</label>
-          <input type="text" id="ed-almacen" value="${(mov.almacen||'').replace(/"/g,'&quot;')}"
-            style="width:100%;height:36px;border:1.5px solid var(--borde);border-radius:8px;padding:0 10px;font-size:13px;box-sizing:border-box;font-family:inherit">
-        </div>
-        <div>
-          <label style="font-size:11px;font-weight:700;color:var(--azul);display:block;margin-bottom:4px">Guía / Folio</label>
-          <input type="text" id="ed-guia" value="${(mov.guia||'').replace(/"/g,'&quot;')}"
-            style="width:100%;height:36px;border:1.5px solid var(--borde);border-radius:8px;padding:0 10px;font-size:13px;box-sizing:border-box;font-family:inherit">
-        </div>
-        <div style="grid-column:1/-1">
-          <label style="font-size:11px;font-weight:700;color:var(--azul);display:block;margin-bottom:4px">Texto de cabecera</label>
-          <input type="text" id="ed-notas" value="${(mov.notas||'').replace(/"/g,'&quot;')}"
-            style="width:100%;height:36px;border:1.5px solid var(--borde);border-radius:8px;padding:0 10px;font-size:13px;box-sizing:border-box;font-family:inherit">
-        </div>
-      </div>
-
-      <div style="font-size:11px;font-weight:700;color:var(--azul);margin-bottom:8px">Catálogos y cantidades</div>
-      <div style="overflow-x:auto;margin-bottom:10px">
-        <table style="width:100%;border-collapse:collapse;font-size:12px">
-          <thead>
-            <tr style="background:#f8fafc;color:var(--texto)">
-              <th style="padding:6px;text-align:left;border-bottom:1.5px solid var(--borde)">Catálogo</th>
-              <th style="padding:6px;text-align:left;border-bottom:1.5px solid var(--borde)">Descripción</th>
-              <th style="padding:6px;text-align:left;border-bottom:1.5px solid var(--borde)">Lote</th>
-              <th style="padding:6px;text-align:center;border-bottom:1.5px solid var(--borde)">Cantidad</th>
-              <th style="border-bottom:1.5px solid var(--borde)"></th>
-            </tr>
-          </thead>
-          <tbody id="ed-renglones">${renglonRows}</tbody>
-        </table>
-      </div>
-
-      <div id="ed-error" style="display:none;background:#fef2f2;color:var(--rojo);font-size:12px;padding:8px 12px;border-radius:8px;margin-bottom:10px"></div>
-
-      <div style="display:flex;gap:10px;justify-content:flex-end">
-        <button onclick="document.getElementById('mv-modal-edicion').remove()" class="btn btn-outline" style="font-size:13px">Cancelar</button>
-        <button onclick="mvGuardarEdicion('${id}')" style="background:var(--azul);color:white;border:none;padding:8px 20px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">💾 Guardar cambios</button>
-      </div>
-    </div>`;
-  document.body.appendChild(modal);
-  // Guardar renglones originales en el modal para referencia
-  modal._movId = id;
-  modal._renglones = JSON.parse(JSON.stringify(mov.renglones || []));
-}
-
-function mvEdEliminarRenglon(idx) {
-  const fila = document.querySelector(`#ed-renglones tr:nth-child(${idx+1})`);
-  if (fila) fila.style.opacity = '0.3';
-  // Marcar como eliminado
-  const catEl = document.getElementById('ed-cat-' + idx);
-  if (catEl) catEl.dataset.eliminado = '1';
-}
-
-async function mvGuardarEdicion(id) {
-  const errEl = document.getElementById('ed-error');
-  if (errEl) errEl.style.display = 'none';
-
-  const almacen = document.getElementById('ed-almacen').value.trim();
-  const guia    = document.getElementById('ed-guia').value.trim();
-  const notas   = document.getElementById('ed-notas').value.trim();
-
-  // Recopilar renglones editados
-  const modal = document.getElementById('mv-modal-edicion');
-  const rengOriginal = modal._renglones || [];
-  const renglones = [];
-  rengOriginal.forEach((r, i) => {
-    const catEl = document.getElementById('ed-cat-' + i);
-    const qtyEl = document.getElementById('ed-qty-' + i);
-    if (!catEl || catEl.dataset.eliminado) return;
-    renglones.push({
-      cat:       catEl.value.trim(),
-      desc:      r.desc || '',
-      lote:      r.lote || '',
-      cantidad:  Math.max(1, parseInt(qtyEl ? qtyEl.value : r.cantidad) || 1),
-      existencia_antes: r.existencia_antes
-    });
+  const nuevoAlmacen = prompt('Almacén ' + (mov.tipo==='salida'?'destino':'origen') + ':', mov.almacen || '');
+  if (nuevoAlmacen === null) return; // canceló
+  const nuevaGuia   = prompt('Guía de embarque / Folio:', mov.guia || '');
+  if (nuevaGuia === null) return;
+  const nuevasNotas = prompt('Notas:', mov.notas || '');
+  if (nuevasNotas === null) return;
+  mvActualizarMovimiento(id, {
+    almacen: nuevoAlmacen.trim() || mov.almacen,
+    guia:    nuevaGuia.trim(),
+    notas:   nuevasNotas.trim()
   });
-
-  if (!renglones.length) {
-    if (errEl) { errEl.textContent = 'Debe haber al menos un catálogo'; errEl.style.display = 'block'; }
-    return;
-  }
-
-  const baseURL = ES_GITHUB ? (sessionStorage.getItem('tx41_ngrok') || '') : '';
-  const url     = baseURL ? `${baseURL}/api/movimientos` : '/api/movimientos';
-  const token   = sessionStorage.getItem('tx41_token') || sesionToken || '';
-
-  try {
-    const res = await fetch(url, {
-      method: 'POST', mode: 'cors',
-      headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+token, 'ngrok-skip-browser-warning':'true' },
-      body: JSON.stringify({ accion: 'editar', id, almacen, guia, notas, renglones })
-    });
-    const data = await res.json();
-    if (data.ok) {
-      modal.remove();
-      await mvCargarHistorial();
-    } else {
-      if (errEl) { errEl.textContent = data.msg || 'Error al guardar'; errEl.style.display = 'block'; }
-    }
-  } catch(e) {
-    if (errEl) { errEl.textContent = 'Error de conexión'; errEl.style.display = 'block'; }
-  }
 }
 
 async function mvActualizarMovimiento(id, cambios) {
@@ -4313,11 +3484,11 @@ function mvFmt(iso) {
 
 function mvExportarExcel() {
   if (!mvMovimientos.length) { alert('No hay movimientos para exportar'); return; }
-  const filas = [['Folio','Fecha','Tipo','Almacén','Guía','Usuario','Catálogo','Descripción','Lote','Cantidad','Exist. Antes','Notas']];
+  const filas = [['Fecha','Tipo','Almacén','Guía','Usuario','Catálogo','Descripción','Cantidad','Exist. Antes','Notas']];
   mvMovimientos.forEach(m => {
     (m.renglones||[]).forEach(r => {
-      filas.push([m.folio||'', mvFmt(m.fecha), m.tipo==='salida'?'Salida':'Entrada', m.almacen,
-        m.guia||'', m.usuario, r.cat, r.desc, r.lote||'', r.cantidad, r.existencia_antes??'', m.notas||'']);
+      filas.push([mvFmt(m.fecha), m.tipo==='salida'?'Salida':'Entrada', m.almacen,
+        m.guia||'', m.usuario, r.cat, r.desc, r.cantidad, r.existencia_antes??'', m.notas||'']);
     });
   });
   const wb = XLSX.utils.book_new();
@@ -4326,57 +3497,7 @@ function mvExportarExcel() {
   XLSX.utils.book_append_sheet(wb, ws, 'Movimientos');
   XLSX.writeFile(wb, `Movimientos_TX41_${new Date().toISOString().slice(0,10)}.xlsx`);
 }
-
 </script>
-
-
-<!-- ════════ MODAL EXPORTACIÓN ════════ -->
-<div id="modal-exportacion" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;align-items:center;justify-content:center">
-  <div style="background:white;border-radius:16px;padding:28px;max-width:480px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.3)">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
-      <h3 style="margin:0;font-size:16px;color:var(--azul)">📊 Exportar inventario a Excel</h3>
-      <button onclick="cerrarModalExportacion()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted)">✕</button>
-    </div>
-
-    <!-- Selección de áreas -->
-    <div style="margin-bottom:16px">
-      <div style="font-size:12px;font-weight:700;color:var(--azul);margin-bottom:8px">Áreas a incluir</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap" id="exp-areas-checks"></div>
-      <div style="display:flex;gap:8px;margin-top:8px">
-        <button onclick="expSelTodas(true)" style="font-size:11px;padding:3px 10px;background:#EEF2FF;color:var(--azul);border:none;border-radius:6px;cursor:pointer">Todas</button>
-        <button onclick="expSelTodas(false)" style="font-size:11px;padding:3px 10px;background:#f1f5f9;color:var(--muted);border:none;border-radius:6px;cursor:pointer">Ninguna</button>
-      </div>
-    </div>
-
-    <!-- Filtros -->
-    <div style="margin-bottom:20px">
-      <div style="font-size:12px;font-weight:700;color:var(--azul);margin-bottom:8px">Filtros</div>
-      <div style="display:flex;flex-direction:column;gap:8px">
-        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
-          <input type="checkbox" id="exp-f-existencias" style="width:16px;height:16px">
-          Solo materiales con existencia &gt; 0
-        </label>
-        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
-          <input type="checkbox" id="exp-f-traslado" style="width:16px;height:16px">
-          Solo materiales con traslado &gt; 0
-        </label>
-        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
-          <input type="checkbox" id="exp-f-lotes" style="width:16px;height:16px">
-          Solo materiales con lotes
-        </label>
-        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
-          <input type="checkbox" id="exp-incluir-lotes" checked style="width:16px;height:16px">
-          Incluir detalle de lotes en filas separadas
-        </label>
-      </div>
-    </div>
-
-    <div style="display:flex;gap:10px;justify-content:flex-end">
-      <button onclick="cerrarModalExportacion()" class="btn btn-outline" style="font-size:13px">Cancelar</button>
-      <button onclick="ejecutarExportacion()" style="background:#0369a1;color:white;border:none;padding:8px 20px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">📊 Exportar</button>
-    </div>
-  </div>
-</div>
 
 </body>
 </html>
