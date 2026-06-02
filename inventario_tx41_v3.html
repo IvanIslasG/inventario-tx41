@@ -2562,7 +2562,8 @@ function actualizarLotesEnMateriales() {
 // ── PANTALLA INICIO ──
 // ── Oculta TODAS las pantallas — llamar antes de mostrar cualquiera ──
 function ocultarTodo() {
-  ['pantalla-login','pantalla-carga','pantalla-area','pantalla-consulta',
+  // Nota: pantalla-login NO se incluye aquí — se controla por separado
+  ['pantalla-carga','pantalla-area','pantalla-consulta',
    'pantalla-captura','pantalla-admin','pantalla-traspasos','pantalla-inicio',
    'app'].forEach(id => {
     const el = document.getElementById(id);
