@@ -379,9 +379,9 @@ button[onclick*="exportar"]{transition:all .15s}
 .an-tx41-banner.warn{background:var(--amarillo-bg);border-color:#f0c060;color:var(--amarillo)}
 .an-tx41-banner.err{background:var(--rojo-bg);border-color:#f5a5a0;color:var(--rojo)}
 .an-tx41-num{font-size:22px;font-weight:700;white-space:nowrap}
-.an-table-wrap{background:white;border-radius:var(--radio);border:1.5px solid var(--borde);overflow:auto;box-shadow:var(--sombra)}
+.an-table-wrap{background:white;border-radius:var(--radio);border:1.5px solid var(--borde);overflow:auto;box-shadow:var(--sombra);max-height:calc(100vh - 280px)}
 .an-table{width:100%;border-collapse:collapse;font-size:13px}
-.an-table th{background:#0096D6;color:white;padding:9px 12px;text-align:left;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap}
+.an-table th{background:#0096D6;color:white;padding:9px 12px;text-align:left;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap;position:sticky;top:0;z-index:2}
 .an-table th.r{text-align:right}
 .an-table td{padding:8px 12px;border-bottom:1px solid #f0f5f9;vertical-align:middle}
 .an-table td.r{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
@@ -527,6 +527,43 @@ input[type=file].an-hidden{display:none}
   <div style="display:flex;align-items:center;gap:16px;margin-bottom:24px">
     <button class="btn btn-outline" onclick="volverInicio()" style="font-size:13px">← Volver</button>
     <h2 style="margin:0;color:var(--azul)">⚙️ Administración</h2>
+  </div>
+
+  <!-- Panel Análisis admin -->
+  <div class="base-card" style="max-width:800px;width:100%;text-align:left">
+    <h3 style="font-size:14px;font-weight:700;color:#0096D6;margin-bottom:16px">📊 Análisis y Distribuciones — Archivos</h3>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+      <label style="font-size:12px;font-weight:700;color:#0096D6;white-space:nowrap">Periodo de consumos:</label>
+      <input type="number" id="an-admin-periodo" value="6" min="1" max="24"
+        style="width:68px;height:34px;border:1.5px solid var(--borde);border-radius:8px;padding:0 10px;font-size:15px;font-weight:700;text-align:center;font-family:inherit">
+      <span style="font-size:12px;color:var(--muted)">meses — define el periodo de todos los archivos de consumos</span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <button onclick="document.getElementById('an-admin-f-total').click()"
+          style="background:#0096D6;color:white;border:none;font-size:12px;font-weight:600;padding:7px 14px;border-radius:8px;cursor:pointer;white-space:nowrap">
+          📂 Archivo TOTAL
+        </button>
+        <input type="file" id="an-admin-f-total" accept=".txt,.csv" style="display:none" onchange="anAdminCargarTotal(event)">
+        <span id="an-admin-st-total" style="font-size:12px;color:var(--muted)">Sin cargar</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <button onclick="document.getElementById('an-admin-f-cons').click()"
+          style="background:#0096D6;color:white;border:none;font-size:12px;font-weight:600;padding:7px 14px;border-radius:8px;cursor:pointer;white-space:nowrap">
+          📂 Consumos (uno o varios)
+        </button>
+        <input type="file" id="an-admin-f-cons" accept=".txt,.csv" multiple style="display:none" onchange="anAdminCargarConsumos(event)">
+        <span id="an-admin-st-cons" style="font-size:12px;color:var(--muted)">Sin cargar</span>
+      </div>
+      <div id="an-admin-chips" style="display:flex;flex-wrap:wrap;gap:6px;min-height:4px"></div>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <button onclick="anAdminSubir()" id="an-admin-btn-subir" disabled
+        style="background:#0096D6;color:white;border:none;padding:8px 18px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;opacity:.5">
+        📤 Publicar para clientes
+      </button>
+      <span id="an-admin-st-subir" style="font-size:12px;color:var(--muted)"></span>
+    </div>
   </div>
 
   <!-- Panel usuarios -->
@@ -2619,6 +2656,9 @@ function ocultarTodo() {
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
   });
+  // Ocultar FAB de traspasos
+  const fab = document.getElementById('mv-fab-agregar');
+  if (fab) fab.style.display = 'none';
 }
 
 function mostrarInicio() {
@@ -3303,6 +3343,13 @@ function exportarAExcel(mats, nombreHoja, incluirLotes) {
             <button class="btn btn-sm btn-outline" onclick="mvAgregarRenglon()" style="font-size:12px">+ Agregar catálogo</button>
           </div>
         </div>
+        <!-- Botón flotante en móvil -->
+        <div id="mv-fab-agregar" style="display:none;position:fixed;bottom:80px;right:20px;z-index:800">
+          <button onclick="mvAgregarRenglon()"
+            style="background:#0096D6;color:white;border:none;border-radius:50px;padding:12px 20px;font-size:14px;font-weight:700;box-shadow:0 4px 16px rgba(0,150,214,.4);cursor:pointer;white-space:nowrap">
+            + Agregar catálogo
+          </button>
+        </div>
         <!-- Panel de pegado -->
         <div id="mv-panel-pegado" style="display:none;background:#f8fafc;border:1.5px solid #16a34a33;border-radius:10px;padding:14px;margin-bottom:12px">
           <div style="font-size:12px;font-weight:600;color:#15803d;margin-bottom:10px">📋 Pegar desde Excel</div>
@@ -3409,6 +3456,10 @@ function irATraspasos() {
   mvNavActivo('traspasos');
   document.getElementById('pantalla-traspasos').style.display = 'flex';
   mvInicializar();
+  // Mostrar FAB en móvil (pantalla < 640px)
+  if (window.innerWidth < 640) {
+    document.getElementById('mv-fab-agregar').style.display = 'block';
+  }
 }
 
 function mvNavActivo(cual) {
@@ -4429,6 +4480,12 @@ function irAAnalisis() {
   mvNavActivo('analisis');
   ocultarTodo();
   document.getElementById('pantalla-analisis').style.display = 'flex';
+  // Cargar datos del servidor si aún no se han cargado
+  if (Object.keys(anExistencias).length === 0) {
+    anCargarDesdeServidor().then(ok => {
+      if (ok) anVerificarListo();
+    });
+  }
 }
 
 function anTab(tab) {
@@ -4759,6 +4816,174 @@ document.addEventListener('pointerdown', e => {
   if (!e.target.closest('.an-cat-wrap'))
     document.getElementById('an-cat-sugs').style.display = 'none';
 });
+
+
+// ════════════════════════════════════════════════════════
+// ADMIN — CARGA Y PUBLICACIÓN DE ANÁLISIS
+// ════════════════════════════════════════════════════════
+
+let anAdminTotal    = {};   // {alm: {cat: lib}}
+let anAdminBaseMat  = {};
+let anAdminConsumos = {};   // {alm: {cat: total}}
+let anAdminTotalOk  = false;
+
+function anAdminCargarTotal(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const el = document.getElementById('an-admin-st-total');
+  el.style.color = 'var(--muted)'; el.textContent = '⏳ Procesando...';
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const lines = e.target.result.split(/\r?\n/);
+      anAdminTotal = {}; anAdminBaseMat = {};
+      for (const line of lines.slice(4)) {
+        const p = line.split('\t');
+        if (p.length < 10) continue;
+        const alm = p[3]?.trim(), cat = p[5]?.trim(),
+              um  = p[6]?.trim(), desc = p[8]?.trim();
+        if (!alm || !cat || !/^\d+$/.test(cat)) continue;
+        const lib = parseFloat((p[9]||'').replace(/,/g,'')) || 0;
+        if (!anAdminTotal[alm]) anAdminTotal[alm] = {};
+        anAdminTotal[alm][cat] = lib;
+        if (!anAdminBaseMat[cat]) anAdminBaseMat[cat] = { desc: desc||'', um: um||'' };
+      }
+      const nA = Object.keys(anAdminTotal).length;
+      const nC = Object.keys(anAdminBaseMat).length;
+      el.textContent = `✅ ${nA} almacenes · ${nC.toLocaleString()} catálogos`;
+      el.style.color = 'var(--verde)';
+      anAdminTotalOk = true;
+      anAdminActualizarBtn();
+    } catch(err) {
+      el.textContent = '❌ ' + err.message;
+      el.style.color = 'var(--rojo)';
+    }
+  };
+  reader.readAsText(file, 'ISO-8859-1');
+}
+
+function anAdminCargarConsumos(event) {
+  const files = Array.from(event.target.files);
+  const chips = document.getElementById('an-admin-chips');
+  const stEl  = document.getElementById('an-admin-st-cons');
+
+  files.forEach(file => {
+    const nom = file.name.toUpperCase();
+    const AN_SIGLAS = ['TX9O','TX9Q','TX8E','TX9R','TX8J','TX9T','TX8Y','TX8X','TX8A','TX8B','TX9U','TX8K','TX8L','TX8H','TX84','TX8F','TX8G','TX8I','TX8M','TX8C','TX8D','TX9P','TX85','TX41'];
+    let alm = AN_SIGLAS.find(s => nom.startsWith(s));
+    const reader = new FileReader();
+    reader.onload = e => {
+      const lines = e.target.result.split(/\r?\n/);
+      const datos = {};
+      for (const line of lines.slice(5)) {
+        const p = line.split('\t');
+        if (p.length < 3) continue;
+        const cat = p[1]?.trim();
+        const val = parseFloat((p[2]||'').replace(/,/g,'')) || 0;
+        if (cat && /^\d{5,}$/.test(cat)) datos[cat] = val;
+      }
+      const key = alm || file.name.replace(/\.[^.]+$/, '').toUpperCase();
+      anAdminConsumos[key] = datos;
+      // Chip
+      const id = 'an-adchip-' + key;
+      let chip = document.getElementById(id);
+      if (!chip) {
+        chip = document.createElement('span');
+        chip.id = id;
+        chip.className = 'an-chip';
+        chips.appendChild(chip);
+      }
+      chip.textContent = `${key} · ${Object.keys(datos).length}`;
+      const n = Object.keys(anAdminConsumos).length;
+      stEl.textContent = `✅ ${n} almacén(es) cargado(s)`;
+      stEl.style.color = 'var(--verde)';
+      anAdminActualizarBtn();
+    };
+    reader.readAsText(file, 'ISO-8859-1');
+  });
+}
+
+function anAdminActualizarBtn() {
+  const btn = document.getElementById('an-admin-btn-subir');
+  const listo = anAdminTotalOk && Object.keys(anAdminConsumos).length > 0;
+  btn.disabled = !listo;
+  btn.style.opacity = listo ? '1' : '.5';
+  btn.style.cursor = listo ? 'pointer' : 'not-allowed';
+}
+
+async function anAdminSubir() {
+  const periodo = parseInt(document.getElementById('an-admin-periodo').value) || 6;
+  const stEl    = document.getElementById('an-admin-st-subir');
+  const btn     = document.getElementById('an-admin-btn-subir');
+  btn.disabled = true; btn.textContent = '⏳ Publicando...';
+
+  const payload = {
+    periodo,
+    existencias: anAdminTotal,
+    baseMat:     anAdminBaseMat,
+    consumos:    anAdminConsumos,
+    timestamp:   new Date().toISOString()
+  };
+
+  try {
+    const res = await fetch('/api/analisis', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (sesionToken || sessionStorage.getItem('tx41_token') || '') },
+      body:    JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (data.ok) {
+      stEl.textContent = `✅ Publicado — ${Object.keys(anAdminConsumos).length} almacenes · periodo ${periodo} meses`;
+      stEl.style.color = 'var(--verde)';
+      // Actualizar también los datos locales del módulo análisis
+      anExistencias = anAdminTotal;
+      anBaseMat     = anAdminBaseMat;
+      anConsumos    = anAdminConsumos;
+    } else {
+      stEl.textContent = '❌ ' + (data.msg || 'Error');
+      stEl.style.color = 'var(--rojo)';
+    }
+  } catch(e) {
+    stEl.textContent = '❌ Error de conexión: ' + e.message;
+    stEl.style.color = 'var(--rojo)';
+  }
+  btn.disabled = false; btn.textContent = '📤 Publicar para clientes';
+}
+
+// ════════════════════════════════════════════════════════
+// CLIENTE — CARGA ANÁLISIS DESDE SERVIDOR
+// ════════════════════════════════════════════════════════
+async function anCargarDesdeServidor() {
+  try {
+    const baseURL = ES_GITHUB ? (sessionStorage.getItem('tx41_ngrok') || '') : '';
+    const url     = baseURL ? `${baseURL}/api/analisis` : '/api/analisis';
+    const res = await fetch(url, {
+      mode: 'cors',
+      headers: { 'ngrok-skip-browser-warning': 'true' }
+    });
+    if (!res.ok) return false;
+    const data = await res.json();
+    if (!data.ok || !data.datos || !data.datos.existencias) return false;
+    const d = data.datos;
+    anExistencias = d.existencias || {};
+    anBaseMat     = d.baseMat    || {};
+    anConsumos    = d.consumos   || {};
+    // Mostrar periodo en la UI (solo lectura para clientes)
+    const periodo = d.periodo || 6;
+    const pEl = document.getElementById('an-periodo');
+    if (pEl) {
+      pEl.value = periodo;
+      if (!ES_GITHUB) return true; // admin puede editar
+      pEl.readOnly = true;
+      pEl.style.background = '#f1f5f9';
+      pEl.title = 'Definido por el administrador';
+    }
+    console.log(`✅ Análisis cargado: ${Object.keys(anConsumos).length} almacenes · periodo ${periodo}m`);
+    return true;
+  } catch(e) {
+    return false;
+  }
+}
 
 </script>
 
