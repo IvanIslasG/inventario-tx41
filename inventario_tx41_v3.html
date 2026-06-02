@@ -4473,6 +4473,7 @@ let anBaseMat    = {};   // {cat: {desc, um}}
 let anExistencias = {};  // {almacen: {cat: lib}}
 let anConsumos   = {};   // {almacen: {cat: total}}
 let anCatSel     = null;
+let anUltimaActualizacion = '';
 let anCatActual  = null;
 
 // ── Navegación ──
@@ -4480,12 +4481,54 @@ function irAAnalisis() {
   mvNavActivo('analisis');
   ocultarTodo();
   document.getElementById('pantalla-analisis').style.display = 'flex';
+
+  const esAdmin = sesionRol === 'admin';
+
+  // Tab archivos: visible solo para admin
+  const tabArch = document.getElementById('an-tab-arch');
+  if (tabArch) tabArch.style.display = esAdmin ? 'inline-block' : 'none';
+
+  // Mostrar vista correcta en panel archivos
+  const vAdmin   = document.getElementById('an-arch-admin');
+  const vUsuario = document.getElementById('an-arch-usuario');
+  if (vAdmin)   vAdmin.style.display   = esAdmin ? 'block' : 'none';
+  if (vUsuario) vUsuario.style.display = esAdmin ? 'none'  : 'block';
+
+  // Si no es admin, ir directo a tab catálogo
+  if (!esAdmin) {
+    anTab('cat');
+  }
+
   // Cargar datos del servidor si aún no se han cargado
   if (Object.keys(anExistencias).length === 0) {
     anCargarDesdeServidor().then(ok => {
+      if (!esAdmin) anMostrarInfoUsuario(ok);
       if (ok) anVerificarListo();
     });
+  } else if (!esAdmin) {
+    anMostrarInfoUsuario(true);
   }
+}
+
+function anMostrarInfoUsuario(ok) {
+  const msg = document.getElementById('an-info-msg');
+  const det = document.getElementById('an-info-det');
+  if (!msg || !det) return;
+  if (!ok || Object.keys(anExistencias).length === 0) {
+    msg.textContent = '⏳ Los datos de análisis aún no están disponibles';
+    det.textContent = 'El administrador debe publicar los archivos desde su panel.';
+    return;
+  }
+  const nAlm  = Object.keys(anConsumos).length;
+  const per   = document.getElementById('an-periodo')?.value || '?';
+  const ts    = anUltimaActualizacion || '';
+  const fmtTs = ts ? new Date(ts).toLocaleString('es-MX', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
+  msg.textContent = '✅ Datos de análisis disponibles';
+  det.innerHTML = `
+    <div>📅 <b>Última actualización:</b> ${fmtTs}</div>
+    <div>📊 <b>Periodo de consumos:</b> ${per} meses</div>
+    <div>🏢 <b>Almacenes con consumos:</b> ${nAlm}</div>
+  `;
 }
 
 function anTab(tab) {
@@ -4968,6 +5011,7 @@ async function anCargarDesdeServidor() {
     anExistencias = d.existencias || {};
     anBaseMat     = d.baseMat    || {};
     anConsumos    = d.consumos   || {};
+    anUltimaActualizacion = d.timestamp || '';
     // Mostrar periodo en la UI (solo lectura para clientes)
     const periodo = d.periodo || 6;
     const pEl = document.getElementById('an-periodo');
@@ -5042,7 +5086,7 @@ async function anCargarDesdeServidor() {
 
   <!-- Tabs internos -->
   <div class="an-tab-bar">
-    <button class="an-tab activo" id="an-tab-arch" onclick="anTab('arch')">📁 Archivos</button>
+    <button class="an-tab activo" id="an-tab-arch" onclick="anTab('arch')" style="display:none">📁 Archivos</button>
     <button class="an-tab" id="an-tab-cat"  onclick="anTab('cat')">🔍 Por catálogo</button>
     <button class="an-tab" id="an-tab-alm"  onclick="anTab('alm')">📦 Por almacén</button>
   </div>
@@ -5062,30 +5106,40 @@ async function anCargarDesdeServidor() {
     </div>
   </div>
 
-  <!-- ─── PANEL: ARCHIVOS ─── -->
+  <!-- ─── PANEL: ARCHIVOS (solo admin) ─── -->
   <div class="an-panel activo" id="an-panel-arch">
-    <div class="an-card" style="max-width:700px">
-      <h3>📊 Archivo TOTAL — Existencias de todos los almacenes</h3>
-      <div class="an-file-row">
-        <button class="an-file-btn" onclick="document.getElementById('an-f-total').click()">📂 Seleccionar TOTAL</button>
-        <input type="file" class="an-hidden" id="an-f-total" accept=".txt,.csv" onchange="anCargarTotal(event)">
-        <span class="an-file-st" id="an-st-total">Sin cargar</span>
+    <!-- Vista admin: carga de archivos -->
+    <div id="an-arch-admin" style="display:none">
+      <div class="an-card" style="max-width:700px">
+        <h3>📊 Archivo TOTAL — Existencias de todos los almacenes</h3>
+        <div class="an-file-row">
+          <button class="an-file-btn" onclick="document.getElementById('an-f-total').click()">📂 Seleccionar TOTAL</button>
+          <input type="file" class="an-hidden" id="an-f-total" accept=".txt,.csv" onchange="anCargarTotal(event)">
+          <span class="an-file-st" id="an-st-total">Sin cargar</span>
+        </div>
+        <div style="font-size:11px;color:var(--muted)">Exportado de SIATEL — existencias de todos los almacenes en formato tabulado</div>
       </div>
-      <div style="font-size:11px;color:var(--muted)">Exportado de SIATEL — existencias de todos los almacenes en formato tabulado</div>
+      <div class="an-card" style="max-width:700px">
+        <h3>📈 Archivos de Consumos — Uno por almacén</h3>
+        <div class="an-file-row">
+          <button class="an-file-btn" onclick="document.getElementById('an-f-cons').click()">📂 Agregar consumos</button>
+          <input type="file" class="an-hidden" id="an-f-cons" accept=".txt,.csv" multiple onchange="anCargarConsumos(event)">
+          <span class="an-file-st" id="an-st-cons">Sin cargar</span>
+        </div>
+        <div class="an-chips" id="an-chips-cons"></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:8px">Puedes seleccionar varios archivos a la vez. El sistema detecta el almacén desde el nombre del archivo (ej. TX8A, TX8H…)</div>
+      </div>
+      <div class="an-listo" id="an-listo">✅ Archivos cargados correctamente. Ve a <b>Por catálogo</b> o <b>Por almacén</b> para iniciar el análisis.</div>
     </div>
 
-    <div class="an-card" style="max-width:700px">
-      <h3>📈 Archivos de Consumos — Uno por almacén</h3>
-      <div class="an-file-row">
-        <button class="an-file-btn" onclick="document.getElementById('an-f-cons').click()">📂 Agregar consumos</button>
-        <input type="file" class="an-hidden" id="an-f-cons" accept=".txt,.csv" multiple onchange="anCargarConsumos(event)">
-        <span class="an-file-st" id="an-st-cons">Sin cargar</span>
+    <!-- Vista usuario: solo información -->
+    <div id="an-arch-usuario" style="display:none;max-width:600px">
+      <div id="an-info-datos" style="background:white;border-radius:var(--radio);border:1.5px solid var(--borde);padding:24px;box-shadow:var(--sombra)">
+        <div style="font-size:32px;margin-bottom:10px">📊</div>
+        <div id="an-info-msg" style="font-size:15px;font-weight:600;color:var(--texto);margin-bottom:8px">Cargando datos de análisis...</div>
+        <div id="an-info-det" style="font-size:13px;color:var(--muted);line-height:1.7"></div>
       </div>
-      <div class="an-chips" id="an-chips-cons"></div>
-      <div style="font-size:11px;color:var(--muted);margin-top:8px">Puedes seleccionar varios archivos a la vez. El sistema detecta el almacén desde el nombre del archivo (ej. TX8A, TX8H…)</div>
     </div>
-
-    <div class="an-listo" id="an-listo">✅ Archivos cargados correctamente. Ve a <b>Por catálogo</b> o <b>Por almacén</b> para iniciar el análisis.</div>
   </div>
 
   <!-- ─── PANEL: POR CATÁLOGO ─── -->
