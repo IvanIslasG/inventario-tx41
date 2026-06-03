@@ -4484,30 +4484,45 @@ function irAAnalisis() {
 
   const esAdmin = sesionRol === 'admin';
 
-  // Tab archivos: visible solo para admin
-  const tabArch = document.getElementById('an-tab-arch');
-  if (tabArch) tabArch.style.display = esAdmin ? 'inline-block' : 'none';
+  // Params bar: admin edita, usuario ve info
+  const pAdmin = document.getElementById('an-params-admin');
+  const pUser  = document.getElementById('an-params-usuario');
+  if (pAdmin) pAdmin.style.display = esAdmin ? 'flex' : 'none';
+  if (pUser)  pUser.style.display  = esAdmin ? 'none' : 'block';
 
-  // Mostrar vista correcta en panel archivos
-  const vAdmin   = document.getElementById('an-arch-admin');
-  const vUsuario = document.getElementById('an-arch-usuario');
-  if (vAdmin)   vAdmin.style.display   = esAdmin ? 'block' : 'none';
-  if (vUsuario) vUsuario.style.display = esAdmin ? 'none'  : 'block';
-
-  // Si no es admin, ir directo a tab catálogo
-  if (!esAdmin) {
-    anTab('cat');
-  }
+  // Tab activo: siempre empieza en catálogo
+  anTab('cat');
 
   // Cargar datos del servidor si aún no se han cargado
   if (Object.keys(anExistencias).length === 0) {
     anCargarDesdeServidor().then(ok => {
-      if (!esAdmin) anMostrarInfoUsuario(ok);
-      if (ok) anVerificarListo();
+      anActualizarEstadoDatos(ok);
     });
-  } else if (!esAdmin) {
-    anMostrarInfoUsuario(true);
+  } else {
+    anActualizarEstadoDatos(true);
   }
+}
+
+function anActualizarEstadoDatos(ok) {
+  const esAdmin = sesionRol === 'admin';
+  // Para usuarios: actualizar el label de estado
+  const el = document.getElementById('an-estado-datos');
+  if (!el) return;
+  if (!ok || Object.keys(anExistencias).length === 0) {
+    el.innerHTML = '<span style="color:var(--rojo)">⚠️ Sin datos disponibles</span> — El administrador aún no ha publicado archivos de análisis.';
+    return;
+  }
+  const nAlm  = Object.keys(anConsumos).length;
+  const per   = document.getElementById('an-periodo')?.value || '?';
+  const ts    = anUltimaActualizacion;
+  const fmtTs = ts
+    ? new Date(ts).toLocaleString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})
+    : '—';
+  el.innerHTML =
+    '<span style="color:var(--verde);font-weight:600">✅ Datos disponibles</span>' +
+    ' &nbsp;·&nbsp; 📅 Actualizado: <b>' + fmtTs + '</b>' +
+    ' &nbsp;·&nbsp; 📊 Periodo: <b>' + per + ' meses</b>' +
+    ' &nbsp;·&nbsp; 🏢 <b>' + nAlm + '</b> almacenes';
 }
 
 function anMostrarInfoUsuario(ok) {
@@ -4532,11 +4547,11 @@ function anMostrarInfoUsuario(ok) {
 }
 
 function anTab(tab) {
-  ['arch','cat','alm'].forEach(t => {
+  ['cat','alm'].forEach(t => {
     document.getElementById('an-panel-' + t).classList.toggle('activo', t === tab);
-    document.getElementById('an-tab-'   + t).classList.toggle('activo', t === tab);
+    const btn = document.getElementById('an-tab-' + t);
+    if (btn) btn.classList.toggle('activo', t === tab);
   });
-  if (tab === 'alm') anPoblarSelect();
 }
 
 // ── Carga TOTAL ──
@@ -4689,6 +4704,12 @@ function anAnalizarCat() {
     document.getElementById('an-tx41-msg').textContent = '❌ TX41 sin existencia';
   }
 
+  // Mostrar filtros
+  const filtrosCat = document.getElementById('an-cat-filtros');
+  if (filtrosCat) filtrosCat.style.display = 'flex';
+  if (document.getElementById('an-cat-filtro-alm')) document.getElementById('an-cat-filtro-alm').value = '';
+  if (document.getElementById('an-cat-solo-pos'))   document.getElementById('an-cat-solo-pos').checked = false;
+
   // Tabla
   const filas = AN_ORDEN.map(alm => {
     const cons = (anConsumos[alm]||{})[cat] || 0;
@@ -4732,15 +4753,49 @@ function anAnalizarCat() {
 }
 
 // ── Análisis por almacén ──
-function anPoblarSelect() {
-  const sel = document.getElementById('an-alm-sel');
+function anAlmBuscar(q) {
+  const sugs = document.getElementById('an-alm-sugs');
+  if (!sugs) return;
   const disp = AN_ORDEN.filter(a => anConsumos[a]);
-  sel.innerHTML = '<option value="">Selecciona un almacén...</option>';
-  disp.forEach(alm => {
-    const o = document.createElement('option');
-    o.value = alm; o.textContent = `${alm} — ${AN_NOMBRES[alm]||alm}`;
-    sel.appendChild(o);
-  });
+  if (!q || q.length === 0) {
+    // Mostrar todos si está vacío
+    const hits = disp;
+    sugs.innerHTML = hits.map(alm =>
+      `<div onpointerdown="anAlmSel('${alm}')"
+        style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between"
+        onmouseover="this.style.background='#E8F5FC'" onmouseout="this.style.background='white'">
+        <span style="font-weight:700;color:#0096D6">${alm}</span>
+        <span style="color:var(--muted);font-size:12px">${AN_NOMBRES[alm]||alm}</span>
+      </div>`
+    ).join('');
+    sugs.style.display = hits.length ? 'block' : 'none';
+    return;
+  }
+  const qL = q.toLowerCase();
+  const hits = disp.filter(alm =>
+    alm.toLowerCase().includes(qL) ||
+    (AN_NOMBRES[alm]||'').toLowerCase().includes(qL)
+  );
+  if (!hits.length) { sugs.style.display = 'none'; return; }
+  sugs.innerHTML = hits.map(alm =>
+    `<div onpointerdown="anAlmSel('${alm}')"
+      style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between"
+      onmouseover="this.style.background='#E8F5FC'" onmouseout="this.style.background='white'">
+      <span style="font-weight:700;color:#0096D6">${alm}</span>
+      <span style="color:var(--muted);font-size:12px">${AN_NOMBRES[alm]||alm}</span>
+    </div>`
+  ).join('');
+  sugs.style.display = 'block';
+}
+
+function anAlmSel(alm) {
+  const inp = document.getElementById('an-alm-input');
+  const hid = document.getElementById('an-alm-sel');
+  const sugs = document.getElementById('an-alm-sugs');
+  if (inp) inp.value = alm + ' — ' + (AN_NOMBRES[alm]||alm);
+  if (hid) hid.value = alm;
+  if (sugs) sugs.style.display = 'none';
+  anRenderAlm();
 }
 
 function anRenderAlm() {
@@ -4847,6 +4902,22 @@ function anExportarAlm() {
   ws['!cols']=[10,40,6,14,16,12,16,12,16].map(w=>({wch:w}));
   XLSX.utils.book_append_sheet(wb,ws,alm);
   XLSX.writeFile(wb,`Dist_${alm}_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+function anFiltrarTablaCat() {
+  const q       = (document.getElementById('an-cat-filtro-alm')?.value || '').toLowerCase();
+  const solPos  = document.getElementById('an-cat-solo-pos')?.checked;
+  const tabla   = document.querySelector('#an-tabla-cat .an-table tbody');
+  if (!tabla) return;
+  tabla.querySelectorAll('tr').forEach(tr => {
+    const almCode = tr.querySelector('.an-alm-code')?.textContent?.toLowerCase() || '';
+    const almName = tr.querySelector('.an-alm-name')?.textContent?.toLowerCase() || '';
+    const distEl  = tr.querySelector('td.r:nth-child(6)');
+    const dist    = distEl ? parseFloat(distEl.textContent.replace(/[^0-9.]/g,'')) || 0 : 0;
+    const matchQ  = !q || almCode.includes(q) || almName.includes(q);
+    const matchP  = !solPos || dist > 0;
+    tr.style.display = matchQ && matchP ? '' : 'none';
+  });
 }
 
 function anFmt(n, dec=0) {
@@ -5084,25 +5155,31 @@ async function anCargarDesdeServidor() {
 <!-- ════════ MÓDULO ANÁLISIS Y DISTRIBUCIONES ════════ -->
 <div id="pantalla-analisis" style="display:none;flex-direction:column;min-height:calc(100vh - 108px);padding:20px 24px;background:var(--fondo)">
 
-  <!-- Tabs internos -->
+  <!-- Tabs internos — sin "Archivos" (ese va en Administración) -->
   <div class="an-tab-bar">
-    <button class="an-tab activo" id="an-tab-arch" onclick="anTab('arch')" style="display:none">📁 Archivos</button>
-    <button class="an-tab" id="an-tab-cat"  onclick="anTab('cat')">🔍 Por catálogo</button>
+    <button class="an-tab activo" id="an-tab-cat" onclick="anTab('cat')">🔍 Por catálogo</button>
     <button class="an-tab" id="an-tab-alm"  onclick="anTab('alm')">📦 Por almacén</button>
   </div>
 
-  <!-- Parámetros globales (visibles en todos los tabs) -->
-  <div class="an-params">
-    <div style="display:flex;align-items:center;gap:8px">
-      <label>Periodo de consumos (meses):</label>
-      <input type="number" class="an-num-input" id="an-periodo" value="6" min="1" max="24" step="1">
+  <!-- Barra de parámetros: admin edita, usuario solo ve -->
+  <div class="an-params" id="an-params-bar">
+    <!-- Vista admin: campos editables -->
+    <div id="an-params-admin" style="display:none;display:flex;align-items:center;gap:16px;flex-wrap:wrap;width:100%">
+      <div style="display:flex;align-items:center;gap:8px">
+        <label>Periodo de consumos (meses):</label>
+        <input type="number" class="an-num-input" id="an-periodo" value="6" min="1" max="24" step="1">
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <label>Meses de stock objetivo:</label>
+        <input type="number" class="an-num-input" id="an-stock-obj" value="1.5" min="0.5" max="12" step="0.5">
+      </div>
+      <div style="font-size:11px;color:var(--muted);flex:1">
+        Distribución = (Consumo ÷ periodo) × meses objetivo − Existencia actual
+      </div>
     </div>
-    <div style="display:flex;align-items:center;gap:8px">
-      <label>Meses de stock objetivo:</label>
-      <input type="number" class="an-num-input" id="an-stock-obj" value="1.5" min="0.5" max="12" step="0.5">
-    </div>
-    <div style="font-size:11px;color:var(--muted);flex:1">
-      Distribución = (Consumo ÷ periodo) × meses objetivo − Existencia actual
+    <!-- Vista usuario: info de solo lectura -->
+    <div id="an-params-usuario" style="display:none;width:100%">
+      <div id="an-estado-datos" style="font-size:13px;color:var(--muted)">⏳ Cargando datos...</div>
     </div>
   </div>
 
@@ -5173,6 +5250,14 @@ async function anCargarDesdeServidor() {
       </div>
     </div>
 
+    <!-- Filtro de tabla por catálogo -->
+    <div id="an-cat-filtros" style="display:none;margin-bottom:10px;display:none;gap:10px;align-items:center;flex-wrap:wrap">
+      <input type="text" id="an-cat-filtro-alm" class="an-search" style="max-width:260px"
+        placeholder="🔍 Filtrar por almacén..." oninput="anFiltrarTablaCat()">
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+        <input type="checkbox" id="an-cat-solo-pos" onchange="anFiltrarTablaCat()"> Solo distribución &gt; 0
+      </label>
+    </div>
     <div id="an-tabla-cat">
       <div class="an-empty"><div class="ic">🔍</div><p>Busca un catálogo para ver la distribución por almacén</p></div>
     </div>
@@ -5181,9 +5266,18 @@ async function anCargarDesdeServidor() {
   <!-- ─── PANEL: POR ALMACÉN ─── -->
   <div class="an-panel" id="an-panel-alm">
     <div style="display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap">
-      <select class="an-select" id="an-alm-sel" onchange="anRenderAlm()">
-        <option value="">Selecciona un almacén...</option>
-      </select>
+      <!-- Buscador de almacén por nombre o sigla -->
+      <div style="position:relative;min-width:220px">
+        <input type="text" class="an-search" id="an-alm-input"
+          placeholder="🔍 Buscar almacén por nombre o sigla..."
+          autocomplete="off"
+          oninput="anAlmBuscar(this.value)"
+          onfocus="anAlmBuscar(this.value)"
+          onblur="setTimeout(()=>{const s=document.getElementById('an-alm-sugs');if(s)s.style.display='none'},300)"
+          style="width:100%">
+        <div id="an-alm-sugs" style="display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1.5px solid var(--borde);border-radius:8px;z-index:300;max-height:220px;overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,.1);margin-top:2px"></div>
+        <input type="hidden" id="an-alm-sel" value="">
+      </div>
       <input type="text" class="an-search" id="an-alm-buscar" placeholder="🔍 Filtrar catálogo o descripción..." oninput="anRenderAlm()">
       <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;white-space:nowrap">
         <input type="checkbox" id="an-solo-pos" onchange="anRenderAlm()"> Solo distribución &gt; 0
