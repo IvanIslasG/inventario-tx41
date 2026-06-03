@@ -4489,8 +4489,8 @@ function irAAnalisis() {
   // Params bar: admin edita, usuario ve info
   const pAdmin = document.getElementById('an-params-admin');
   const pUser  = document.getElementById('an-params-usuario');
-  if (pAdmin) pAdmin.style.display = esAdmin ? 'flex' : 'none';
-  if (pUser)  pUser.style.display  = esAdmin ? 'none' : 'block';
+  if (pAdmin) pAdmin.style.display = esAdmin ? 'flex'   : 'none';
+  if (pUser)  pUser.style.display  = esAdmin ? 'none'   : 'flex';
 
   // Tab activo: siempre empieza en catálogo
   anTab('cat');
@@ -4744,7 +4744,16 @@ function anRenderTablaCat(col, dir) {
   const per  = parseFloat(document.getElementById('an-periodo').value) || 6;
   const obj  = parseFloat(document.getElementById('an-stock-obj').value) || 1.5;
 
-  const sorted = [...anDatosCat].sort((a, b) => {
+  // Aplicar filtro activo antes de ordenar
+  const qFiltro  = (document.getElementById('an-cat-filtro-alm')?.value || '').toLowerCase();
+  const solPosF  = document.getElementById('an-cat-solo-pos')?.checked;
+  const filtrados = anDatosCat.filter(f => {
+    if (qFiltro && !(f.alm.toLowerCase().includes(qFiltro) || (AN_NOMBRES[f.alm]||'').toLowerCase().includes(qFiltro))) return false;
+    if (solPosF && f.dist === 0) return false;
+    return true;
+  });
+
+  const sorted = [...filtrados].sort((a, b) => {
     let va, vb;
     if (col_ === 'alm')  { va = a.alm;  vb = b.alm;  return va.localeCompare(vb) * dir_; }
     if (col_ === 'cons') { va = a.cons; vb = b.cons; }
@@ -4991,19 +5000,8 @@ function anExportarAlm() {
 }
 
 function anFiltrarTablaCat() {
-  const q       = (document.getElementById('an-cat-filtro-alm')?.value || '').toLowerCase();
-  const solPos  = document.getElementById('an-cat-solo-pos')?.checked;
-  const tabla   = document.querySelector('#an-tabla-cat .an-table tbody');
-  if (!tabla) return;
-  tabla.querySelectorAll('tr').forEach(tr => {
-    const almCode = tr.querySelector('.an-alm-code')?.textContent?.toLowerCase() || '';
-    const almName = tr.querySelector('.an-alm-name')?.textContent?.toLowerCase() || '';
-    const distEl  = tr.querySelector('td.r:nth-child(6)');
-    const dist    = distEl ? parseFloat(distEl.textContent.replace(/[^0-9.]/g,'')) || 0 : 0;
-    const matchQ  = !q || almCode.includes(q) || almName.includes(q);
-    const matchP  = !solPos || dist > 0;
-    tr.style.display = matchQ && matchP ? '' : 'none';
-  });
+  if (anDatosCat.length === 0) return;
+  anRenderTablaCat(anSortCatCol, anSortCatDir);
 }
 
 function anFmt(n, dec=0) {
@@ -5250,7 +5248,7 @@ async function anCargarDesdeServidor() {
   <!-- Barra de parámetros: admin edita, usuario solo ve -->
   <div class="an-params" id="an-params-bar">
     <!-- Vista admin: campos editables -->
-    <div id="an-params-admin" style="display:none;display:flex;align-items:center;gap:16px;flex-wrap:wrap;width:100%">
+    <div id="an-params-admin" style="display:none;align-items:center;gap:16px;flex-wrap:wrap;width:100%">
       <div style="display:flex;align-items:center;gap:8px">
         <label>Periodo de consumos (meses):</label>
         <input type="number" class="an-num-input" id="an-periodo" value="6" min="1" max="24" step="1">
@@ -5264,7 +5262,7 @@ async function anCargarDesdeServidor() {
       </div>
     </div>
     <!-- Vista usuario: periodo bloqueado + stock editable -->
-    <div id="an-params-usuario" style="display:none;width:100%;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+    <div id="an-params-usuario" style="display:none;width:100%;align-items:center;gap:16px;flex-wrap:wrap">
       <div id="an-estado-datos" style="font-size:13px;color:var(--muted);flex:1">⏳ Cargando datos...</div>
       <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
         <label style="font-size:12px;font-weight:600;color:#0096D6;white-space:nowrap">Meses de stock objetivo:</label>
