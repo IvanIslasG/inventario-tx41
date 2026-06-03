@@ -381,7 +381,9 @@ button[onclick*="exportar"]{transition:all .15s}
 .an-tx41-num{font-size:22px;font-weight:700;white-space:nowrap}
 .an-table-wrap{background:white;border-radius:var(--radio);border:1.5px solid var(--borde);overflow:auto;box-shadow:var(--sombra);max-height:calc(100vh - 280px)}
 .an-table{width:100%;border-collapse:collapse;font-size:13px}
-.an-table th{background:#0096D6;color:white;padding:9px 12px;text-align:left;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap;position:sticky;top:0;z-index:2}
+.an-table th{background:#0096D6;color:white;padding:9px 12px;text-align:left;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap;position:sticky;top:0;z-index:2;cursor:pointer;user-select:none}
+.an-table th:hover{background:#007AB8}
+.an-table th .sort-ic{margin-left:4px;opacity:.6;font-style:normal}
 .an-table th.r{text-align:right}
 .an-table td{padding:8px 12px;border-bottom:1px solid #f0f5f9;vertical-align:middle}
 .an-table td.r{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
@@ -4720,18 +4722,54 @@ function anAnalizarCat() {
     return { alm, cons, mens, ex, nec, dist };
   });
 
+  anDatosCat = filas; // guardar para reordenar
+  anRenderTablaCat('orden', 1); // orden original por defecto
+  document.getElementById('an-btn-exp-cat').style.display = 'inline-flex';
+}
+
+let anDatosCat   = [];
+let anSortCatCol = 'orden';
+let anSortCatDir = 1;
+
+function anRenderTablaCat(col, dir) {
+  if (col === anSortCatCol && dir === undefined) {
+    // Toggle dirección
+    anSortCatDir = anSortCatDir === 1 ? -1 : 1;
+  } else {
+    anSortCatCol = col;
+    if (dir !== undefined) anSortCatDir = dir;
+    else anSortCatDir = col === 'alm' ? 1 : -1; // nums desc por defecto
+  }
+  const col_ = anSortCatCol, dir_ = anSortCatDir;
+  const per  = parseFloat(document.getElementById('an-periodo').value) || 6;
+  const obj  = parseFloat(document.getElementById('an-stock-obj').value) || 1.5;
+
+  const sorted = [...anDatosCat].sort((a, b) => {
+    let va, vb;
+    if (col_ === 'alm')  { va = a.alm;  vb = b.alm;  return va.localeCompare(vb) * dir_; }
+    if (col_ === 'cons') { va = a.cons; vb = b.cons; }
+    else if (col_ === 'mens') { va = a.mens; vb = b.mens; }
+    else if (col_ === 'ex')   { va = a.ex;   vb = b.ex;   }
+    else if (col_ === 'nec')  { va = a.nec;  vb = b.nec;  }
+    else if (col_ === 'dist') { va = a.dist; vb = b.dist; }
+    else { va = AN_ORDEN.indexOf(a.alm); vb = AN_ORDEN.indexOf(b.alm); return (va - vb); }
+    return (va - vb) * dir_;
+  });
+
+  const ic = (c) => c === col_ ? (dir_ === 1 ? ' ▲' : ' ▼') : ' ⇅';
+
   let t = `<div class="an-table-wrap"><table class="an-table">
     <thead><tr>
-      <th>Almacén</th>
-      <th class="r">Consumo total</th>
-      <th class="r">Consumo mensual</th>
-      <th class="r">Existencia</th>
-      <th class="r">Stock obj. (${obj}m)</th>
-      <th class="r">Distribución</th>
+      <th onclick="anRenderTablaCat('alm')">Almacén<i class="sort-ic">${ic('alm')}</i></th>
+      <th class="r" onclick="anRenderTablaCat('cons')">Consumo total<i class="sort-ic">${ic('cons')}</i></th>
+      <th class="r" onclick="anRenderTablaCat('mens')">Consumo mensual<i class="sort-ic">${ic('mens')}</i></th>
+      <th class="r" onclick="anRenderTablaCat('ex')">Existencia<i class="sort-ic">${ic('ex')}</i></th>
+      <th class="r" onclick="anRenderTablaCat('nec')">Stock obj. (${obj}m)<i class="sort-ic">${ic('nec')}</i></th>
+      <th class="r" onclick="anRenderTablaCat('dist')">Distribución<i class="sort-ic">${ic('dist')}</i></th>
       <th>Estado</th>
     </tr></thead><tbody>`;
 
-  filas.forEach(({alm, cons, mens, ex, nec, dist}) => {
+  sorted.forEach(({alm, cons, mens, ex, nec, dist}) => {
     const nc = cons === 0;
     const badge = nc          ? '<span class="an-badge g">Sin consumo</span>'
                 : dist === 0  ? '<span class="an-badge v">✓ Suficiente</span>'
@@ -4749,7 +4787,6 @@ function anAnalizarCat() {
   });
   t += '</tbody></table></div>';
   document.getElementById('an-tabla-cat').innerHTML = t;
-  document.getElementById('an-btn-exp-cat').style.display = 'inline-flex';
 }
 
 // ── Análisis por almacén ──
@@ -4830,12 +4867,61 @@ function anRenderAlm() {
 
   if (!filas.length) { wrap.innerHTML = '<div class="an-empty"><div class="ic">🔍</div><p>Sin resultados</p></div>'; btnExp.style.display='none'; return; }
 
+  anDatosAlm   = filas;
+  anSortAlmCol = 'dist';
+  anSortAlmDir = -1;
+  anRenderTablaAlm(wrap, btnExp, obj);
+}
+
+let anDatosAlm   = [];
+let anSortAlmCol = 'dist';
+let anSortAlmDir = -1;
+
+function anSortAlm(col) {
+  if (col === anSortAlmCol) anSortAlmDir = anSortAlmDir === 1 ? -1 : 1;
+  else { anSortAlmCol = col; anSortAlmDir = col === 'cat' || col === 'desc' ? 1 : -1; }
+  const obj = parseFloat(document.getElementById('an-stock-obj').value) || 1.5;
+  const wrap   = document.getElementById('an-tabla-alm');
+  const btnExp = document.getElementById('an-btn-exp-alm');
+  anRenderTablaAlm(wrap, btnExp, obj);
+}
+
+function anRenderTablaAlm(wrap, btnExp, obj) {
+  const col_ = anSortAlmCol, dir_ = anSortAlmDir;
+  const q      = (document.getElementById('an-alm-buscar')?.value || '').toLowerCase();
+  const solPos = document.getElementById('an-solo-pos')?.checked;
+
+  let filas = anDatosAlm.filter(f => {
+    if (q && !(f.cat.includes(q) || (f.desc||'').toLowerCase().includes(q))) return false;
+    if (solPos && f.dist === 0) return false;
+    return true;
+  }).sort((a, b) => {
+    let va, vb;
+    if (col_ === 'cat')  return a.cat.localeCompare(b.cat) * dir_;
+    if (col_ === 'desc') return (a.desc||'').localeCompare(b.desc||'') * dir_;
+    const map = { mens:'mens', ex:'ex', nec:'nec', dist:'dist', exTX:'exTX' };
+    va = a[map[col_]] || 0; vb = b[map[col_]] || 0;
+    return (va - vb) * dir_;
+  });
+
+  if (!filas.length) {
+    wrap.innerHTML = '<div class="an-empty"><div class="ic">🔍</div><p>Sin resultados</p></div>';
+    btnExp.style.display = 'none'; return;
+  }
+
+  const ic = (c) => c === col_ ? (dir_ === 1 ? ' ▲' : ' ▼') : ' ⇅';
+
   let t = `<div class="an-table-wrap"><table class="an-table">
     <thead><tr>
-      <th>Catálogo</th><th>Descripción</th><th class="r">UM</th>
-      <th class="r">Cons. mensual</th><th class="r">Existencia</th>
-      <th class="r">Stock obj.(${obj}m)</th><th class="r">Distribución</th>
-      <th class="r">TX41 disponible</th><th>TX41</th>
+      <th onclick="anSortAlm('cat')">Catálogo<i class="sort-ic">${ic('cat')}</i></th>
+      <th onclick="anSortAlm('desc')">Descripción<i class="sort-ic">${ic('desc')}</i></th>
+      <th class="r">UM</th>
+      <th class="r" onclick="anSortAlm('mens')">Cons. mensual<i class="sort-ic">${ic('mens')}</i></th>
+      <th class="r" onclick="anSortAlm('ex')">Existencia<i class="sort-ic">${ic('ex')}</i></th>
+      <th class="r" onclick="anSortAlm('nec')">Stock obj.(${obj}m)<i class="sort-ic">${ic('nec')}</i></th>
+      <th class="r" onclick="anSortAlm('dist')">Distribución<i class="sort-ic">${ic('dist')}</i></th>
+      <th class="r" onclick="anSortAlm('exTX')">TX41 disponible<i class="sort-ic">${ic('exTX')}</i></th>
+      <th>TX41</th>
     </tr></thead><tbody>`;
 
   filas.forEach(({cat,desc,um,mens,ex,nec,dist,exTX}) => {
@@ -5177,9 +5263,14 @@ async function anCargarDesdeServidor() {
         Distribución = (Consumo ÷ periodo) × meses objetivo − Existencia actual
       </div>
     </div>
-    <!-- Vista usuario: info de solo lectura -->
-    <div id="an-params-usuario" style="display:none;width:100%">
-      <div id="an-estado-datos" style="font-size:13px;color:var(--muted)">⏳ Cargando datos...</div>
+    <!-- Vista usuario: periodo bloqueado + stock editable -->
+    <div id="an-params-usuario" style="display:none;width:100%;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+      <div id="an-estado-datos" style="font-size:13px;color:var(--muted);flex:1">⏳ Cargando datos...</div>
+      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+        <label style="font-size:12px;font-weight:600;color:#0096D6;white-space:nowrap">Meses de stock objetivo:</label>
+        <input type="number" class="an-num-input" id="an-stock-obj-user" value="1.5" min="0.5" max="12" step="0.5"
+          oninput="document.getElementById('an-stock-obj').value=this.value">
+      </div>
     </div>
   </div>
 
