@@ -4711,6 +4711,9 @@ function anAnalizarCat() {
   if (filtrosCat) filtrosCat.style.display = 'flex';
   if (document.getElementById('an-cat-filtro-alm')) document.getElementById('an-cat-filtro-alm').value = '';
   if (document.getElementById('an-cat-solo-pos'))   document.getElementById('an-cat-solo-pos').checked = false;
+  // Mostrar control stock solo para usuarios
+  const stockWrap = document.getElementById('an-stock-user-wrap');
+  if (stockWrap) stockWrap.style.display = sesionRol !== 'admin' ? 'flex' : 'none';
 
   // Tabla
   const filas = AN_ORDEN.map(alm => {
@@ -5261,14 +5264,9 @@ async function anCargarDesdeServidor() {
         Distribución = (Consumo ÷ periodo) × meses objetivo − Existencia actual
       </div>
     </div>
-    <!-- Vista usuario: periodo bloqueado + stock editable -->
-    <div id="an-params-usuario" style="display:none;width:100%;align-items:center;gap:16px;flex-wrap:wrap">
-      <div id="an-estado-datos" style="font-size:13px;color:var(--muted);flex:1">⏳ Cargando datos...</div>
-      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
-        <label style="font-size:12px;font-weight:600;color:#0096D6;white-space:nowrap">Meses de stock objetivo:</label>
-        <input type="number" class="an-num-input" id="an-stock-obj-user" value="1.5" min="0.5" max="12" step="0.5"
-          oninput="document.getElementById('an-stock-obj').value=this.value">
-      </div>
+    <!-- Vista usuario: solo estado de datos (stock va junto al filtro) -->
+    <div id="an-params-usuario" style="display:none;width:100%;align-items:center">
+      <div id="an-estado-datos" style="font-size:13px;color:var(--muted)">⏳ Cargando datos...</div>
     </div>
   </div>
 
@@ -5339,13 +5337,22 @@ async function anCargarDesdeServidor() {
       </div>
     </div>
 
-    <!-- Filtro de tabla por catálogo -->
+    <!-- Filtro de tabla por catálogo + control de stock -->
     <div id="an-cat-filtros" style="display:none;margin-bottom:10px;display:none;gap:10px;align-items:center;flex-wrap:wrap">
-      <input type="text" id="an-cat-filtro-alm" class="an-search" style="max-width:260px"
+      <input type="text" id="an-cat-filtro-alm" class="an-search" style="max-width:240px"
         placeholder="🔍 Filtrar por almacén..." oninput="anFiltrarTablaCat()">
       <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
-        <input type="checkbox" id="an-cat-solo-pos" onchange="anFiltrarTablaCat()"> Solo distribución &gt; 0
+        <input type="checkbox" id="an-cat-solo-pos" onchange="anFiltrarTablaCat()"> Solo &gt; 0
       </label>
+      <!-- Stock objetivo — visible para usuarios (admins lo tienen en params) -->
+      <div id="an-stock-user-wrap" style="display:none;align-items:center;gap:6px;margin-left:auto">
+        <label style="font-size:12px;color:var(--muted);white-space:nowrap">Stock objetivo:</label>
+        <input type="number" id="an-stock-obj-user" value="1.5" min="0.5" max="12" step="0.5"
+          style="width:60px;height:30px;border:1.5px solid var(--borde);border-radius:6px;padding:0 6px;font-size:13px;font-weight:600;text-align:center;font-family:inherit"
+          oninput="document.getElementById('an-stock-obj').value=this.value"
+          title="Meses de stock objetivo">
+        <span style="font-size:12px;color:var(--muted)">meses</span>
+      </div>
     </div>
     <div id="an-tabla-cat">
       <div class="an-empty"><div class="ic">🔍</div><p>Busca un catálogo para ver la distribución por almacén</p></div>
