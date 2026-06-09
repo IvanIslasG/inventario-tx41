@@ -4309,6 +4309,30 @@ function mvEditarMovimiento(id) {
         </table>
       </div>
 
+      <!-- Agregar catálogo nuevo -->
+      <div style="background:#f8fafc;border:1.5px dashed var(--borde);border-radius:8px;padding:12px;margin-bottom:12px">
+        <div style="font-size:11px;font-weight:700;color:#0096D6;margin-bottom:8px">➕ Agregar catálogo</div>
+        <div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap">
+          <div style="position:relative;flex:1;min-width:200px">
+            <input type="text" id="ed-nuevo-cat-input" placeholder="Buscar catálogo o descripción..."
+              style="width:100%;height:34px;border:1.5px solid var(--borde);border-radius:8px;padding:0 10px;font-size:13px;font-family:inherit;box-sizing:border-box"
+              oninput="edBuscarCat(this.value)"
+              onkeydown="edCatKeydown(event)"
+              autocomplete="off">
+            <div id="ed-cat-sugs" style="display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1.5px solid var(--borde);border-radius:8px;z-index:4000;max-height:180px;overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,.12);margin-top:2px"></div>
+            <div id="ed-nuevo-cat-desc" style="font-size:11px;color:var(--muted);margin-top:3px;min-height:14px"></div>
+          </div>
+          <input type="text" inputmode="numeric" id="ed-nuevo-qty" placeholder="Cant."
+            style="width:70px;height:34px;border:1.5px solid var(--borde);border-radius:8px;padding:0 8px;font-size:13px;text-align:center;font-family:inherit"
+            oninput="this.value=this.value.replace(/[^0-9]/g,'')"
+            onkeydown="if(event.key==='Enter')edAgregarRenglon()">
+          <button onclick="edAgregarRenglon()"
+            style="height:34px;background:#0096D6;color:white;border:none;padding:0 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap">
+            + Agregar
+          </button>
+        </div>
+      </div>
+
       <div id="ed-error" style="display:none;background:#fef2f2;color:var(--rojo);font-size:12px;padding:8px 12px;border-radius:8px;margin-bottom:10px"></div>
 
       <div style="display:flex;gap:10px;justify-content:flex-end">
@@ -4320,6 +4344,147 @@ function mvEditarMovimiento(id) {
   // Guardar renglones originales en el modal para referencia
   modal._movId = id;
   modal._renglones = JSON.parse(JSON.stringify(mov.renglones || []));
+}
+
+// ── EDICIÓN MODAL — agregar catálogo ──
+let edNuevoCatSel = null;
+
+function edBuscarCat(q) {
+  edNuevoCatSel = null;
+  var sugs = document.getElementById('ed-cat-sugs');
+  var desc = document.getElementById('ed-nuevo-cat-desc');
+  if (!q || q.length < 3) { sugs.style.display = 'none'; desc.textContent = ''; return; }
+  var qL = q.toLowerCase();
+  var hits = [];
+  for (var cat in baseMaestra) {
+    var mat = baseMaestra[cat];
+    if (cat.includes(q) || mat.d.toLowerCase().includes(qL)) {
+      hits.push({ cat: cat, desc: mat.d, um: mat.u || '' });
+      if (hits.length >= 8) break;
+    }
+  }
+  if (!hits.length) { sugs.style.display = 'none'; desc.textContent = 'No encontrado'; return; }
+  // Usar createElement para evitar problemas con comillas en descripciones
+  sugs.innerHTML = '';
+  hits.forEach(function(h) {
+    var d = document.createElement('div');
+    d.dataset.cat  = h.cat;
+    d.dataset.desc = h.desc.substring(0, 60);
+    d.dataset.um   = h.um;
+    d.style.cssText = 'padding:7px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid #f1f5f9';
+    d.innerHTML = '<b style="color:#0096D6">' + h.cat + '</b> · ' + h.desc.substring(0, 55);
+    d.addEventListener('pointerdown', function() {
+      edSelCat(this.dataset.cat, this.dataset.desc, this.dataset.um);
+    });
+    d.addEventListener('mouseover', function() { this.style.background = '#E8F5FC'; });
+    d.addEventListener('mouseout',  function() { this.style.background = ''; });
+    sugs.appendChild(d);
+  });
+  sugs.style.display = 'block';
+}
+
+function edSelCat(cat, desc, um) {
+  edNuevoCatSel = { cat, desc, um };
+  const inp  = document.getElementById('ed-nuevo-cat-input');
+  const sugs = document.getElementById('ed-cat-sugs');
+  const dEl  = document.getElementById('ed-nuevo-cat-desc');
+  if (inp)  inp.value = cat + ' — ' + desc.substring(0,45);
+  if (sugs) sugs.style.display = 'none';
+  if (dEl)  { dEl.textContent = desc + (um ? ' · ' + um : ''); dEl.style.color = 'var(--verde)'; }
+  // Enfocar campo cantidad
+  setTimeout(() => { const q = document.getElementById('ed-nuevo-qty'); if (q) { q.focus(); q.select(); } }, 50);
+}
+
+function edCatKeydown(e) {
+  if (e.key !== 'Enter' && e.key !== 'Tab') return;
+  const primer = document.querySelector('#ed-cat-sugs div');
+  if (primer) { e.preventDefault(); primer.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); }
+}
+
+function edAgregarRenglon() {
+  if (!edNuevoCatSel) {
+    const errEl = document.getElementById('ed-error');
+    if (errEl) { errEl.textContent = 'Selecciona un catálogo de la lista antes de agregar'; errEl.style.display = 'block'; }
+    return;
+  }
+  const qtyEl = document.getElementById('ed-nuevo-qty');
+  const qty   = parseInt(qtyEl ? qtyEl.value : '') || 1;
+  const cat   = edNuevoCatSel.cat;
+  const modal = document.getElementById('mv-modal-edicion');
+  if (!modal) return;
+
+  // Verificar si el catálogo ya existe en los renglones
+  const rengsOrig = modal._renglones || [];
+  const yaExiste  = rengsOrig.findIndex((r, i) => {
+    const catEl = document.getElementById('ed-cat-' + i);
+    const catVal = catEl ? catEl.value.trim() : r.cat;
+    return catVal === cat && !catEl?.dataset.eliminado;
+  });
+
+  if (yaExiste >= 0) {
+    // Resaltar la fila existente y mostrar mensaje
+    const errEl = document.getElementById('ed-error');
+    if (errEl) {
+      errEl.textContent = 'El catálogo ' + cat + ' ya está en la lista — se resaltó la fila correspondiente';
+      errEl.style.display = 'block';
+      setTimeout(() => { if (errEl) errEl.style.display = 'none'; }, 3000);
+    }
+    // Resaltar y enfocar la fila existente
+    const filaExistente = document.querySelector('#ed-renglones tr:nth-child(' + (yaExiste + 1) + ')');
+    if (filaExistente) {
+      filaExistente.style.background = '#FEF3C7';
+      filaExistente.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setTimeout(() => { filaExistente.style.background = ''; }, 2000);
+      const qtyExist = document.getElementById('ed-qty-' + yaExiste);
+      if (qtyExist) { qtyExist.focus(); qtyExist.select(); }
+    }
+    return;
+  }
+
+  // Agregar nuevo renglón al array de referencia del modal
+  var nuevoIdx = rengsOrig.length;
+  rengsOrig.push({ cat: cat, desc: edNuevoCatSel.desc, lote: '', cantidad: qty,
+    existencia_antes: (siatelMap[cat] ? siatelMap[cat].lib : null) });
+  modal._renglones = rengsOrig;
+
+  var tbody = document.getElementById('ed-renglones');
+  if (tbody) {
+    var tr = document.createElement('tr');
+    tr.style.background = '#E8F5FC';
+    var td1 = document.createElement('td'); td1.style.padding = '4px 6px';
+    var ic = document.createElement('input'); ic.type='text'; ic.value=cat; ic.id='ed-cat-'+nuevoIdx;
+    ic.style.cssText = 'width:90px;height:30px;border:1px solid var(--borde);border-radius:6px;padding:0 6px;font-size:12px;font-family:inherit';
+    td1.appendChild(ic); tr.appendChild(td1);
+    var td2 = document.createElement('td');
+    td2.style.cssText = 'padding:4px 6px;font-size:11px;color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+    td2.textContent = edNuevoCatSel.desc||''; tr.appendChild(td2);
+    var td3 = document.createElement('td'); td3.style.padding='4px 6px'; td3.textContent='—'; tr.appendChild(td3);
+    var td4 = document.createElement('td'); td4.style.padding='4px 6px';
+    var iq = document.createElement('input'); iq.type='text'; iq.setAttribute('inputmode','numeric');
+    iq.value=qty; iq.id='ed-qty-'+nuevoIdx;
+    iq.style.cssText='width:60px;height:30px;border:1px solid var(--borde);border-radius:6px;padding:0 6px;font-size:13px;font-weight:600;text-align:center;font-family:inherit';
+    iq.addEventListener('input',function(){this.value=this.value.replace(/[^0-9]/g,'');});
+    td4.appendChild(iq); tr.appendChild(td4);
+    var td5 = document.createElement('td'); td5.style.padding='4px 6px';
+    var be = document.createElement('button'); be.textContent='✕';
+    be.style.cssText='background:none;border:none;color:var(--rojo);cursor:pointer;font-size:14px;padding:2px 4px';
+    (function(n){be.addEventListener('click',function(){mvEdEliminarRenglon(n);});})(nuevoIdx);
+    td5.appendChild(be); tr.appendChild(td5);
+    tbody.appendChild(tr);
+    setTimeout(function(){tr.style.background='';},1500);
+  }
+
+  // Limpiar el buscador
+  const inp  = document.getElementById('ed-nuevo-cat-input');
+  const dEl  = document.getElementById('ed-nuevo-cat-desc');
+  if (inp)  { inp.value = ''; }
+  if (dEl)  { dEl.textContent = ''; dEl.style.color = 'var(--muted)'; }
+  if (qtyEl) { qtyEl.value = ''; }
+  edNuevoCatSel = null;
+
+  // Ocultar error si estaba visible
+  const errEl = document.getElementById('ed-error');
+  if (errEl) errEl.style.display = 'none';
 }
 
 function mvEdEliminarRenglon(idx) {
