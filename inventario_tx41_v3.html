@@ -900,6 +900,37 @@ function continuarSesion() {
   resetInactividad();
 }
 
+// URL del túnel en caché con TTL de 2 minutos
+let _ngrokCache = { url: '', ts: 0 };
+
+async function getNgrokUrl() {
+  // Si tenemos URL en caché válida (menos de 2 minutos), usarla
+  const ahora = Date.now();
+  if (_ngrokCache.url && (ahora - _ngrokCache.ts) < 120000) {
+    return _ngrokCache.url;
+  }
+  // Siempre leer config.json fresco para obtener URL actual
+  try {
+    const ctrl  = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 6000);
+    const res   = await fetch('https://ivanislasg.github.io/inventario-tx41/config.json?t=' + ahora, {
+      cache: 'no-store', signal: ctrl.signal
+    });
+    clearTimeout(timer);
+    if (!res.ok) throw new Error('config no disponible');
+    const data  = await res.json();
+    const url   = (data.ngrok || '').replace(/\/$/, '');
+    if (url) {
+      _ngrokCache = { url, ts: ahora };
+      sessionStorage.setItem('tx41_ngrok', url); // mantener compatibilidad
+    }
+    return url;
+  } catch(e) {
+    // Fallback al sessionStorage si config.json falla
+    return sessionStorage.getItem('tx41_ngrok') || '';
+  }
+}
+
 async function iniciarSesion() {
   const usuario  = document.getElementById('login-usuario').value.trim();
   const password = document.getElementById('login-password').value;
@@ -915,28 +946,20 @@ async function iniciarSesion() {
   try {
     let loginUrl = '/api/login';
 
-    // Si es cliente GitHub Pages, obtener URL del servidor via config.json
+    // Si es cliente GitHub Pages, obtener URL actual del servidor
     if (ES_GITHUB) {
-      const GITHUB_CONFIG = 'https://ivanislasg.github.io/inventario-tx41/config.json';
       try {
-        const ctrl  = new AbortController();
-        const timer = setTimeout(() => ctrl.abort(), 6000);
-        const cfg   = await fetch(`${GITHUB_CONFIG}?t=${Date.now()}`, { signal: ctrl.signal });
-        clearTimeout(timer);
-        if (!cfg.ok) throw new Error('config no disponible');
-        const data  = await cfg.json();
-        const ngrok = data.ngrok || '';
+        const ngrok = await getNgrokUrl();
         if (!ngrok) throw new Error('servidor no disponible');
         loginUrl = `${ngrok}/api/login`;
-        // Warm-up GET: fuerza que ngrok procese la advertencia ANTES del preflight OPTIONS
-        // (el preflight del browser no lleva headers custom, por eso falla sin esto)
+        // Warm-up para Cloudflare/ngrok
         try {
           await fetch(`${ngrok}/api/estado`, {
             method: 'GET',
             headers: { 'ngrok-skip-browser-warning': 'true' },
             mode: 'cors'
           });
-        } catch(_) { /* solo warm-up, ignorar errores */ }
+        } catch(_) { /* solo warm-up */ }
       } catch(e) {
         errEl.textContent = 'El sistema no está disponible en este momento. Contacta al administrador.';
         errEl.style.display = 'block';
@@ -996,7 +1019,7 @@ async function cerrarSesion() {
   if (modal) modal.style.display = 'none';
   try {
     const logoutUrl = ES_GITHUB
-      ? `${sessionStorage.getItem('tx41_ngrok') || ''}/api/logout`
+      ? `${_ngrokCache.url || sessionStorage.getItem('tx41_ngrok') || ''}/api/logout`
       : '/api/logout';
     await fetch(logoutUrl, {
       method:  'POST',
@@ -1259,7 +1282,7 @@ async function cargarDesdeNube() {
 
   // Paso 1: Obtener ngrok URL — primero de sessionStorage (más rápido y fresco),
   // luego de config.json de GitHub como respaldo
-  let ngrokURL = sessionStorage.getItem('tx41_ngrok') || '';
+  let ngrokURL = _ngrokCache.url || sessionStorage.getItem('tx41_ngrok') || '';
   let configData = _configData || null; // reusar si ya tenemos uno
 
   // Siempre intentar refrescar config.json para obtener datos actualizados
@@ -1435,7 +1458,7 @@ function iniciarRefreshAutomatico() {
 async function recargarExistencias() {
   try {
     // Obtener ngrok URL desde sessionStorage (ya guardada al login)
-    const ngrokURL = sessionStorage.getItem('tx41_ngrok') || '';
+    const ngrokURL = _ngrokCache.url || sessionStorage.getItem('tx41_ngrok') || '';
     const token    = sessionStorage.getItem('tx41_token') || sesionToken || '';
     if (!ngrokURL || !token) return;
 
@@ -2705,7 +2728,7 @@ async function cargarSiatelEnBackground() {
   if (lbl) lbl.textContent = '⏳ Cargando datos...';
 
   try {
-    const ngrokURL = sessionStorage.getItem('tx41_ngrok') || '';
+    const ngrokURL = _ngrokCache.url || sessionStorage.getItem('tx41_ngrok') || '';
     const token    = sessionStorage.getItem('tx41_token') || sesionToken || '';
 
     // Intentar ngrok primero (datos frescos con movimientos aplicados)
@@ -3495,7 +3518,7 @@ async function mvInicializar() {
 
 async function mvCargarSiatel() {
   try {
-    const ngrokURL = sessionStorage.getItem('tx41_ngrok') || '';
+    const ngrokURL = _ngrokCache.url || sessionStorage.getItem('tx41_ngrok') || '';
     const token    = sessionStorage.getItem('tx41_token') || sesionToken || '';
     if (ngrokURL && token) {
       // Cargar desde servidor (datos frescos con movimientos aplicados)
