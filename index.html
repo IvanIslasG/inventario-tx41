@@ -181,11 +181,15 @@ async function intentarEntrar(clave){
     return;
   }
   try{
+    console.log("[TX41] Entrar: cargando sobre…");
     const sobre = await cargarSobre();
+    console.log("[TX41] Sobre OK (gzip:"+sobre.gzip+", iter:"+sobre.iter+"). Descifrando…");
     DB = await descifrar(sobre, clave);
+    console.log("[TX41] Descifrado OK:", DB.meta);
     sessionStorage.setItem("tx41_pass", clave);
     arrancarApp();
   }catch(e){
+    console.error("[TX41] Falló:", e);
     if(e.message==="fetch")
       err.textContent = "No se encontró datos.enc. Usa 'Cargar datos.enc local'.";
     else if(e.name==="OperationError" || e.name==="InvalidAccessError")
