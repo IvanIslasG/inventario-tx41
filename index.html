@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inventario TX41 · Puebla</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --bg:#eef2f6; --surface:#fff; --line:#dde4ec;
+    --ink:#0f1b2d; --muted:#5b6b80;
+    --primary:#0a4ea3; --primary-d:#073a7a; --accent:#00a3b4;
+    --ok:#1a7f4b; --ok-bg:#e7f4ec; --low:#b45309; --low-bg:#fbf0df; --zero:#94a3b4;
+    --dist:#b8860b; --dist-bg:#fdf6e3;
+    --radius:10px; --shadow:0 1px 3px rgba(15,27,45,.08),0 1px 2px rgba(15,27,45,.04);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+       background:var(--bg);color:var(--ink);font-size:14px;line-height:1.45}
+  .num{font-variant-numeric:tabular-nums}
+  button{font:inherit;cursor:pointer}
+
+  /* ---- Gate ---- */
+  #gate{position:fixed;inset:0;display:grid;place-items:center;background:
+        linear-gradient(135deg,#073a7a,#0a4ea3 60%,#0c63c9);z-index:50;padding:20px}
+  #gate .card{background:var(--surface);border-radius:14px;padding:28px;max-width:360px;width:100%;
+              box-shadow:0 18px 50px rgba(0,0,0,.3)}
+  #gate h1{margin:0 0 4px;font-size:19px}
+  #gate p{margin:0 0 18px;color:var(--muted);font-size:13px}
+  #gate label{display:block;font-weight:600;font-size:12px;margin-bottom:6px;color:var(--muted)}
+  #gate input{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:8px;font:inherit}
+  #gate input:focus{outline:2px solid var(--primary);border-color:var(--primary)}
+  #gate button{width:100%;margin-top:14px;padding:11px;background:var(--primary);color:#fff;border:0;
+               border-radius:8px;font-weight:600}
+  #gate button:hover{background:var(--primary-d)}
+  #gate .err{color:#c0392b;font-size:13px;margin-top:10px;min-height:18px}
+  #gate .alt{margin-top:14px;text-align:center;font-size:12px;color:var(--muted)}
+  #gate .alt label{display:inline;color:var(--primary);cursor:pointer;text-decoration:underline;font-weight:600}
+
+  /* ---- Shell ---- */
+  header.bar{background:var(--surface);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20}
+  .bar-in{max-width:1100px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .brand{font-weight:700;font-size:15px;letter-spacing:.2px}
+  .brand b{color:var(--primary)}
+  .meta{color:var(--muted);font-size:11.5px;margin-left:auto;text-align:right;line-height:1.3}
+  nav.tabs{max-width:1100px;margin:0 auto;padding:0 16px;display:flex;gap:2px}
+  nav.tabs button{background:none;border:0;padding:11px 16px;color:var(--muted);font-weight:600;
+                  border-bottom:2.5px solid transparent;margin-bottom:-1px}
+  nav.tabs button.on{color:var(--primary);border-color:var(--primary)}
+  main{max-width:1100px;margin:0 auto;padding:18px 16px 60px}
+
+  .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+  select,input[type=search]{padding:9px 11px;border:1px solid var(--line);border-radius:8px;font:inherit;background:#fff}
+  input[type=search]{min-width:200px;flex:1}
+  select:focus,input:focus{outline:2px solid var(--primary);border-color:var(--primary)}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#fff}
+  .seg button{padding:9px 14px;border:0;background:#fff;color:var(--muted);font-weight:600}
+  .seg button.on{background:var(--primary);color:#fff}
+  .btn{padding:9px 14px;border:1px solid var(--line);border-radius:8px;background:#fff;font-weight:600;color:var(--ink)}
+  .btn:hover{border-color:var(--primary);color:var(--primary)}
+
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+  .panel-head{padding:12px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .panel-head h2{margin:0;font-size:15px}
+  .pill{font-size:11px;font-weight:700;padding:3px 9px;border-radius:99px;background:#eef2f8;color:var(--muted)}
+  .pill.dist{background:var(--dist-bg);color:var(--dist)}
+
+  table{width:100%;border-collapse:collapse}
+  th,td{padding:9px 12px;text-align:left;border-bottom:1px solid #eef1f5;white-space:nowrap}
+  th{font-size:11.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);
+     background:#f7f9fc;position:sticky;top:0;cursor:pointer;user-select:none}
+  th.r,td.r{text-align:right}
+  tbody tr:hover{background:#f7faff}
+  td.desc{white-space:normal;max-width:340px}
+  td.cat{font-weight:600;color:var(--primary)}
+  .stk{display:inline-block;padding:2px 9px;border-radius:99px;font-weight:700;font-variant-numeric:tabular-nums}
+  .stk.ok{background:var(--ok-bg);color:var(--ok)} .stk.low{background:var(--low-bg);color:var(--low)}
+  .scroll{max-height:64vh;overflow:auto}
+  .area-tag{font-size:11px;color:var(--muted)}
+  .empty{padding:40px 16px;text-align:center;color:var(--muted)}
+
+  /* directorio */
+  .dir-centro{padding:10px 16px;background:#f7f9fc;border-bottom:1px solid var(--line);font-weight:700;
+              font-size:12px;color:var(--primary-d);display:flex;justify-content:space-between}
+  .dir-centro span{color:var(--muted);font-weight:600}
+  .alm-row{display:flex;align-items:center;gap:12px;padding:9px 16px;border-bottom:1px solid #eef1f5}
+  .alm-key{font-family:ui-monospace,monospace;font-weight:700;background:#eef2f8;padding:2px 8px;border-radius:6px;min-width:54px;text-align:center}
+  .alm-key.dist{background:var(--dist-bg);color:var(--dist)}
+  .badge{margin-left:auto;font-size:10.5px;font-weight:700;color:var(--accent);border:1px solid var(--accent);
+         padding:1px 7px;border-radius:99px}
+
+  /* OR scaffold */
+  .soon{padding:34px;text-align:center;color:var(--muted)}
+  .soon h2{color:var(--ink);margin:0 0 8px}
+  .soon ul{display:inline-block;text-align:left;margin:14px 0 0;line-height:1.7}
+
+  @media(max-width:560px){
+    .meta{margin-left:0;text-align:left;width:100%}
+    td.desc{max-width:180px}
+    th,td{padding:8px 9px}
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== GATE ===== -->
+<div id="gate">
+  <div class="card">
+    <h1>Inventario <b style="color:var(--primary)">TX41</b> · Puebla</h1>
+    <p>Consulta de existencias por almacén. Ingresa la contraseña de acceso.</p>
+    <label for="pass">Contraseña</label>
+    <input type="password" id="pass" autocomplete="off" placeholder="••••••••">
+    <button id="enter">Entrar</button>
+    <div class="err" id="gateErr"></div>
+    <div class="alt">¿Sin conexión? <label for="filePick">Cargar datos.enc local</label>
+      <input type="file" id="filePick" accept=".enc,.json" hidden></div>
+  </div>
+</div>
+
+<!-- ===== APP ===== -->
+<div id="app" hidden>
+  <header class="bar">
+    <div class="bar-in">
+      <div class="brand">Inventario <b>TX41</b> · Puebla</div>
+      <div class="meta" id="meta"></div>
+    </div>
+    <nav class="tabs" id="tabs">
+      <button data-tab="existencias" class="on">Existencias</button>
+      <button data-tab="directorio">Directorio</button>
+      <button data-tab="or">Orden de Reabasto</button>
+    </nav>
+  </header>
+  <main>
+    <section id="tab-existencias"></section>
+    <section id="tab-directorio" hidden></section>
+    <section id="tab-or" hidden></section>
+  </main>
+</div>
+
+<script>
+/* ============ CONFIG ============ */
+// URL del paquete cifrado. En GitHub Pages: ruta relativa al repo.
+const DATA_URL = "datos.enc";
+
+/* ============ CRIPTO (Web Crypto, compatible con publicar.py) ============ */
+const b64 = s => Uint8Array.from(atob(s), c=>c.charCodeAt(0));
+async function descifrar(sobre, clave){
+  const baseKey = await crypto.subtle.importKey('raw', new TextEncoder().encode(clave), 'PBKDF2', false, ['deriveKey']);
+  const key = await crypto.subtle.deriveKey(
+    {name:'PBKDF2', salt:b64(sobre.salt), iterations:sobre.iter, hash:sobre.hash},
+    baseKey, {name:'AES-GCM', length:256}, false, ['decrypt']);
+  const buf = await crypto.subtle.decrypt({name:'AES-GCM', iv:b64(sobre.iv)}, key, b64(sobre.ct));
+  let bytes = new Uint8Array(buf);
+  if(sobre.gzip){
+    const ds = new DecompressionStream('gzip');
+    const r = new Response(new Blob([bytes]).stream().pipeThrough(ds));
+    bytes = new Uint8Array(await r.arrayBuffer());
+  }
+  return JSON.parse(new TextDecoder().decode(bytes));
+}
+
+/* ============ ESTADO ============ */
+let DB = null;            // paquete descifrado
+let SOBRE = null;         // .enc en memoria (para reintentos)
+
+/* ============ GATE ============ */
+const $ = s => document.querySelector(s);
+async function cargarSobre(){
+  if(SOBRE) return SOBRE;
+  const res = await fetch(DATA_URL, {cache:"no-store"});
+  if(!res.ok) throw new Error("fetch");
+  SOBRE = await res.json();
+  return SOBRE;
+}
+async function intentarEntrar(clave){
+  const err = $("#gateErr"); err.textContent = "";
+  // Guard: Web Crypto no disponible (típico al abrir como archivo local file://)
+  if(!window.crypto || !window.crypto.subtle){
+    err.innerHTML = "Este navegador bloquea el cifrado en páginas locales (file://).<br>"+
+      "Ábrela vía <b>http://localhost:8000</b> o desde GitHub Pages.";
+    return;
+  }
+  try{
+    const sobre = await cargarSobre();
+    DB = await descifrar(sobre, clave);
+    sessionStorage.setItem("tx41_pass", clave);
+    arrancarApp();
+  }catch(e){
+    if(e.message==="fetch")
+      err.textContent = "No se encontró datos.enc. Usa 'Cargar datos.enc local'.";
+    else if(e.name==="OperationError" || e.name==="InvalidAccessError")
+      err.textContent = "Contraseña incorrecta.";
+    else
+      err.textContent = "Error inesperado: "+e.name+(e.message? " — "+e.message:"");
+  }
+}
+$("#enter").onclick = ()=> intentarEntrar($("#pass").value);
+$("#pass").addEventListener("keydown", e=>{ if(e.key==="Enter") intentarEntrar($("#pass").value); });
+$("#filePick").addEventListener("change", async e=>{
+  const f = e.target.files[0]; if(!f) return;
+  SOBRE = JSON.parse(await f.text());
+  $("#gateErr").textContent = "Archivo cargado. Ingresa la contraseña.";
+});
+// auto-entrar si ya hay clave en la sesión
+window.addEventListener("DOMContentLoaded", ()=>{
+  const saved = sessionStorage.getItem("tx41_pass");
+  if(saved) intentarEntrar(saved);
+  $("#pass").focus();
+});
+
+/* ============ APP ============ */
+function arrancarApp(){
+  $("#gate").hidden = true; $("#app").hidden = false;
+  try{
+    const m = DB.meta;
+    $("#meta").innerHTML = `Generado ${new Date(m.generado).toLocaleString('es-MX')}<br>`+
+      `${m.n_materiales.toLocaleString('es-MX')} materiales · ${m.n_almacenes} almacenes · ${m.n_con_existencia.toLocaleString('es-MX')} con existencia`;
+    $("#tabs").querySelectorAll("button").forEach(b=> b.onclick = ()=> cambiarTab(b.dataset.tab));
+    renderExistencias(); renderDirectorio(); renderOR();
+  }catch(e){
+    $("#gate").hidden = false; $("#app").hidden = true;
+    $("#gateErr").textContent = "Error al mostrar datos: "+e.name+" — "+e.message;
+  }
+}
+function cambiarTab(t){
+  $("#tabs").querySelectorAll("button").forEach(b=> b.classList.toggle("on", b.dataset.tab===t));
+  ["existencias","directorio","or"].forEach(x=> $("#tab-"+x).hidden = x!==t);
+}
+
+/* ---- helpers de datos ---- */
+const almList = ()=> Object.values(DB.directorio.almacenes);
+const almName = k => (DB.directorio.almacenes[k]?.desc)||k;
+const mat = c => DB.materiales[c] || {desc:"",um:"",area:"",ubic:""};
+function almacenesConExistencia(){ // claves de almacén que tienen al menos un material
+  const s = new Set();
+  for(const e of Object.values(DB.existencias)) for(const k in e) s.add(k);
+  return s;
+}
+function stkClass(n){ return n<=0?"":(n<5?"low":"ok"); }
+
+/* ============ EXISTENCIAS ============ */
+let exView = "almacen"; // 'almacen' | 'catalogo'
+let exSort = {col:"exist", dir:-1};
+function renderExistencias(){
+  const conEx = almacenesConExistencia();
+  // selector de almacenes: recurrentes (con existencia) agrupados por centro
+  const porCentro = {};
+  almList().filter(a=>conEx.has(a.clave)).forEach(a=>{
+    (porCentro[a.centro_desc||a.centro] ||= []).push(a);
+  });
+  const optgroups = Object.keys(porCentro).sort().map(c=>{
+    const opts = porCentro[c].sort((x,y)=>x.desc.localeCompare(y.desc)).map(a=>{
+      const dist = a.clave===DB.meta.almacen_distribuidor ? " — Distribuidor" : "";
+      return `<option value="${a.clave}">${a.clave} · ${a.desc}${dist}</option>`;
+    }).join("");
+    return `<optgroup label="${c}">${opts}</optgroup>`;
+  }).join("");
+
+  $("#tab-existencias").innerHTML = `
+    <div class="controls">
+      <div class="seg" id="exSeg">
+        <button data-v="almacen" class="on">Por almacén</button>
+        <button data-v="catalogo">Por catálogo</button>
+      </div>
+      <span id="exSelWrap"><select id="exAlm">${optgroups}</select></span>
+      <input type="search" id="exSearch" placeholder="Buscar catálogo o descripción…">
+      <button class="btn" id="exExport">Exportar Excel</button>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2 id="exTitle"></h2><span class="pill" id="exCount"></span></div>
+      <div class="scroll"><table id="exTable"></table></div>
+    </div>`;
+
+  // default: distribuidor si tiene existencia, si no el primero
+  const sel = $("#exAlm");
+  if([...sel.options].some(o=>o.value===DB.meta.almacen_distribuidor)) sel.value = DB.meta.almacen_distribuidor;
+
+  $("#exSeg").querySelectorAll("button").forEach(b=> b.onclick = ()=>{
+    exView=b.dataset.v;
+    $("#exSeg").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));
+    $("#exSelWrap").style.display = exView==="almacen" ? "" : "none";
+    $("#exSearch").placeholder = exView==="almacen" ? "Buscar catálogo o descripción…" : "Escribe un catálogo exacto…";
+    pintarEx();
+  });
+  sel.onchange = pintarEx;
+  $("#exSearch").oninput = pintarEx;
+  $("#exExport").onclick = exportarEx;
+  pintarEx();
+}
+
+function filasEx(){
+  const q = $("#exSearch").value.trim().toLowerCase();
+  if(exView==="almacen"){
+    const alm = $("#exAlm").value;
+    let rows = [];
+    for(const [cat,e] of Object.entries(DB.existencias)){
+      if(!(alm in e)) continue;
+      const m = mat(cat);
+      if(q && !(cat.toLowerCase().includes(q) || m.desc.toLowerCase().includes(q))) continue;
+      rows.push({cat, desc:m.desc, um:m.um, area:m.area, ubic:m.ubic, exist:e[alm]});
+    }
+    return rows;
+  }else{
+    // por catálogo: un catálogo a través de almacenes
+    let rows=[];
+    if(q){
+      const e = DB.existencias[q] || {};
+      for(const [alm,qty] of Object.entries(e))
+        rows.push({alm, nombre:almName(alm), exist:qty});
+    }
+    return rows;
+  }
+}
+function pintarEx(){
+  const rows = filasEx();
+  const tbl = $("#exTable");
+  if(exView==="almacen"){
+    const alm=$("#exAlm").value, isDist=alm===DB.meta.almacen_distribuidor;
+    $("#exTitle").innerHTML = `${alm} · ${almName(alm)} `+(isDist?`<span class="pill dist">DISTRIBUIDOR</span>`:"");
+    rows.sort(cmpEx);
+    $("#exCount").textContent = `${rows.length} materiales`;
+    tbl.innerHTML = `<thead><tr>
+      <th data-c="cat">Catálogo</th><th data-c="desc">Descripción</th>
+      <th data-c="area">Área</th><th data-c="ubic">Ubicación</th>
+      <th data-c="exist" class="r">Existencia</th></tr></thead><tbody>${
+      rows.length? rows.map(r=>`<tr>
+        <td class="cat num">${r.cat}</td><td class="desc">${r.desc||"—"}</td>
+        <td><span class="area-tag">${r.area||"—"}</span></td><td>${r.ubic||"—"}</td>
+        <td class="r"><span class="stk ${stkClass(r.exist)}">${r.exist.toLocaleString('es-MX')}</span> <small style="color:var(--muted)">${r.um}</small></td>
+      </tr>`).join("") : `<tr><td colspan="5" class="empty">Sin coincidencias.</td></tr>`}</tbody>`;
+  }else{
+    const q=$("#exSearch").value.trim();
+    $("#exTitle").textContent = q? `Catálogo ${q}` : "Por catálogo";
+    rows.sort((a,b)=>b.exist-a.exist);
+    $("#exCount").textContent = q? (mat(q).desc||"") : "";
+    tbl.innerHTML = `<thead><tr><th>Almacén</th><th>Nombre</th><th class="r">Existencia</th></tr></thead><tbody>${
+      !q? `<tr><td colspan="3" class="empty">Escribe un catálogo para ver su existencia en todos los almacenes.</td></tr>`
+        : rows.length? rows.map(r=>`<tr>
+            <td class="cat num">${r.alm}${r.alm===DB.meta.almacen_distribuidor?' <span class="pill dist">DIST</span>':''}</td>
+            <td>${r.nombre}</td>
+            <td class="r"><span class="stk ${stkClass(r.exist)}">${r.exist.toLocaleString('es-MX')}</span></td></tr>`).join("")
+          : `<tr><td colspan="3" class="empty">Ese catálogo no tiene existencia en ningún almacén.</td></tr>`}</tbody>`;
+  }
+  tbl.querySelectorAll("th[data-c]").forEach(th=> th.onclick=()=>{
+    const c=th.dataset.c;
+    exSort = {col:c, dir: exSort.col===c? -exSort.dir : (c==="exist"?-1:1)};
+    pintarEx();
+  });
+}
+function cmpEx(a,b){
+  const c=exSort.col, d=exSort.dir;
+  let va=a[c], vb=b[c];
+  if(c==="exist"){ return (va-vb)*d; }
+  return String(va||"").localeCompare(String(vb||""))*d;
+}
+function exportarEx(){
+  const rows = filasEx().sort(exView==="almacen"?cmpEx:(a,b)=>b.exist-a.exist);
+  let aoa, name;
+  if(exView==="almacen"){
+    const alm=$("#exAlm").value;
+    aoa=[["Catálogo","Descripción","Unidad","Área","Ubicación","Existencia"]];
+    rows.forEach(r=>aoa.push([r.cat,r.desc,r.um,r.area,r.ubic,r.exist]));
+    name=`Existencias_${alm}_${almName(alm).replace(/\s+/g,'')}`;
+  }else{
+    const q=$("#exSearch").value.trim();
+    aoa=[["Almacén","Nombre","Existencia"]];
+    rows.forEach(r=>aoa.push([r.alm,r.nombre,r.exist]));
+    name=`Catalogo_${q||'export'}`;
+  }
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), "Existencias");
+  XLSX.writeFile(wb, name+".xlsx");
+}
+
+/* ============ DIRECTORIO ============ */
+let dirScope="recurrentes";
+function renderDirectorio(){
+  $("#tab-directorio").innerHTML = `
+    <div class="controls">
+      <div class="seg" id="dirSeg">
+        <button data-s="recurrentes" class="on">Recurrentes</button>
+        <button data-s="todos">Todos</button>
+      </div>
+      <input type="search" id="dirSearch" placeholder="Buscar clave, nombre o centro…">
+    </div>
+    <div class="panel"><div class="panel-head"><h2>Centros y almacenes</h2><span class="pill" id="dirCount"></span></div>
+      <div class="scroll" id="dirList"></div></div>`;
+  $("#dirSeg").querySelectorAll("button").forEach(b=> b.onclick=()=>{
+    dirScope=b.dataset.s; $("#dirSeg").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b)); pintarDir();
+  });
+  $("#dirSearch").oninput = pintarDir;
+  pintarDir();
+}
+function pintarDir(){
+  const q=$("#dirSearch").value.trim().toLowerCase();
+  let alms = almList();
+  if(dirScope==="recurrentes") alms = alms.filter(a=>a.recurrente);
+  if(q) alms = alms.filter(a=> a.clave.toLowerCase().includes(q)||a.desc.toLowerCase().includes(q)||
+                               (a.centro_desc||"").toLowerCase().includes(q)||(a.centro||"").toLowerCase().includes(q));
+  const byCentro={};
+  alms.forEach(a=> (byCentro[a.centro] ||= {desc:a.centro_desc, items:[]}).items.push(a));
+  $("#dirCount").textContent = `${alms.length} almacenes`;
+  const html = Object.keys(byCentro).sort().map(c=>{
+    const g=byCentro[c];
+    const rows=g.items.sort((x,y)=>x.desc.localeCompare(y.desc)).map(a=>{
+      const dist=a.clave===DB.meta.almacen_distribuidor;
+      return `<div class="alm-row">
+        <span class="alm-key ${dist?'dist':''}">${a.clave}</span>
+        <span>${a.desc}</span>
+        ${dist?'<span class="badge">Distribuidor</span>':(a.recurrente&&dirScope==='todos'?'<span class="badge">Recurrente</span>':'')}
+      </div>`;
+    }).join("");
+    return `<div class="dir-centro">${g.desc||c} <span>${c}</span></div>${rows}`;
+  }).join("");
+  $("#dirList").innerHTML = html || `<div class="empty">Sin coincidencias.</div>`;
+}
+
+/* ============ OR (siguiente iteración) ============ */
+function renderOR(){
+  $("#tab-or").innerHTML = `<div class="panel"><div class="soon">
+    <h2>Orden de Reabasto — en construcción</h2>
+    <p>Próxima iteración. Replicará el formato Zaragoza con cálculo automático:</p>
+    <ul>
+      <li><b>CPM</b> = consumo ÷ meses (alimentado de los archivos de consumo del módulo de Análisis)</li>
+      <li><b>Cálculo Surtir</b> = meses de stock × CPM − existencia del almacén auxiliar</li>
+      <li>Existencia <b>D041 (distribuidor)</b> vs. almacén auxiliar lado a lado</li>
+      <li>Captura manual de <b>X Surtir</b> y <b>Observaciones</b></li>
+      <li>Split por área (Misceláneo / Herramienta) y exportación a Excel</li>
+    </ul>
+    <p style="margin-top:16px">Pendiente: enganchar el archivo de consumo para el CPM.</p>
+  </div></div>`;
+}
+</script>
+</body>
+</html>
