@@ -117,12 +117,66 @@
   .soon h2{color:var(--ink);margin:0 0 8px}
   .soon ul{display:inline-block;text-align:left;margin:12px 0 0;line-height:1.7}
 
+  /* ---- Tarjetas de área (Inventario) ---- */
+  .area-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px}
+  .area-card{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+             box-shadow:var(--shadow);padding:18px 16px 40px;cursor:pointer;transition:.12s;text-align:left}
+  .area-card:hover{border-color:var(--primary);transform:translateY(-2px);box-shadow:0 6px 18px rgba(10,78,163,.12)}
+  .area-card .ai{width:40px;height:40px;border-radius:10px;background:#eaf1fb;display:grid;place-items:center;font-size:21px;margin-bottom:10px}
+  .area-card .an{font-size:15.5px;font-weight:700;margin-bottom:2px}
+  .area-card .ae{font-size:12px;color:var(--muted)}
+  .area-card.todo{background:linear-gradient(135deg,#f3f7fd,#eaf1fb)}
+  .area-card.todo .ai{background:#e3ecfa}
+  .area-card .exp{position:absolute;bottom:9px;right:10px;font-size:11px;font-weight:700;padding:3px 9px;
+                  background:var(--primary);color:#fff;border:0;border-radius:7px}
+  .area-card .exp:hover{background:var(--primary-d)}
+  .area-card .cnt{position:absolute;top:14px;right:14px;font-size:11px;font-weight:700;color:var(--accent)}
+  /* filtros checkbox */
+  .chk{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);font-weight:600;cursor:pointer;white-space:nowrap}
+  .chk input{width:15px;height:15px;accent-color:var(--primary)}
+  /* modal */
+  .modal{position:fixed;inset:0;background:rgba(15,27,45,.5);display:none;align-items:center;justify-content:center;z-index:120;padding:20px}
+  .modal.on{display:flex}
+  .modal-box{background:#fff;border-radius:14px;max-width:440px;width:100%;box-shadow:0 18px 50px rgba(0,0,0,.3);overflow:hidden}
+  .modal-box h3{margin:0;padding:16px 18px;border-bottom:1px solid var(--line);font-size:15px}
+  .modal-body{padding:16px 18px;display:grid;gap:14px}
+  .exp-areas{display:flex;flex-wrap:wrap;gap:7px}
+  .exp-areas label{display:flex;align-items:center;gap:5px;font-size:12.5px;font-weight:600;background:#f7f9fc;
+                   border:1px solid var(--line);border-radius:8px;padding:5px 9px;cursor:pointer}
+  .exp-opts{display:grid;gap:8px;border-top:1px solid var(--line);padding-top:12px}
+  .modal-foot{display:flex;gap:10px;justify-content:flex-end;padding:14px 18px;border-top:1px solid var(--line);background:#f7f9fc}
+  .btn-prim{padding:9px 16px;border:0;border-radius:8px;background:var(--primary);color:#fff;font-weight:700}
+  .btn-prim:hover{background:var(--primary-d)}
+  .linkish{background:none;border:0;color:var(--primary);font-weight:600;font-size:12.5px;text-decoration:underline}
+
   @media(max-width:560px){
     .meta{display:none}
     td.desc{max-width:170px}
     th,td{padding:8px 9px}
     .cards{grid-template-columns:1fr 1fr}
+    .area-grid{grid-template-columns:1fr 1fr}
   }
+
+  /* ---- Área de impresión (listas de conteo) ---- */
+  #printArea{display:none}
+  @media print{
+    body *{visibility:hidden}
+    #printArea,#printArea *{visibility:visible}
+    #printArea{display:block;position:absolute;left:0;top:0;width:100%}
+    .pg{page-break-after:always;padding:0 4mm}
+    .pg:last-child{page-break-after:auto}
+  }
+  #printArea .ph{border-bottom:2px solid #0a4ea3;padding-bottom:6px;margin-bottom:8px}
+  #printArea .ph-top{font-size:11pt;font-weight:800;color:#073a7a}
+  #printArea .ph-sub{font-size:8.5pt;color:#555}
+  #printArea .ph-ubi{font-size:13pt;font-weight:800;margin-top:4px}
+  #printArea .ph-meta{font-size:9pt;margin-top:4px;color:#222}
+  #printArea .ph-meta u{text-decoration:none;border-bottom:1px solid #999;display:inline-block;min-width:120px}
+  #printArea table.pt{width:100%;border-collapse:collapse;font-size:8.5pt}
+  #printArea table.pt th{background:#0a4ea3;color:#fff;padding:4px 6px;text-align:left;font-size:8pt}
+  #printArea table.pt td{border:1px solid #cbd5e1;padding:3px 6px}
+  #printArea .col-fis{background:#fffbe9}
+  #printArea .pf{display:flex;justify-content:space-between;font-size:7.5pt;color:#666;margin-top:6px}
 </style>
 </head>
 <body>
@@ -155,6 +209,30 @@
     <section id="moduleView" hidden></section>
   </main>
 </div>
+
+<!-- ===== MODAL EXPORTACIÓN MULTI-ÁREA ===== -->
+<div class="modal" id="expModal">
+  <div class="modal-box">
+    <h3>Exportar inventario a Excel</h3>
+    <div class="modal-body">
+      <div>
+        <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:7px;text-transform:uppercase;letter-spacing:.4px">Áreas
+          <button class="linkish" id="expAll" style="float:right;text-transform:none;letter-spacing:0">Todas / ninguna</button></div>
+        <div class="exp-areas" id="expAreas"></div>
+      </div>
+      <div class="exp-opts">
+        <label class="chk"><input type="checkbox" id="expSoloExist"> Solo materiales con existencia</label>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" id="expCancel">Cancelar</button>
+      <button class="btn-prim" id="expGo">Descargar Excel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== ÁREA DE IMPRESIÓN (listas de conteo) ===== -->
+<div id="printArea"></div>
 
 <script>
 /* ============ CONFIG ============ */
@@ -235,12 +313,14 @@ function arrancarApp(){
   }
 }
 function mostrarMenu(){
+  invSel=null;
   $("#backBtn").style.display="none";
   $("#moduleView").hidden=true; $("#menuView").hidden=false;
   renderMenu();
 }
 function abrirModulo(id){
   $("#backBtn").style.display="inline-flex";
+  $("#backBtn").onclick=mostrarMenu;
   $("#menuView").hidden=true; $("#moduleView").hidden=false;
   window.scrollTo(0,0);
   ({inventario:modInventario, analisis:modAnalisis, directorio:modDirectorio, or:modOR, config:modConfig}[id])();
@@ -291,52 +371,223 @@ function renderMenu(){
   $("#menuView").querySelectorAll(".card").forEach(b=> b.onclick=()=>abrirModulo(b.dataset.id));
 }
 
-/* ============ INVENTARIO (D041 por área) ============ */
-let invArea="", invSort={col:"exist",dir:-1};
+/* ============ INVENTARIO (D041 por área, con tarjetas) ============ */
+const AREA_ICON={Herramientas:"🔧",Misceláneos:"🔩",Papelería:"📄",Cables:"🔌","Ropa y Calzado":"👔",Baja:"📦"};
+const TODO="__TODO__";
+let invSel=null, invSort={col:"exist",dir:-1};
+
+// existencia del distribuidor para un catálogo (null si no aparece)
+function existDist(cat){ const e=DB.existencias[cat]; return e && DIST() in e ? e[DIST()] : null; }
+
+// Construye filas desde el MAESTRO para un área (o TODO). Incluye materiales sin existencia (exist=null).
+function matsArea(area){
+  const out=[];
+  for(const [cat,m] of Object.entries(DB.materiales)){
+    if(area!==TODO && (m.area||"")!==area) continue;
+    out.push({cat,desc:m.desc||"",um:m.um||"",area:m.area||"Sin clasificar",ubic:m.ubic||"",exist:existDist(cat)});
+  }
+  return out;
+}
+
 function modInventario(){
+  if(invSel===null) return renderAreasInv();
+  return renderDetalleInv();
+}
+
+/* ---- Pantalla de tarjetas de área ---- */
+function renderAreasInv(){
+  $("#backBtn").onclick=mostrarMenu;
+  // conteos por área: total en maestro y con existencia en D041
+  const tot={}, conx={};
+  for(const [cat,m] of Object.entries(DB.materiales)){
+    const a=m.area||"Sin clasificar"; tot[a]=(tot[a]||0)+1;
+    if(existDist(cat)!==null) conx[a]=(conx[a]||0)+1;
+  }
+  const totalConx=Object.values(conx).reduce((s,n)=>s+n,0);
+  const totalMaestro=Object.keys(DB.materiales).length;
+  const cards=AREAS.map(a=>`
+    <div class="area-card" data-a="${a}">
+      <div class="ai">${AREA_ICON[a]||"📦"}</div>
+      <div class="an">${a}</div>
+      <div class="ae">${nfmt(conx[a]||0)} con existencia · ${nfmt(tot[a]||0)} en maestro</div>
+      <span class="cnt">${nfmt(conx[a]||0)}</span>
+      <button class="exp" data-exp="${a}">⬇ Excel</button>
+    </div>`).join("");
   $("#moduleView").innerHTML=`
+    <div class="menu-h" style="margin-bottom:14px">
+      <h1>Inventario · D041 PUEBLA</h1>
+      <p>Existencias del almacén distribuidor. Elige un área para consultar, contar o exportar.</p>
+    </div>
+    <div class="area-grid">
+      ${cards}
+      <div class="area-card todo" data-a="${TODO}">
+        <div class="ai">📊</div>
+        <div class="an">Todo el inventario</div>
+        <div class="ae">${nfmt(totalConx)} con existencia · ${nfmt(totalMaestro)} en maestro</div>
+        <span class="cnt" style="color:var(--primary)">${nfmt(totalConx)}</span>
+        <button class="exp" data-exp="${TODO}">⬇ Exportar…</button>
+      </div>
+    </div>`;
+  // abrir detalle
+  $("#moduleView").querySelectorAll(".area-card").forEach(c=> c.onclick=()=>{ invSel=c.dataset.a; invSort={col:"exist",dir:-1}; renderDetalleInv(); window.scrollTo(0,0); });
+  // export rápido por tarjeta
+  $("#moduleView").querySelectorAll(".exp").forEach(b=> b.onclick=(ev)=>{ ev.stopPropagation();
+    const a=b.dataset.exp; if(a===TODO) abrirModalExp(); else exportarArea(a,false); });
+}
+
+/* ---- Detalle de un área ---- */
+function renderDetalleInv(){
+  const esTodo=invSel===TODO, label=esTodo?"Todo el inventario":invSel;
+  // back vuelve a las tarjetas (no al menú)
+  $("#backBtn").onclick=()=>{ invSel=null; modInventario(); window.scrollTo(0,0); };
+  // ubicaciones del área (para el select)
+  const base=matsArea(invSel);
+  const ubis=[...new Set(base.map(m=>m.ubic).filter(Boolean))].sort();
+  const areasEnTodo=esTodo?[...new Set(base.map(m=>m.area).filter(Boolean))].sort():[];
+  $("#moduleView").innerHTML=`
+    <button class="linkish" id="invVolver" style="margin-bottom:10px">‹ Volver a áreas</button>
     <div class="controls">
       <input type="search" id="invSearch" placeholder="Buscar catálogo o descripción…">
-      <button class="btn" id="invExport">Exportar Excel</button>
+      ${esTodo
+        ? `<select id="invArea"><option value="">Todas las áreas</option>${areasEnTodo.map(a=>`<option>${a}</option>`).join("")}</select>`
+        : `<select id="invUbi"><option value="">Todas las ubicaciones</option>${ubis.map(u=>`<option>${u}</option>`).join("")}</select>`}
+      <label class="chk"><input type="checkbox" id="invCeros" checked> Ocultar sin existencia</label>
+      <button class="btn" id="invConteo">🖨 Lista de conteo</button>
+      <button class="btn" id="invExport">⬇ Exportar Excel</button>
     </div>
-    <div class="chips" id="invChips"></div>
     <div class="panel"><div class="panel-head">
-      <h2>D041 · PUEBLA <span class="pill dist">DISTRIBUIDOR</span></h2><span class="pill" id="invCount"></span></div>
+      <h2>${esTodo?"📊 ":AREA_ICON[invSel]?AREA_ICON[invSel]+" ":""}${label} <span class="pill dist">D041</span></h2>
+      <span class="pill" id="invCount"></span></div>
       <div class="scroll"><table id="invTable"></table></div></div>`;
-  const chips=["",...AREAS];
-  $("#invChips").innerHTML=chips.map(a=>`<button class="chip ${a===invArea?'on':''}" data-a="${a}">${a||"Todas"}</button>`).join("");
-  $("#invChips").querySelectorAll(".chip").forEach(c=> c.onclick=()=>{ invArea=c.dataset.a;
-    $("#invChips").querySelectorAll(".chip").forEach(x=>x.classList.toggle("on",x===c)); pintarInv(); });
+  $("#invVolver").onclick=()=>{ invSel=null; modInventario(); window.scrollTo(0,0); };
   $("#invSearch").oninput=pintarInv;
-  $("#invExport").onclick=()=>{ const r=filasInv(); descargarXLSX(
-    [["Catálogo","Descripción","Unidad","Área","Ubicación","Existencia"],...r.map(x=>[x.cat,x.desc,x.um,x.area,x.ubic,x.exist])],
-    "Inventario", "Inventario_D041"); };
+  if(esTodo) $("#invArea").onchange=pintarInv; else $("#invUbi").onchange=pintarInv;
+  $("#invCeros").onchange=pintarInv;
+  $("#invExport").onclick=()=> exportarFiltrado();
+  $("#invConteo").onclick=()=> imprimirConteo();
   pintarInv();
 }
+
+// aplica los filtros del detalle a las filas del área actual
 function filasInv(){
-  const q=$("#invSearch").value.trim().toLowerCase(), d=DIST(); let rows=[];
-  for(const [cat,e] of Object.entries(DB.existencias)){
-    if(!(d in e)) continue; const m=mat(cat);
-    if(invArea && m.area!==invArea) continue;
-    if(q && !(cat.toLowerCase().includes(q)||m.desc.toLowerCase().includes(q))) continue;
-    rows.push({cat,desc:m.desc,um:m.um,area:m.area,ubic:m.ubic,exist:e[d]});
-  }
-  rows.sort((a,b)=>{const c=invSort.col,k=invSort.dir; return c==="exist"?(a.exist-b.exist)*k:String(a[c]||"").localeCompare(String(b[c]||""))*k;});
+  const q=($("#invSearch")?.value||"").trim().toLowerCase();
+  const ceros=$("#invCeros")?.checked;
+  const ubiSel=$("#invUbi")?.value||"";
+  const areaSel=$("#invArea")?.value||"";
+  let rows=matsArea(invSel).filter(m=>{
+    if(q && !(m.cat.toLowerCase().includes(q)||m.desc.toLowerCase().includes(q))) return false;
+    if(ubiSel && m.ubic!==ubiSel) return false;
+    if(areaSel && m.area!==areaSel) return false;
+    if(ceros && !(m.exist!==null && m.exist>0)) return false;
+    return true;
+  });
+  rows.sort((a,b)=>{const c=invSort.col,k=invSort.dir;
+    if(c==="exist") return ((a.exist??-1)-(b.exist??-1))*k;
+    return String(a[c]||"").localeCompare(String(b[c]||""))*k;});
   return rows;
 }
 function pintarInv(){
-  const rows=filasInv();
-  $("#invCount").textContent=`${rows.length} materiales`;
-  $("#invTable").innerHTML=`<thead><tr>
-    <th data-c="cat">Catálogo</th><th data-c="desc">Descripción</th><th data-c="area">Área</th>
-    <th data-c="ubic">Ubicación</th><th data-c="exist" class="r">Existencia</th></tr></thead><tbody>${
-    rows.length? rows.map(r=>`<tr>
-      <td class="cat num">${r.cat}</td><td class="desc">${r.desc||"—"}</td>
-      <td><span class="area-tag">${r.area||"—"}</span></td><td>${r.ubic||"—"}</td>
-      <td class="r"><span class="stk ${stkClass(r.exist)}">${nfmt(r.exist)}</span> <small style="color:var(--muted)">${r.um}</small></td>
-    </tr>`).join("") : `<tr><td colspan="5" class="empty">Sin coincidencias.</td></tr>`}</tbody>`;
+  const esTodo=invSel===TODO, rows=filasInv();
+  const conx=rows.filter(r=>r.exist!==null&&r.exist>0).length;
+  $("#invCount").textContent=`${nfmt(rows.length)} materiales · ${nfmt(conx)} con existencia`;
+  const cols=esTodo
+    ? `<th data-c="cat">Catálogo</th><th data-c="desc">Descripción</th><th data-c="area">Área</th><th data-c="ubic">Ubicación</th><th data-c="exist" class="r">Existencia</th>`
+    : `<th data-c="cat">Catálogo</th><th data-c="desc">Descripción</th><th data-c="um">U.M.</th><th data-c="ubic">Ubicación</th><th data-c="exist" class="r">Existencia</th>`;
+  $("#invTable").innerHTML=`<thead><tr>${cols}</tr></thead><tbody>${
+    rows.length? rows.map(r=>{
+      const ex = r.exist===null ? `<span style="color:var(--zero);font-style:italic">—</span>`
+                : `<span class="stk ${stkClass(r.exist)}">${nfmt(r.exist)}</span>`;
+      return esTodo
+        ? `<tr><td class="cat num">${r.cat}</td><td class="desc">${r.desc||"—"}</td>
+             <td><span class="area-tag">${r.area||"—"}</span></td><td>${r.ubic||"—"}</td>
+             <td class="r">${ex} <small style="color:var(--muted)">${r.um}</small></td></tr>`
+        : `<tr><td class="cat num">${r.cat}</td><td class="desc">${r.desc||"—"}</td>
+             <td>${r.um||"—"}</td><td>${r.ubic||"—"}</td>
+             <td class="r">${ex} <small style="color:var(--muted)">${r.um}</small></td></tr>`;
+    }).join("") : `<tr><td colspan="5" class="empty">Sin coincidencias.</td></tr>`}</tbody>`;
   $("#invTable").querySelectorAll("th[data-c]").forEach(th=> th.onclick=()=>{
     const c=th.dataset.c; invSort={col:c,dir:invSort.col===c?-invSort.dir:(c==="exist"?-1:1)}; pintarInv(); });
+}
+
+/* ---- Exportaciones de Inventario ---- */
+function fechaTag(){ return new Date().toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric'}).replace(/\//g,'-'); }
+function expFilas(mats){ return [["Área","Catálogo","Descripción","U.M.","Ubicación","Existencia D041"],
+  ...mats.map(m=>[m.area,m.cat,m.desc,m.um,m.ubic, m.exist===null?"":m.exist])]; }
+
+// export directo de un área (desde la tarjeta)
+function exportarArea(area,soloExist){
+  let mats=matsArea(area); if(soloExist) mats=mats.filter(m=>m.exist!==null&&m.exist>0);
+  if(!mats.length){ alert("No hay materiales para exportar en "+area); return; }
+  mats.sort((a,b)=>(b.exist??-1)-(a.exist??-1));
+  descargarXLSX(expFilas(mats), (area===TODO?"Todo":area).substring(0,28), `Inventario_${area===TODO?"Todo":area.replace(/ /g,"_")}_${fechaTag()}`);
+}
+// export del detalle respetando filtros actuales
+function exportarFiltrado(){
+  const mats=filasInv(); if(!mats.length){ alert("No hay materiales con los filtros actuales."); return; }
+  const nom=invSel===TODO?"Todo":invSel.replace(/ /g,"_");
+  descargarXLSX(expFilas(mats), (invSel===TODO?"Todo":invSel).substring(0,28), `Inventario_${nom}_${fechaTag()}`);
+}
+
+/* ---- Modal de exportación multi-área ---- */
+function abrirModalExp(){
+  $("#expAreas").innerHTML=AREAS.map(a=>`<label><input type="checkbox" data-a="${a}" checked> ${a}</label>`).join("");
+  $("#expSoloExist").checked=true;
+  $("#expModal").classList.add("on");
+}
+function cerrarModalExp(){ $("#expModal").classList.remove("on"); }
+$("#expCancel").onclick=cerrarModalExp;
+$("#expAll").onclick=()=>{ const cbs=$("#expAreas").querySelectorAll("input"); const any=[...cbs].some(c=>!c.checked); cbs.forEach(c=>c.checked=any); };
+$("#expGo").onclick=()=>{
+  const sel=[...$("#expAreas").querySelectorAll("input:checked")].map(c=>c.dataset.a);
+  if(!sel.length){ alert("Selecciona al menos un área."); return; }
+  const soloExist=$("#expSoloExist").checked;
+  let mats=[]; sel.forEach(a=>{ mats=mats.concat(matsArea(a)); });
+  if(soloExist) mats=mats.filter(m=>m.exist!==null&&m.exist>0);
+  if(!mats.length){ alert("No hay materiales con esos criterios."); return; }
+  mats.sort((a,b)=> a.area===b.area ? (b.exist??-1)-(a.exist??-1) : a.area.localeCompare(b.area));
+  const nom=sel.length===AREAS.length?"Todo":sel.join("_").substring(0,28);
+  descargarXLSX(expFilas(mats), "Inventario", `Inventario_${nom}_${fechaTag()}`);
+  cerrarModalExp();
+};
+
+/* ---- Listas de conteo imprimibles (columna Físico en blanco) ---- */
+function imprimirConteo(){
+  const mats=filasInv();
+  if(!mats.length){ alert("No hay materiales que imprimir con los filtros actuales."); return; }
+  const hoy=new Date().toLocaleDateString('es-MX',{day:'2-digit',month:'long',year:'numeric'});
+  const label=invSel===TODO?"TODO EL INVENTARIO":invSel.toUpperCase();
+  // agrupar por ubicación
+  const grupos={};
+  mats.forEach(m=>{ const u=m.ubic||"Sin asignar"; (grupos[u] ||= []).push(m); });
+  const pa=$("#printArea"); pa.innerHTML="";
+  Object.keys(grupos).sort().forEach(u=>{
+    const lista=grupos[u];
+    const div=document.createElement("div"); div.className="pg";
+    div.innerHTML=`
+      <div class="ph">
+        <div class="ph-top">TELMEX — ALMACÉN DISTRIBUIDOR D041 PUEBLA · ÁREA: ${label}</div>
+        <div class="ph-sub">Inventario físico · Lista de conteo</div>
+        <div class="ph-ubi">Ubicación: ${u}</div>
+        <div class="ph-meta">Fecha: <u>&nbsp;</u>&nbsp;&nbsp;&nbsp;Responsable: <u>&nbsp;</u></div>
+      </div>
+      <table class="pt"><thead><tr>
+        <th style="width:80px">Catálogo</th><th>Descripción</th>
+        <th style="width:38px;text-align:center">U.M.</th>
+        <th style="width:64px;text-align:center">Existencia</th>
+        <th style="width:60px;text-align:center">Físico</th>
+      </tr></thead><tbody>
+        ${lista.map(m=>`<tr>
+          <td style="font-family:monospace">${m.cat}</td>
+          <td>${m.desc||"—"}</td>
+          <td style="text-align:center">${m.um||"—"}</td>
+          <td style="text-align:center">${m.exist===null?"—":nfmt(m.exist)}</td>
+          <td class="col-fis">&nbsp;</td>
+        </tr>`).join("")}
+      </tbody></table>
+      <div class="pf"><span>D041 · ${invSel===TODO?"Todo":invSel} · ${u} · ${lista.length} materiales</span><span>Generado: ${hoy}</span></div>`;
+    pa.appendChild(div);
+  });
+  setTimeout(()=>{ window.print(); setTimeout(()=>{ pa.innerHTML=""; },800); },250);
 }
 
 /* ============ ANÁLISIS (por almacén / por catálogo) ============ */
