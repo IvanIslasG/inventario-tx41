@@ -1009,7 +1009,7 @@ function pintarDir(){
 }
 
 /* ============ ORDEN DE REABASTO ============ */
-let orAlm="", orSort={col:"calcSurtir",dir:-1}, _orManual={};
+let orAlm="", orSort={col:"cat",dir:1}, _orManual={};
 function consumosDisp(){ return DB.consumos ? Object.keys(DB.consumos).sort() : []; }
 
 function modOR(){
@@ -1090,7 +1090,8 @@ function modOR(){
     ngSugs.style.display="block";
   }
   ngInp.oninput=()=>{ ngVal.value=""; _abrirNGSugs(ngInp.value); pintarOR(); };
-  ngInp.onfocus=()=>{ _abrirNGSugs(ngInp.value); };
+  // Punto 3: selectAll en el input de NG al enfocar
+  ngInp.addEventListener("focus",()=>{ ngInp.select(); _abrirNGSugs(ngInp.value); });
   ngSugs.addEventListener("pointerdown",e=>{
     const t=e.target.closest("[data-v]"); if(!t) return;
     ngVal.value=t.dataset.v;
@@ -1114,7 +1115,10 @@ function calcularOR(){
     const exD=(DB.existencias?.[cat]?.[D])||0;
     const calcSurtir=mStk*cpm-exAux;
     const man=_orManual[orAlm+"|"+cat]||{};
-    const xsurtir=man.xs!=null?man.xs:Math.max(0,Math.min(Math.round(calcSurtir),exD));
+    // Punto 1: solo proponer X surtir para SIN SUSTITUTO; los demás arrancan en 0
+    const esSinSust=ng==="SIN SUSTITUTO";
+    const sugerido=esSinSust ? Math.max(0,Math.min(Math.round(calcSurtir),exD)) : 0;
+    const xsurtir=man.xs!=null ? man.xs : sugerido;
     const mdInv=cpm>0?exAux/cpm:null;
     const excedente=(3*cpm-exAux)<0;
     out.push({cat,desc:info.desc,um:info.um,area:info.area||"Sin clasificar",ng,consumo,cpm,exAux,exD,calcSurtir,xsurtir,mdInv,excedente,obs:man.obs||""});
@@ -1125,10 +1129,8 @@ function calcularOR(){
 function filasOR(){
   const q=($("#orSearch")?.value||"").trim().toLowerCase();
   const fArea=$("#orFArea")?.value||"";
-  // NG: desde el input de texto (búsqueda parcial) O desde el valor hidden (selección exacta)
   const ngHid=$("#orNGVal")?.value||"";
   const ngText=($("#orNGInput")?.value||"").trim().toLowerCase();
-  // checkboxes
   const soloCal=$("#orSolo")?.checked;
   const soloX=$("#orSoloX")?.checked;
   const soloExc=$("#orExced")?.checked;
@@ -1136,7 +1138,6 @@ function filasOR(){
   let rows=calcularOR().filter(r=>{
     if(q && !(r.cat.toLowerCase().includes(q)||(r.desc||"").toLowerCase().includes(q))) return false;
     if(fArea && r.area!==fArea) return false;
-    // filtro NG: si hay selección exacta usar esa; si solo hay texto parcial filtrar por contiene
     if(ngHid){ if(r.ng!==ngHid) return false; }
     else if(ngText){ if(!r.ng.toLowerCase().includes(ngText)) return false; }
     if(soloCal && r.calcSurtir<=0) return false;
@@ -1144,6 +1145,8 @@ function filasOR(){
     if(soloExc && !r.excedente) return false;
     return true;
   });
+
+  // Punto 2: orden por defecto catálogo asc; respeta el sort manual si el usuario cambió columna
   const c=orSort.col, k=orSort.dir;
   const numCols=["consumo","cpm","exAux","exD","calcSurtir","xsurtir","mdInv"];
   rows.sort((a,b)=> numCols.includes(c)?((a[c]??-1)-(b[c]??-1))*k:String(a[c]||"").localeCompare(String(b[c]||""))*k);
@@ -1159,24 +1162,53 @@ function pintarOR(){
   $("#orTitle").innerHTML=`OR · ${orAlm} · ${almName(orAlm)}`;
   $("#orCount").textContent=`${rows.length} catálogos`;
   $("#orResumen").textContent=`${nNec} a surtir · Total X surtir: ${nfmt(totalX)}`;
+
+  // Punto 4: sumatoria de calcSurtir y xsurtir agrupadas por nombre genérico (excluyendo SIN SUSTITUTO)
+  const sumNG={};  // ng -> {calcSurtir, xsurtir, cats:[]}
+  rows.forEach(r=>{
+    if(r.ng==="SIN SUSTITUTO") return;
+    if(!sumNG[r.ng]) sumNG[r.ng]={calc:0,xs:0,cats:[]};
+    sumNG[r.ng].calc+=r.calcSurtir;
+    sumNG[r.ng].xs+=r.xsurtir;
+    sumNG[r.ng].cats.push(r.cat);
+  });
+  const tieneNG=Object.keys(sumNG).length>0;
+  const bandaNG = tieneNG ? `
+    <div style="margin-bottom:8px;background:#fffbe8;border:1px solid #f0d060;border-radius:10px;padding:8px 12px">
+      <div style="font-size:11px;font-weight:800;color:#7a5c00;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">
+        ∑ Sustitutos por nombre genérico <span style="font-weight:400;color:#9a7a00">(materiales que se pueden sustituir entre sí)</span>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        ${Object.entries(sumNG).sort((a,b)=>b[1].calc-a[1].calc).map(([ng,v])=>`
+          <div title="${v.cats.join(', ')}" style="background:#fff;border:1px solid #e8d080;border-radius:8px;padding:5px 10px;font-size:12px;cursor:default">
+            <span style="font-weight:700;color:#5a3e00">${ng}</span>
+            <span style="color:#7a5c00;margin-left:6px">Cálc: <b>${fmt1(v.calc)}</b></span>
+            <span style="color:#0a4ea3;margin-left:6px">X: <b style="font-size:13px">${nfmt(v.xs)}</b></span>
+            <span style="color:var(--muted);font-size:10.5px;margin-left:5px">${v.cats.length} cat.</span>
+          </div>`).join("")}
+      </div>
+    </div>` : "";
+
   const thEx=`style="background:#e8f1fb;color:#0a4ea3;font-weight:800"`;
   const thExD=`style="background:#1a3a6a;color:#fff;font-weight:800"`;
+  const tbl=$("#orTable").closest("div");
+  tbl.insertAdjacentHTML("beforebegin", "");
+  // insertar banda antes del panel
+  const panelEl=$("#orTable").closest(".panel");
+  const bandaId="orBandaNG";
+  const vieja=document.getElementById(bandaId); if(vieja) vieja.remove();
+  if(tieneNG){
+    const div=document.createElement("div"); div.id=bandaId; div.innerHTML=bandaNG;
+    panelEl.insertAdjacentElement("beforebegin", div.firstElementChild);
+  }
+
   $("#orTable").innerHTML=`
   <colgroup>
-    <col style="width:90px">   <!-- Catálogo -->
-    <col style="width:220px">  <!-- Descripción -->
-    <col style="width:110px">  <!-- Área -->
-    <col style="width:150px">  <!-- Nombre genérico -->
-    <col style="width:50px">   <!-- UM -->
-    <col style="width:80px">   <!-- Consumo -->
-    <col style="width:70px">   <!-- CPM -->
-    <col style="width:60px">   <!-- mdInv -->
-    <col style="width:90px">   <!-- Exist auxiliar -->
-    <col style="width:90px">   <!-- Exist D041 -->
-    <col style="width:80px">   <!-- Cálc surtir -->
-    <col style="width:80px">   <!-- X Surtir -->
-    <col style="width:60px">   <!-- Excedente -->
-    <col>                       <!-- Observaciones (resto) -->
+    <col style="width:90px"><col style="width:220px"><col style="width:110px">
+    <col style="width:140px"><col style="width:50px"><col style="width:80px">
+    <col style="width:70px"><col style="width:60px"><col style="width:90px">
+    <col style="width:90px"><col style="width:85px"><col style="width:82px">
+    <col style="width:55px"><col>
   </colgroup>
   <thead><tr>
     <th data-c="cat">Catálogo</th><th data-c="desc">Descripción</th>
@@ -1187,16 +1219,19 @@ function pintarOR(){
     <th class="r" data-c="exD" ${thExD}>Exist. D041</th>
     <th class="r" data-c="calcSurtir">Cálc. surtir</th>
     <th class="r" data-c="xsurtir">X Surtir</th>
-    <th>Excedente</th><th>Observaciones</th>
+    <th>Exced.</th><th>Observaciones</th>
   </tr></thead><tbody>${
   rows.length? rows.map(r=>{
     const nec=r.calcSurtir>0.5;
+    const esSinSust=r.ng==="SIN SUSTITUTO";
     const rowBg=nec?`style="background:#fdf1f1"`:(r.excedente?`style="background:var(--low-bg)"`:"");
+    // resaltar ng cuando es sustituto (no SIN SUSTITUTO)
+    const ngStyle=esSinSust?"color:var(--muted);font-size:12px":"color:#7a5c00;font-size:12px;font-weight:700";
     return `<tr ${rowBg}>
       <td class="cat num">${r.cat}</td>
       <td class="desc">${r.desc||"—"}</td>
       <td><span class="area-tag">${r.area}</span></td>
-      <td style="font-size:12px;color:var(--muted)">${r.ng||"—"}</td>
+      <td style="${ngStyle}">${r.ng}</td>
       <td>${r.um||""}</td>
       <td class="r num">${nfmt(r.consumo)}</td>
       <td class="r num">${fmt1(r.cpm)}</td>
@@ -1204,19 +1239,83 @@ function pintarOR(){
       <td class="r num" style="background:#eef5ff;font-weight:700">${nfmt(r.exAux)}</td>
       <td class="r num" style="background:#1a3a6a;color:#fff;font-weight:700">${nfmt(r.exD)}</td>
       <td class="r num" style="font-weight:700;color:${nec?"#c0392b":"var(--muted)"}">${fmt1(r.calcSurtir)}</td>
-      <td class="r"><input type="number" class="or-xs" data-cat="${r.cat}" value="${r.xsurtir}" min="0"
-          style="width:70px;text-align:right;padding:4px 6px;border:1px solid var(--line);border-radius:6px"></td>
+      <td class="r">
+        <input type="number" class="or-xs" data-cat="${r.cat}" value="${r.xsurtir}" min="0"
+          style="width:70px;text-align:right;padding:4px 6px;border:1px solid var(--line);border-radius:6px">
+      </td>
       <td style="text-align:center">${r.excedente?"⚠️":""}</td>
       <td><input type="text" class="or-obs" data-cat="${r.cat}" value="${r.obs.replace(/"/g,"&quot;")}" placeholder="…"
-          style="min-width:110px;padding:4px 6px;border:1px solid var(--line);border-radius:6px"></td>
+          style="min-width:100px;padding:4px 6px;border:1px solid var(--line);border-radius:6px"></td>
     </tr>`;
   }).join("") : `<tr><td colspan="14" class="empty">Sin catálogos con estos filtros.</td></tr>`}</tbody>`;
+
+  // Orden por cabecera
   $("#orTable").querySelectorAll("th[data-c]").forEach(th=>th.onclick=()=>{
-    const c=th.dataset.c; orSort={col:c,dir:orSort.col===c?-orSort.dir:(["cat","desc","area","ng"].includes(c)?1:-1)}; pintarOR(); });
-  $("#orTable").querySelectorAll(".or-xs").forEach(inp=>
-    inp.onchange=()=>{ (_orManual[orAlm+"|"+inp.dataset.cat]||=({xs:0,obs:""})).xs=+inp.value||0; });
-  $("#orTable").querySelectorAll(".or-obs").forEach(inp=>
-    inp.oninput=()=>{ (_orManual[orAlm+"|"+inp.dataset.cat]||=({xs:0,obs:""})).obs=inp.value; });
+    const c=th.dataset.c;
+    orSort={col:c, dir:orSort.col===c?-orSort.dir:(["cat","desc","area","ng"].includes(c)?1:-1)};
+    pintarOR();
+  });
+
+  // Guardar cambios en X Surtir y recalcular banda NG
+  $("#orTable").querySelectorAll(".or-xs").forEach(inp=>{
+    // Punto 3: selectAll al enfocar
+    inp.addEventListener("focus",()=>inp.select());
+    // Guardar y repintar banda NG al cambiar
+    inp.addEventListener("change",()=>{
+      (_orManual[orAlm+"|"+inp.dataset.cat]||={xs:0,obs:""}).xs=+inp.value||0;
+      _repintarBandaNG();
+    });
+    // Punto 3: navegar con ↑ ↓ entre celdas X surtir
+    inp.addEventListener("keydown",e=>{
+      if(e.key==="ArrowDown"||e.key==="ArrowUp"){
+        e.preventDefault();
+        const all=[...$("#orTable").querySelectorAll(".or-xs")];
+        const i=all.indexOf(inp);
+        const next=all[e.key==="ArrowDown"?i+1:i-1];
+        if(next){ next.focus(); next.select(); }
+      }
+    });
+  });
+
+  // Punto 3: selectAll en obs al enfocar
+  $("#orTable").querySelectorAll(".or-obs").forEach(inp=>{
+    inp.addEventListener("focus",()=>inp.select());
+    inp.addEventListener("input",()=>{ (_orManual[orAlm+"|"+inp.dataset.cat]||={xs:0,obs:""}).obs=inp.value; });
+  });
+}
+
+// Repintar solo la banda NG sin re-renderizar toda la tabla (cuando cambia X surtir)
+function _repintarBandaNG(){
+  const rows=filasOR();
+  const sumNG={};
+  rows.forEach(r=>{
+    if(r.ng==="SIN SUSTITUTO") return;
+    if(!sumNG[r.ng]) sumNG[r.ng]={calc:0,xs:0,cats:[]};
+    sumNG[r.ng].calc+=r.calcSurtir;
+    // leer el valor actual del input (ya guardado en _orManual)
+    const man=_orManual[orAlm+"|"+r.cat];
+    const xs=man?.xs!=null ? man.xs : r.xsurtir;
+    sumNG[r.ng].xs+=xs;
+    sumNG[r.ng].cats.push(r.cat);
+  });
+  const totalX=rows.reduce((s,r)=>{
+    const man=_orManual[orAlm+"|"+r.cat]; return s+(man?.xs!=null?man.xs:r.xsurtir);
+  },0);
+  $("#orResumen").textContent=`${rows.filter(r=>r.calcSurtir>0.5).length} a surtir · Total X surtir: ${nfmt(totalX)}`;
+  const vieja=document.getElementById("orBandaNG"); if(!vieja) return;
+  if(!Object.keys(sumNG).length){ vieja.remove(); return; }
+  vieja.innerHTML=`<div style="font-size:11px;font-weight:800;color:#7a5c00;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">
+    ∑ Sustitutos por nombre genérico <span style="font-weight:400;color:#9a7a00">(materiales que se pueden sustituir entre sí)</span>
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:6px">
+    ${Object.entries(sumNG).sort((a,b)=>b[1].calc-a[1].calc).map(([ng,v])=>`
+      <div title="${v.cats.join(', ')}" style="background:#fff;border:1px solid #e8d080;border-radius:8px;padding:5px 10px;font-size:12px;cursor:default">
+        <span style="font-weight:700;color:#5a3e00">${ng}</span>
+        <span style="color:#7a5c00;margin-left:6px">Cálc: <b>${fmt1(v.calc)}</b></span>
+        <span style="color:#0a4ea3;margin-left:6px">X: <b style="font-size:13px">${nfmt(v.xs)}</b></span>
+        <span style="color:var(--muted);font-size:10.5px;margin-left:5px">${v.cats.length} cat.</span>
+      </div>`).join("")}
+  </div>`;
 }
 
 /* ---- Modal exportación OR (captura Nº Reabasto y Genera OR) ---- */
