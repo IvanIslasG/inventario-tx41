@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Inventario TX41 · Puebla</title>
+<title>Almacén Distribuidor Puebla · D041</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   :root{
@@ -69,6 +69,8 @@
   /* ---- Controles & tablas ---- */
   .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
   select,input[type=search]{padding:9px 11px;border:1px solid var(--line);border-radius:8px;font:inherit;background:#fff}
+  #moduleView input[type=text],#moduleView input[type=password]{padding:9px 11px;border:1px solid var(--line);border-radius:8px;font:inherit;background:#fff;width:100%}
+  #moduleView input[type=text]:focus,#moduleView input[type=password]:focus{outline:2px solid var(--primary);border-color:var(--primary)}
   input[type=search]{min-width:200px;flex:1}
   select:focus,input:focus{outline:2px solid var(--primary);border-color:var(--primary)}
   .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#fff}
@@ -96,6 +98,14 @@
   td.cat{font-weight:600;color:var(--primary)}
   .stk{display:inline-block;padding:2px 9px;border-radius:99px;font-weight:700;font-variant-numeric:tabular-nums}
   .stk.ok{background:var(--ok-bg);color:var(--ok)} .stk.low{background:var(--low-bg);color:var(--low)}
+  .stk.tras{background:#fdeee0;color:#b45309}
+  .lote-badge{display:inline-block;margin-left:6px;padding:1px 8px;border-radius:99px;background:#fff3e0;color:#9a5a00;
+              font-size:11px;font-weight:700;cursor:pointer;border:1px solid #f0d9b5;white-space:nowrap}
+  .lote-badge:hover{background:#ffe7c2}
+  .lotes-sub{width:100%;border-collapse:collapse}
+  .lotes-sub th{background:#fff3e0;color:#9a5a00;font-size:10.5px;padding:5px 12px}
+  .lotes-sub td{padding:4px 12px;border-bottom:1px solid #f3e6d3;font-size:12.5px}
+  .lotes-sub td:first-child{padding-left:28px;font-family:ui-monospace,monospace}
   .scroll{max-height:62vh;overflow:auto}
   .area-tag{font-size:11px;color:var(--muted)}
   .empty{padding:40px 16px;text-align:center;color:var(--muted)}
@@ -184,7 +194,7 @@
 <!-- ===== GATE ===== -->
 <div id="gate">
   <div class="card">
-    <h1>Inventario <b>TX41</b> · Puebla</h1>
+    <h1>Almacén Distribuidor Puebla · <b>D041</b></h1>
     <p>Consulta de existencias por almacén. Ingresa la contraseña de acceso.</p>
     <label for="pass">Contraseña</label>
     <input type="password" id="pass" autocomplete="off" placeholder="........">
@@ -200,7 +210,7 @@
   <header class="bar">
     <div class="bar-in">
       <button class="back" id="backBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg> Módulos</button>
-      <div class="brand">Inventario <b>TX41</b> · Puebla</div>
+      <div class="brand">Almacén Distribuidor Puebla · <b>D041</b></div>
       <div class="meta" id="meta"></div>
     </div>
   </header>
@@ -378,13 +388,18 @@ let invSel=null, invSort={col:"exist",dir:-1};
 
 // existencia del distribuidor para un catálogo (null si no aparece)
 function existDist(cat){ const e=DB.existencias[cat]; return e && DIST() in e ? e[DIST()] : null; }
+// traslado del distribuidor (0 si no hay)
+function trasDist(cat){ const t=DB.traslados&&DB.traslados[cat]; return t && DIST() in t ? t[DIST()] : 0; }
+// lotes reales del distribuidor (lista, vacío si no hay)
+function lotesDe(cat){ return (DB.lotes&&DB.lotes[cat])||[]; }
 
 // Construye filas desde el MAESTRO para un área (o TODO). Incluye materiales sin existencia (exist=null).
 function matsArea(area){
   const out=[];
   for(const [cat,m] of Object.entries(DB.materiales)){
     if(area!==TODO && (m.area||"")!==area) continue;
-    out.push({cat,desc:m.desc||"",um:m.um||"",area:m.area||"Sin clasificar",ubic:m.ubic||"",exist:existDist(cat)});
+    out.push({cat,desc:m.desc||"",um:m.um||"",area:m.area||"Sin clasificar",ubic:m.ubic||"",
+              exist:existDist(cat),tras:trasDist(cat),lotes:lotesDe(cat)});
   }
   return out;
 }
@@ -452,6 +467,7 @@ function renderDetalleInv(){
         ? `<select id="invArea"><option value="">Todas las áreas</option>${areasEnTodo.map(a=>`<option>${a}</option>`).join("")}</select>`
         : `<select id="invUbi"><option value="">Todas las ubicaciones</option>${ubis.map(u=>`<option>${u}</option>`).join("")}</select>`}
       <label class="chk"><input type="checkbox" id="invCeros" checked> Ocultar sin existencia</label>
+      <label class="chk"><input type="checkbox" id="invTras"> Solo con traslado</label>
       <button class="btn" id="invConteo">🖨 Lista de conteo</button>
       <button class="btn" id="invExport">⬇ Exportar Excel</button>
     </div>
@@ -463,6 +479,7 @@ function renderDetalleInv(){
   $("#invSearch").oninput=pintarInv;
   if(esTodo) $("#invArea").onchange=pintarInv; else $("#invUbi").onchange=pintarInv;
   $("#invCeros").onchange=pintarInv;
+  $("#invTras").onchange=pintarInv;
   $("#invExport").onclick=()=> exportarFiltrado();
   $("#invConteo").onclick=()=> imprimirConteo();
   pintarInv();
@@ -472,6 +489,7 @@ function renderDetalleInv(){
 function filasInv(){
   const q=($("#invSearch")?.value||"").trim().toLowerCase();
   const ceros=$("#invCeros")?.checked;
+  const soloTras=$("#invTras")?.checked;
   const ubiSel=$("#invUbi")?.value||"";
   const areaSel=$("#invArea")?.value||"";
   let rows=matsArea(invSel).filter(m=>{
@@ -479,10 +497,12 @@ function filasInv(){
     if(ubiSel && m.ubic!==ubiSel) return false;
     if(areaSel && m.area!==areaSel) return false;
     if(ceros && !(m.exist!==null && m.exist>0)) return false;
+    if(soloTras && !(m.tras>0)) return false;
     return true;
   });
   rows.sort((a,b)=>{const c=invSort.col,k=invSort.dir;
     if(c==="exist") return ((a.exist??-1)-(b.exist??-1))*k;
+    if(c==="tras") return ((a.tras||0)-(b.tras||0))*k;
     return String(a[c]||"").localeCompare(String(b[c]||""))*k;});
   return rows;
 }
@@ -491,28 +511,49 @@ function pintarInv(){
   const conx=rows.filter(r=>r.exist!==null&&r.exist>0).length;
   $("#invCount").textContent=`${nfmt(rows.length)} materiales · ${nfmt(conx)} con existencia`;
   const cols=esTodo
-    ? `<th data-c="cat">Catálogo</th><th data-c="desc">Descripción</th><th data-c="area">Área</th><th data-c="ubic">Ubicación</th><th data-c="exist" class="r">Existencia</th>`
-    : `<th data-c="cat">Catálogo</th><th data-c="desc">Descripción</th><th data-c="um">U.M.</th><th data-c="ubic">Ubicación</th><th data-c="exist" class="r">Existencia</th>`;
+    ? `<th data-c="cat">Catálogo</th><th data-c="desc">Descripción</th><th data-c="area">Área</th><th data-c="ubic">Ubicación</th><th data-c="exist" class="r">Existencia</th><th data-c="tras" class="r">Traslado</th>`
+    : `<th data-c="cat">Catálogo</th><th data-c="desc">Descripción</th><th data-c="um">U.M.</th><th data-c="ubic">Ubicación</th><th data-c="exist" class="r">Existencia</th><th data-c="tras" class="r">Traslado</th>`;
+  const ncols = esTodo?6:6;
   $("#invTable").innerHTML=`<thead><tr>${cols}</tr></thead><tbody>${
     rows.length? rows.map(r=>{
       const ex = r.exist===null ? `<span style="color:var(--zero);font-style:italic">—</span>`
                 : `<span class="stk ${stkClass(r.exist)}">${nfmt(r.exist)}</span>`;
-      return esTodo
-        ? `<tr><td class="cat num">${r.cat}</td><td class="desc">${r.desc||"—"}</td>
+      const tr = r.tras>0 ? `<span class="stk tras">${nfmt(r.tras)}</span>` : `<span style="color:var(--zero)">—</span>`;
+      const tieneLotes = r.lotes && r.lotes.length>0;
+      const badge = tieneLotes ? ` <span class="lote-badge" data-lt="${r.cat}">📦 ${r.lotes.length} lote${r.lotes.length>1?'s':''}</span>` : "";
+      const main = esTodo
+        ? `<tr><td class="cat num">${r.cat}</td><td class="desc">${r.desc||"—"}${badge}</td>
              <td><span class="area-tag">${r.area||"—"}</span></td><td>${r.ubic||"—"}</td>
-             <td class="r">${ex} <small style="color:var(--muted)">${r.um}</small></td></tr>`
-        : `<tr><td class="cat num">${r.cat}</td><td class="desc">${r.desc||"—"}</td>
+             <td class="r">${ex} <small style="color:var(--muted)">${r.um}</small></td><td class="r">${tr}</td></tr>`
+        : `<tr><td class="cat num">${r.cat}</td><td class="desc">${r.desc||"—"}${badge}</td>
              <td>${r.um||"—"}</td><td>${r.ubic||"—"}</td>
-             <td class="r">${ex} <small style="color:var(--muted)">${r.um}</small></td></tr>`;
-    }).join("") : `<tr><td colspan="5" class="empty">Sin coincidencias.</td></tr>`}</tbody>`;
+             <td class="r">${ex} <small style="color:var(--muted)">${r.um}</small></td><td class="r">${tr}</td></tr>`;
+      const filaLotes = tieneLotes
+        ? `<tr class="lotes-row" id="lt-${r.cat}" hidden><td colspan="${ncols}" style="padding:0;background:#fffaf2">
+             <table class="lotes-sub"><thead><tr><th>Lote</th><th class="r">Libre</th><th class="r">Traslado</th></tr></thead>
+             <tbody>${r.lotes.map(l=>`<tr><td class="num">${l.lote}</td><td class="r num">${nfmt(l.lib)}</td>
+               <td class="r num" style="color:var(--low)">${nfmt(l.tras||0)}</td></tr>`).join("")}</tbody></table></td></tr>`
+        : "";
+      return main+filaLotes;
+    }).join("") : `<tr><td colspan="6" class="empty">Sin coincidencias.</td></tr>`}</tbody>`;
   $("#invTable").querySelectorAll("th[data-c]").forEach(th=> th.onclick=()=>{
-    const c=th.dataset.c; invSort={col:c,dir:invSort.col===c?-invSort.dir:(c==="exist"?-1:1)}; pintarInv(); });
+    const c=th.dataset.c; invSort={col:c,dir:invSort.col===c?-invSort.dir:(c==="exist"||c==="tras"?-1:1)}; pintarInv(); });
+  $("#invTable").querySelectorAll(".lote-badge").forEach(b=> b.onclick=()=>{
+    const row=document.getElementById("lt-"+b.dataset.lt); if(row) row.hidden=!row.hidden; });
 }
 
 /* ---- Exportaciones de Inventario ---- */
 function fechaTag(){ return new Date().toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric'}).replace(/\//g,'-'); }
-function expFilas(mats){ return [["Área","Catálogo","Descripción","U.M.","Ubicación","Existencia D041"],
-  ...mats.map(m=>[m.area,m.cat,m.desc,m.um,m.ubic, m.exist===null?"":m.exist])]; }
+function expFilas(mats){
+  const aoa=[["Área","Catálogo","Descripción","U.M.","Ubicación","Existencia D041","Traslado","Lote"]];
+  mats.forEach(m=>{
+    aoa.push([m.area,m.cat,m.desc,m.um,m.ubic, m.exist===null?"":m.exist, m.tras||0, ""]);
+    if(m.lotes && m.lotes.length){
+      m.lotes.forEach(l=> aoa.push(["","  ↳ lote","","","", l.lib, l.tras||0, l.lote]));
+    }
+  });
+  return aoa;
+}
 
 // export directo de un área (desde la tarjeta)
 function exportarArea(area,soloExist){
@@ -571,18 +612,29 @@ function imprimirConteo(){
         <div class="ph-meta">Fecha: <u>&nbsp;</u>&nbsp;&nbsp;&nbsp;Responsable: <u>&nbsp;</u></div>
       </div>
       <table class="pt"><thead><tr>
-        <th style="width:80px">Catálogo</th><th>Descripción</th>
-        <th style="width:38px;text-align:center">U.M.</th>
-        <th style="width:64px;text-align:center">Existencia</th>
-        <th style="width:60px;text-align:center">Físico</th>
+        <th style="width:78px">Catálogo</th><th>Descripción</th>
+        <th style="width:34px;text-align:center">U.M.</th>
+        <th style="width:58px;text-align:center">Existencia</th>
+        <th style="width:50px;text-align:center">Traslado</th>
+        <th style="width:56px;text-align:center">Físico</th>
       </tr></thead><tbody>
-        ${lista.map(m=>`<tr>
-          <td style="font-family:monospace">${m.cat}</td>
-          <td>${m.desc||"—"}</td>
-          <td style="text-align:center">${m.um||"—"}</td>
-          <td style="text-align:center">${m.exist===null?"—":nfmt(m.exist)}</td>
-          <td class="col-fis">&nbsp;</td>
-        </tr>`).join("")}
+        ${lista.map(m=>{
+          const base=`<tr>
+            <td style="font-family:monospace">${m.cat}</td>
+            <td>${m.desc||"—"}${m.lotes&&m.lotes.length?` <span style="font-size:7.5pt;color:#9a5a00">[${m.lotes.length} lote${m.lotes.length>1?'s':''}]</span>`:""}</td>
+            <td style="text-align:center">${m.um||"—"}</td>
+            <td style="text-align:center">${m.exist===null?"—":nfmt(m.exist)}</td>
+            <td style="text-align:center">${m.tras>0?nfmt(m.tras):"—"}</td>
+            <td class="col-fis">&nbsp;</td></tr>`;
+          const subs=(m.lotes&&m.lotes.length)? m.lotes.map(l=>`<tr style="background:#fffaf2">
+            <td style="font-family:monospace;font-size:7.5pt;padding-left:16px;color:#9a5a00">↳ ${l.lote}</td>
+            <td style="font-size:7.5pt;color:#777;font-style:italic">Lote</td>
+            <td></td>
+            <td style="text-align:center;font-size:7.5pt">${nfmt(l.lib)}</td>
+            <td style="text-align:center;font-size:7.5pt">${nfmt(l.tras||0)}</td>
+            <td class="col-fis">&nbsp;</td></tr>`).join(""):"";
+          return base+subs;
+        }).join("")}
       </tbody></table>
       <div class="pf"><span>D041 · ${invSel===TODO?"Todo":invSel} · ${u} · ${lista.length} materiales</span><span>Generado: ${hoy}</span></div>`;
     pa.appendChild(div);
@@ -708,20 +760,225 @@ function modOR(){
     <p style="margin-top:14px">Pendiente: enganchar el archivo de consumo para el CPM.</p></div></div>`;
 }
 
-/* ============ CONFIGURACIÓN ============ */
+/* ============ CONFIGURACIÓN / ADMIN ============ */
+let _nuevoSobre=null, _consumos=[];
 function modConfig(){
   const m=DB.meta;
-  $("#moduleView").innerHTML=`<div class="panel"><div class="panel-head"><h2>Configuración</h2></div>
-    <div style="padding:16px"><div class="cfg">
-      <div class="row"><b>Paquete generado</b><span>${new Date(m.generado).toLocaleString('es-MX')}</span></div>
-      <div class="row"><b>Almacén distribuidor</b><span>${m.almacen_distribuidor} · PUEBLA</span></div>
-      <div class="row"><b>Materiales en maestro</b><span class="num">${nfmt(m.n_materiales)}</span></div>
-      <div class="row"><b>Almacenes en directorio</b><span class="num">${m.n_almacenes}</span></div>
-      <div class="row"><b>Materiales con existencia</b><span class="num">${nfmt(m.n_con_existencia)}</span></div>
-      <div style="margin-top:8px"><button class="btn" id="cfgOut">Cerrar sesión</button></div>
-      <p style="color:var(--muted);font-size:12.5px">Dime qué más quieres aquí: parámetros de la OR (meses CPM / meses de stock), almacén favorito por defecto, o el panel de administración para publicar datos.</p>
-    </div></div></div>`;
+  $("#moduleView").innerHTML=`
+  <div class="cfg">
+    <div class="panel"><div class="panel-head"><h2>Datos del paquete actual</h2></div>
+      <div style="padding:16px"><div class="cfg">
+        <div class="row"><b>Paquete generado</b><span>${new Date(m.generado).toLocaleString('es-MX')}</span></div>
+        <div class="row"><b>Almacén distribuidor</b><span>${m.almacen_distribuidor} · PUEBLA</span></div>
+        <div class="row"><b>Materiales en maestro</b><span class="num">${nfmt(m.n_materiales)}</span></div>
+        <div class="row"><b>Almacenes en directorio</b><span class="num">${m.n_almacenes}</span></div>
+        <div class="row"><b>Materiales con existencia</b><span class="num">${nfmt(m.n_con_existencia)}</span></div>
+      </div></div>
+    </div>
+
+    <div class="panel"><div class="panel-head"><h2>🔄 Actualizar existencias</h2><span class="pill">Admin</span></div>
+      <div style="padding:16px;display:grid;gap:14px">
+        <p style="margin:0;color:var(--muted);font-size:13px">Sube el export <b>TOTAL</b> de S/4HANA (.xlsx). Se recalculan existencias, traslados y lotes; el directorio y el maestro de materiales se conservan del paquete actual.</p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+          <label class="btn" style="cursor:pointer">📁 Elegir TOTAL.xlsx
+            <input type="file" id="upTotal" accept=".xlsx" hidden></label>
+          <span id="upTotalName" style="font-size:13px;color:var(--muted)">Ningún archivo</span>
+          <button class="btn-prim" id="upProcesar" disabled>Procesar</button>
+        </div>
+        <div id="upResumen" style="font-size:13px"></div>
+        <div id="upAcciones" hidden style="display:grid;gap:12px;border-top:1px solid var(--line);padding-top:12px">
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button class="btn" id="upDescargar">⬇ Descargar datos.enc</button>
+            <button class="btn" id="upAplicar">↻ Usar ahora (esta sesión)</button>
+          </div>
+          <details>
+            <summary style="cursor:pointer;font-weight:600;color:var(--primary)">Publicar directo en GitHub Pages</summary>
+            <div style="display:grid;gap:8px;margin-top:10px;max-width:420px">
+              <input id="ghRepo" placeholder="usuario/repo" value="IvanIslasG/inventario-tx41">
+              <input id="ghPath" placeholder="ruta del archivo" value="datos.enc">
+              <input id="ghToken" type="password" placeholder="GitHub token (fine-grained, Contents R/W)">
+              <button class="btn-prim" id="ghPublicar">Publicar en GitHub</button>
+              <div id="ghStatus" style="font-size:12.5px;color:var(--muted)"></div>
+              <p style="font-size:11.5px;color:var(--muted);margin:0">El token se usa solo en tu navegador para esta subida y no se guarda en la app. Usa un token <b>fine-grained</b> limitado a este repositorio con permiso <i>Contents: Read and write</i>.</p>
+            </div>
+          </details>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel"><div class="panel-head"><h2>📈 Archivos de consumo</h2><span class="pill">Para OR</span></div>
+      <div style="padding:16px;display:grid;gap:12px">
+        <p style="margin:0;color:var(--muted);font-size:13px">Carga los archivos de consumo (los mismos del análisis). Alimentarán el cálculo de CPM del módulo <b>Orden de Reabasto</b>.</p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+          <label class="btn" style="cursor:pointer">📁 Agregar consumos
+            <input type="file" id="upCons" accept=".xlsx,.csv,.txt" multiple hidden></label>
+          <span id="upConsName" style="font-size:13px;color:var(--muted)">Ninguno</span>
+        </div>
+        <div id="upConsList" style="font-size:13px"></div>
+        <p style="font-size:12px;color:var(--low);background:var(--low-bg);padding:9px 12px;border-radius:8px;margin:0">
+          Para procesarlos correctamente necesito ver una muestra de cómo vienen las columnas (catálogo y cantidad/periodo). En cuanto me la pases, los conecto al CPM del módulo de Reabasto.</p>
+      </div>
+    </div>
+
+    <div class="panel"><div style="padding:16px"><button class="btn" id="cfgOut">Cerrar sesión</button></div></div>
+  </div>`;
+
+  // --- Actualizar existencias ---
+  let totalFile=null;
+  $("#upTotal").onchange=e=>{ totalFile=e.target.files[0]||null;
+    $("#upTotalName").textContent=totalFile?totalFile.name:"Ningún archivo";
+    $("#upProcesar").disabled=!totalFile; $("#upResumen").innerHTML=""; $("#upAcciones").hidden=true; };
+  $("#upProcesar").onclick=async()=>{
+    if(!totalFile) return;
+    $("#upResumen").innerHTML=`<span style="color:var(--muted)">Procesando ${totalFile.name}…</span>`;
+    try{
+      const buf=await totalFile.arrayBuffer();
+      const parsed=parseTotalJS(buf);
+      const bundle=construirBundleJS(parsed);
+      const clave=sessionStorage.getItem("tx41_pass")||"";
+      _nuevoSobre=await cifrarJS(bundle, clave);
+      _nuevoBundle=bundle;
+      const bm=bundle.meta;
+      $("#upResumen").innerHTML=`<div style="background:var(--ok-bg);color:var(--ok);padding:10px 12px;border-radius:8px">
+        ✅ Procesado: <b>${nfmt(bm.n_con_existencia)}</b> materiales con existencia ·
+        <b>${parsed.nAlmacenes}</b> almacenes · <b>${nfmt(parsed.nTraslados)}</b> con traslado ·
+        <b>${nfmt(parsed.nLotesD041)}</b> con lotes en D041.</div>`;
+      $("#upAcciones").hidden=false;
+    }catch(err){
+      console.error(err);
+      $("#upResumen").innerHTML=`<div style="background:#fde8e8;color:#c0392b;padding:10px 12px;border-radius:8px">Error: ${err.message}</div>`;
+    }
+  };
+  $("#upDescargar").onclick=()=>{
+    if(!_nuevoSobre) return;
+    const blob=new Blob([JSON.stringify(_nuevoSobre)],{type:"application/octet-stream"});
+    const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="datos.enc"; a.click();
+    URL.revokeObjectURL(a.href);
+  };
+  $("#upAplicar").onclick=()=>{ if(!_nuevoBundle) return; DB=_nuevoBundle; SOBRE=_nuevoSobre;
+    alert("Datos actualizados en esta sesión. Para que todos los vean el cambio, descarga y publica el datos.enc."); mostrarMenu(); };
+  $("#ghPublicar").onclick=()=> publicarGitHub();
+
+  // --- Consumos ---
+  $("#upCons").onchange=e=>{
+    for(const f of e.target.files) _consumos.push({name:f.name, file:f});
+    $("#upConsName").textContent=_consumos.length?`${_consumos.length} archivo(s)`:"Ninguno";
+    $("#upConsList").innerHTML=_consumos.map((c,i)=>`<div style="display:flex;gap:8px;align-items:center;padding:4px 0">
+      📄 ${c.name} <button class="linkish" data-rm="${i}">quitar</button></div>`).join("");
+    $("#upConsList").querySelectorAll("[data-rm]").forEach(b=> b.onclick=()=>{ _consumos.splice(+b.dataset.rm,1); $("#upCons").onchange({target:{files:[]}}); });
+  };
+
   $("#cfgOut").onclick=()=>{ sessionStorage.removeItem("tx41_pass"); location.reload(); };
+}
+let _nuevoBundle=null;
+
+/* ---- Parser del TOTAL en el navegador (replica parser_total.py) ---- */
+function _txtJS(v){ return v===null||v===undefined?"":String(v).trim(); }
+function _numJS(v){ if(v===null||v===undefined) return 0; const s=String(v).trim().replace(/,/g,""); if(!s) return 0; const f=parseFloat(s); return isNaN(f)?0:(Number.isInteger(f)?f:f); }
+function parseTotalJS(arrayBuffer){
+  const wb=XLSX.read(arrayBuffer,{type:"array"});
+  const ws=wb.Sheets[wb.SheetNames[0]];
+  const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:""});
+  // localizar fila de encabezados (contiene 'Material')
+  let hr=-1;
+  for(let i=0;i<Math.min(rows.length,10);i++){ if(rows[i].some(c=>_txtJS(c).toLowerCase()==="material")){ hr=i; break; } }
+  if(hr<0) throw new Error("No se encontró la fila de encabezados (columna 'Material').");
+  const H=rows[hr]; const col={};
+  H.forEach((h,i)=>{ h=_txtJS(h).toLowerCase();
+    if(h==="ce."||h.startsWith("centro")) col.centro=i;
+    else if(h==="alm."||h.startsWith("almac")) col.almacen=i;
+    else if(h==="material") col.material=i;
+    else if(h.includes("texto breve")) col.desc=i;
+    else if(h==="umb") col.umb=i;
+    else if(h==="lote") col.lote=i;
+    else if(h.startsWith("librutiliz")||h.includes("libre")) col.libre=i;
+    else if(h.startsWith("transytras")||h.includes("traslad")||h.includes("transy")) col.tras=i;
+  });
+  ["centro","almacen","material","libre"].forEach(k=>{ if(!(k in col)) throw new Error("Falta columna: "+k); });
+  const D="D041";
+  const materiales={}; const almacenes={};
+  for(let i=hr+1;i<rows.length;i++){
+    const r=rows[i]; if(!r) continue;
+    const ce=_txtJS(r[col.centro]), alm=_txtJS(r[col.almacen]), cat=_txtJS(r[col.material]);
+    if(!(ce||alm||cat)) continue; if(!(cat&&alm)) continue;
+    const libre=_numJS(r[col.libre]); const tras="tras"in col?_numJS(r[col.tras]):0;
+    const lote="lote"in col?_txtJS(r[col.lote]):""; const desc="desc"in col?_txtJS(r[col.desc]):""; const umb="umb"in col?_txtJS(r[col.umb]):"";
+    almacenes[alm]=ce;
+    let m=materiales[cat]; if(!m){ m=materiales[cat]={desc:"",umb:"",almacenes:{},traslados:{},lotes:{}}; }
+    if(desc&&!m.desc) m.desc=desc; if(umb&&!m.umb) m.umb=umb;
+    const loteReal=lote&&lote.toUpperCase()!=="NUEVO";
+    if(loteReal){ (m.lotes[alm]||(m.lotes[alm]=[])).push({lote,lib:libre,tras}); }
+    m.almacenes[alm]=(m.almacenes[alm]||0)+libre;
+    if(tras) m.traslados[alm]=(m.traslados[alm]||0)+tras;
+  }
+  return {materiales,almacenes,D,
+    nAlmacenes:Object.keys(almacenes).length,
+    nTraslados:Object.values(materiales).filter(m=>m.traslados[D]).length,
+    nLotesD041:Object.values(materiales).filter(m=>m.lotes[D]).length};
+}
+/* ---- Reconstruir bundle (reusa directorio y maestro del DB actual) ---- */
+function construirBundleJS(parsed){
+  const D=parsed.D;
+  const materiales={}; for(const [c,v] of Object.entries(DB.materiales)) materiales[c]={...v};
+  for(const [cat,m] of Object.entries(parsed.materiales)){
+    if(!materiales[cat]) materiales[cat]={um:m.umb,desc:m.desc,area:"",ubic:""};
+    else { if(!materiales[cat].desc) materiales[cat].desc=m.desc; if(!materiales[cat].um) materiales[cat].um=m.umb; }
+  }
+  const existencias={}, traslados={}, lotes={}, valoracion=[];
+  for(const [cat,m] of Object.entries(parsed.materiales)){
+    const ex={}; for(const[a,v]of Object.entries(m.almacenes)) if(v>0) ex[a]=v;
+    if(Object.keys(ex).length) existencias[cat]=ex;
+    if(Object.keys(m.traslados).length) traslados[cat]=m.traslados;
+    if(m.lotes[D]&&m.lotes[D].length) lotes[cat]=m.lotes[D];
+    if(Object.keys(m.lotes).length) valoracion.push(cat);
+  }
+  valoracion.sort();
+  return { meta:{ generado:new Date().toISOString().slice(0,19), almacen_distribuidor:D,
+      n_materiales:Object.keys(materiales).length, n_almacenes:Object.keys(DB.directorio.almacenes).length,
+      n_con_existencia:Object.keys(existencias).length },
+    directorio:DB.directorio, materiales, existencias, traslados, lotes, valoracion };
+}
+/* ---- Cifrado en navegador (replica publicar.py: gzip + PBKDF2 + AES-GCM) ---- */
+const _b64enc = buf => btoa(String.fromCharCode(...new Uint8Array(buf)));
+async function _gzip(bytes){
+  const cs=new CompressionStream("gzip");
+  const r=new Response(new Blob([bytes]).stream().pipeThrough(cs));
+  return new Uint8Array(await r.arrayBuffer());
+}
+async function cifrarJS(bundle, clave){
+  const plano=new TextEncoder().encode(JSON.stringify(bundle));
+  const comp=await _gzip(plano);
+  const salt=crypto.getRandomValues(new Uint8Array(16));
+  const iv=crypto.getRandomValues(new Uint8Array(12));
+  const iter=200000;
+  const baseKey=await crypto.subtle.importKey("raw", new TextEncoder().encode(clave), "PBKDF2", false, ["deriveKey"]);
+  const key=await crypto.subtle.deriveKey({name:"PBKDF2",salt,iterations:iter,hash:"SHA-256"}, baseKey,
+    {name:"AES-GCM",length:256}, false, ["encrypt"]);
+  const ct=await crypto.subtle.encrypt({name:"AES-GCM",iv}, key, comp); // ct||tag(16)
+  return { v:1, alg:"AES-GCM", kdf:"PBKDF2", hash:"SHA-256", iter, gzip:true,
+    salt:_b64enc(salt), iv:_b64enc(iv), ct:_b64enc(ct) };
+}
+/* ---- Publicar en GitHub vía API (token en runtime, no embebido) ---- */
+async function publicarGitHub(){
+  const st=$("#ghStatus");
+  if(!_nuevoSobre){ st.textContent="Primero procesa un TOTAL."; return; }
+  const repo=$("#ghRepo").value.trim(), path=$("#ghPath").value.trim(), token=$("#ghToken").value.trim();
+  if(!repo||!path||!token){ st.textContent="Faltan repo, ruta o token."; return; }
+  const api=`https://api.github.com/repos/${repo}/contents/${path}`;
+  const headers={ "Authorization":"Bearer "+token, "Accept":"application/vnd.github+json" };
+  st.style.color="var(--muted)"; st.textContent="Publicando…";
+  try{
+    // obtener SHA actual (si existe)
+    let sha=null;
+    const g=await fetch(api,{headers});
+    if(g.ok){ sha=(await g.json()).sha; }
+    const contenido=btoa(JSON.stringify(_nuevoSobre));
+    const body={ message:"Actualización de existencias "+new Date().toLocaleString('es-MX'),
+      content:contenido }; if(sha) body.sha=sha;
+    const p=await fetch(api,{method:"PUT",headers,body:JSON.stringify(body)});
+    if(p.ok){ st.style.color="var(--ok)"; st.textContent="✅ Publicado. Puede tardar ~1 min en verse en GitHub Pages."; }
+    else { const e=await p.json(); st.style.color="#c0392b"; st.textContent="Error "+p.status+": "+(e.message||""); }
+  }catch(err){ st.style.color="#c0392b"; st.textContent="Error de red: "+err.message; }
 }
 </script>
 </body>
