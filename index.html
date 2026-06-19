@@ -1024,7 +1024,6 @@ function modOR(){
   if(!orAlm || !alms.includes(orAlm)) orAlm=alms[0];
   const m=DB.meta, mCPM=m?.meses_cpm||6, mStk=m?.meses_stock||1.5;
   const opts=alms.map(a=>`<option value="${a}" ${a===orAlm?"selected":""}>${a} · ${almName(a)}</option>`).join("");
-  const ngs=ngLista(); const ngOpts=ngs.map(n=>`<option value="${n}">${n}</option>`).join("");
   const areasOR=AREAS.concat(["Sin clasificar"]);
   const areaOpts=areasOR.map(a=>`<option value="${a}">${a}</option>`).join("");
 
@@ -1034,25 +1033,73 @@ function modOR(){
         <select id="orAlm">${opts}</select></label>
       <label class="chk">CPM (meses) <input type="number" id="orMCPM" value="${mCPM}" min="1" max="24" step="1" style="width:58px"></label>
       <label class="chk">Stock obj. <input type="number" id="orMS" value="${mStk}" min="0.5" max="12" step="0.5" style="width:58px"></label>
-      <input type="search" id="orSearch" placeholder="Buscar catálogo / descripción…" style="min-width:190px">
       <select id="orFArea"><option value="">Todas las áreas</option>${areaOpts}</select>
-      <select id="orFNG"><option value="">Todos los nombres genéricos</option>${ngOpts}</select>
-      <label class="chk"><input type="checkbox" id="orSolo" checked> Solo a surtir</label>
+      <input type="search" id="orSearch" placeholder="Buscar catálogo / descripción…" style="min-width:180px">
+    </div>
+    <div class="controls" style="flex-wrap:wrap;margin-top:6px">
+      <!-- Nombre genérico con autocomplete -->
+      <div class="an-cat-wrap" style="min-width:230px;flex:1;max-width:320px">
+        <input id="orNGInput" class="an-cat-input" placeholder="Nombre genérico… (escribe para filtrar)" autocomplete="off">
+        <div id="orNGSugs" class="an-cat-sugs"></div>
+        <input type="hidden" id="orNGVal">
+      </div>
+      <label class="chk"><input type="checkbox" id="orSolo"> Solo Cálc. surtir &gt; 0</label>
+      <label class="chk"><input type="checkbox" id="orSoloX"> Solo X Surtir &gt; 0</label>
+      <label class="chk"><input type="checkbox" id="orExced"> Solo excedentes</label>
       <button class="btn-prim" id="orExport">⬇ Exportar OR</button>
     </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;font-size:12px">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0;font-size:12px">
       <span class="pill" id="orResumen"></span>
       <span style="color:var(--muted)">CPM = consumo ÷ meses · Cálc. surtir = (meses stock × CPM) − existencia aux · <b>X Surtir</b> editable</span>
     </div>
     <div class="panel"><div class="panel-head" style="gap:8px">
       <h2 id="orTitle"></h2><span class="pill" id="orCount"></span></div>
-      <div style="overflow-x:auto"><table id="orTable" style="min-width:1200px"></table></div></div>
-    </div>`;
-  $("#orAlm").onchange=e=>{ orAlm=e.target.value; pintarOR(); };
+      <div style="overflow-x:auto"><table id="orTable" style="min-width:1200px"></table></div></div>`;
+  $("#orAlm").onchange=e=>{ orAlm=e.target.value; _actualizarNGOpts(); pintarOR(); };
   ["orMCPM","orMS"].forEach(id=>{ const el=$("#"+id); el.oninput=pintarOR; el.onchange=pintarOR; });
-  ["orSearch","orFArea","orFNG"].forEach(id=> $("#"+id).oninput=pintarOR);
-  $("#orSolo").onchange=pintarOR;
+  ["orSearch","orFArea"].forEach(id=>{ const el=$("#"+id); if(el){ el.oninput=()=>{ _actualizarNGOpts(); pintarOR(); }; }});
+  ["orSolo","orSoloX","orExced"].forEach(id=>{ const el=$("#"+id); if(el) el.onchange=pintarOR; });
   $("#orExport").onclick=abrirModalOR;
+
+  // Autocomplete nombre genérico — filtra por área activa y muestra "Sin sustituto" incluido
+  function _actualizarNGOpts(){
+    const fArea=$("#orFArea")?.value||"";
+    // calcular filas visibles (sin filtro de NG) para saber qué NGs están activos
+    const cons=DB.consumos?.[orAlm]||{};
+    const ngsActivos=new Set();
+    for(const [cat] of Object.entries(cons)){
+      const info=mat(cat);
+      const area=info.area||"Sin clasificar";
+      if(fArea && area!==fArea) continue;
+      const ng=ngDe(cat);
+      ngsActivos.add(ng||"SIN SUSTITUTO");
+    }
+    // guardar lista para el autocomplete
+    $("#orNGInput")._ngs=[...ngsActivos].sort();
+  }
+  _actualizarNGOpts();
+
+  const ngInp=$("#orNGInput"), ngSugs=$("#orNGSugs"), ngVal=$("#orNGVal");
+  function _abrirNGSugs(q){
+    const lista=(ngInp._ngs||[]);
+    const qL=(q||"").toLowerCase();
+    const hits=qL ? lista.filter(n=>n.toLowerCase().includes(qL)) : lista;
+    ngSugs.innerHTML=[{v:"",label:"— Todos los nombres genéricos —"},...hits.map(n=>({v:n,label:n}))].map(
+      ({v,label})=>`<div class="an-cat-sug" data-v="${v}">${label}</div>`
+    ).join("");
+    ngSugs.style.display="block";
+  }
+  ngInp.oninput=()=>{ ngVal.value=""; _abrirNGSugs(ngInp.value); pintarOR(); };
+  ngInp.onfocus=()=>{ _abrirNGSugs(ngInp.value); };
+  ngSugs.addEventListener("pointerdown",e=>{
+    const t=e.target.closest("[data-v]"); if(!t) return;
+    ngVal.value=t.dataset.v;
+    ngInp.value=t.dataset.v||"";
+    ngSugs.style.display="none";
+    pintarOR();
+  });
+  document.addEventListener("click",e=>{ if(!ngSugs.contains(e.target)&&e.target!==ngInp) ngSugs.style.display="none"; });
+
   pintarOR();
 }
 
@@ -1061,7 +1108,7 @@ function calcularOR(){
   const mCPM=Math.max(1,+$("#orMCPM")?.value||6), mStk=Math.max(0.1,+$("#orMS")?.value||1.5);
   const out=[];
   for(const [cat,consumo] of Object.entries(cons)){
-    const info=mat(cat), ng=ngDe(cat);
+    const info=mat(cat), ng=ngDe(cat)||"SIN SUSTITUTO";
     const cpm=consumo/mCPM;
     const exAux=(DB.existencias?.[cat]?.[orAlm])||0;
     const exD=(DB.existencias?.[cat]?.[D])||0;
@@ -1077,14 +1124,24 @@ function calcularOR(){
 
 function filasOR(){
   const q=($("#orSearch")?.value||"").trim().toLowerCase();
-  const solo=$("#orSolo")?.checked;
   const fArea=$("#orFArea")?.value||"";
-  const fNG=$("#orFNG")?.value||"";
+  // NG: desde el input de texto (búsqueda parcial) O desde el valor hidden (selección exacta)
+  const ngHid=$("#orNGVal")?.value||"";
+  const ngText=($("#orNGInput")?.value||"").trim().toLowerCase();
+  // checkboxes
+  const soloCal=$("#orSolo")?.checked;
+  const soloX=$("#orSoloX")?.checked;
+  const soloExc=$("#orExced")?.checked;
+
   let rows=calcularOR().filter(r=>{
     if(q && !(r.cat.toLowerCase().includes(q)||(r.desc||"").toLowerCase().includes(q))) return false;
     if(fArea && r.area!==fArea) return false;
-    if(fNG && r.ng!==fNG) return false;
-    if(solo && r.calcSurtir<=0.5) return false;
+    // filtro NG: si hay selección exacta usar esa; si solo hay texto parcial filtrar por contiene
+    if(ngHid){ if(r.ng!==ngHid) return false; }
+    else if(ngText){ if(!r.ng.toLowerCase().includes(ngText)) return false; }
+    if(soloCal && r.calcSurtir<=0) return false;
+    if(soloX && r.xsurtir<=0) return false;
+    if(soloExc && !r.excedente) return false;
     return true;
   });
   const c=orSort.col, k=orSort.dir;
@@ -1358,10 +1415,26 @@ function modConfig(){
 
   // Generar / publicar
   $("#genDescargar").onclick=async()=>{
-    const clave=sessionStorage.getItem("tx41_pass")||"";
-    const sobre=await cifrarJS(bundleFinal(), clave);
-    const blob=new Blob([JSON.stringify(sobre)],{type:"application/octet-stream"});
-    const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="datos.enc"; a.click(); URL.revokeObjectURL(a.href);
+    const btn=$("#genDescargar");
+    btn.disabled=true; btn.textContent="⏳ Cifrando…";
+    try{
+      const clave=sessionStorage.getItem("tx41_pass")||"";
+      if(!clave){ alert("No se encontró la clave de sesión. Cierra sesión y vuelve a entrar."); return; }
+      const sobre=await cifrarJS(bundleFinal(), clave);
+      const json=JSON.stringify(sobre);
+      const blob=new Blob([json],{type:"application/octet-stream"});
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement("a"); a.href=url; a.download="datos.enc";
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(()=>URL.revokeObjectURL(url), 5000);
+      btn.textContent="✅ Descargado";
+    }catch(err){
+      console.error("Error al cifrar/descargar:",err);
+      alert("Error al generar el archivo: "+err.message);
+      btn.textContent="⬇ Descargar datos.enc";
+    } finally {
+      setTimeout(()=>{ btn.disabled=false; btn.textContent="⬇ Descargar datos.enc"; }, 3000);
+    }
   };
   $("#genUsar").onclick=()=>{ DB=bundleFinal(); SOBRE=null; _adminTotal=null; _adminConsumos=null;
     alert("Datos actualizados en esta sesión. Para que todos los vean el cambio, descarga y publica el datos.enc."); mostrarMenu(); };
