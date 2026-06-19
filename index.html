@@ -127,7 +127,22 @@
   .soon h2{color:var(--ink);margin:0 0 8px}
   .soon ul{display:inline-block;text-align:left;margin:12px 0 0;line-height:1.7}
 
-  /* ---- Tarjetas de área (Inventario) ---- */
+  /* ---- Análisis ---- */
+  .an-cat-wrap{position:relative}
+  .an-cat-input{width:100%;padding:9px 12px;border:1.5px solid var(--line);border-radius:8px;font:inherit;font-size:14px}
+  .an-cat-input:focus{border-color:var(--primary);outline:none}
+  .an-cat-sugs{position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--line);border-radius:8px;z-index:300;max-height:200px;overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,.1);margin-top:2px;display:none}
+  .an-cat-sug{padding:8px 12px;cursor:pointer;font-size:12.5px;border-bottom:1px solid #f1f5f9}
+  .an-cat-sug:hover{background:#eaf1fb}
+  .an-desc{font-size:13px;padding:4px 2px;color:var(--muted);min-height:20px}
+  .an-desc.ok{color:var(--primary);font-weight:600}
+  .an-alm-code{font-weight:700;color:var(--primary);font-size:12px}
+  .an-alm-name{font-size:11px;color:var(--muted)}
+  .an-badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:700}
+  .an-badge.v{background:#d1fae5;color:#065f46}
+  .an-badge.a{background:#fef3c7;color:#92400e}
+  .an-badge.r{background:#fde8e8;color:#991b1b}
+  .an-badge.g{background:#f1f5f9;color:var(--muted)}
   .area-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px}
   .area-card{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
              box-shadow:var(--shadow);padding:18px 16px 40px;cursor:pointer;transition:.12s;text-align:left}
@@ -247,7 +262,9 @@
 <script>
 /* ============ CONFIG ============ */
 const DATA_URL = "datos.enc";
-const AREAS = ["Herramientas","Misceláneos","Papelería","Cables","Ropa y Calzado","Baja"];
+const AREAS = ["Herramientas","Misceláneos","Papelería","Cables","Ropa y Calzado"];
+function ngDe(cat){ return (DB.nombresGenericos?.mapa||{})[cat]||""; }
+function ngLista(){ return DB.nombresGenericos?.lista||[]; }
 
 /* ============ CRIPTO (Web Crypto, compatible con publicar.py) ============ */
 const b64 = s => Uint8Array.from(atob(s), c=>c.charCodeAt(0));
@@ -468,6 +485,7 @@ function renderDetalleInv(){
         : `<select id="invUbi"><option value="">Todas las ubicaciones</option>${ubis.map(u=>`<option>${u}</option>`).join("")}</select>`}
       <label class="chk"><input type="checkbox" id="invCeros" checked> Ocultar sin existencia</label>
       <label class="chk"><input type="checkbox" id="invTras"> Solo con traslado</label>
+      <label class="chk"><input type="checkbox" id="invLotes"> Solo con lotes</label>
       <button class="btn" id="invConteo">🖨 Lista de conteo</button>
       <button class="btn" id="invExport">⬇ Exportar Excel</button>
     </div>
@@ -480,6 +498,7 @@ function renderDetalleInv(){
   if(esTodo) $("#invArea").onchange=pintarInv; else $("#invUbi").onchange=pintarInv;
   $("#invCeros").onchange=pintarInv;
   $("#invTras").onchange=pintarInv;
+  $("#invLotes").onchange=pintarInv;
   $("#invExport").onclick=()=> exportarFiltrado();
   $("#invConteo").onclick=()=> imprimirConteo();
   pintarInv();
@@ -498,6 +517,7 @@ function filasInv(){
     if(areaSel && m.area!==areaSel) return false;
     if(ceros && !(m.exist!==null && m.exist>0)) return false;
     if(soloTras && !(m.tras>0)) return false;
+    if($("#invLotes")?.checked && !(m.lotes&&m.lotes.length>0)) return false;
     return true;
   });
   rows.sort((a,b)=>{const c=invSort.col,k=invSort.dir;
@@ -591,25 +611,63 @@ $("#expGo").onclick=()=>{
   cerrarModalExp();
 };
 
-/* ---- Listas de conteo imprimibles (columna Físico en blanco) ---- */
+/* ---- Modal de ubicaciones para conteo ---- */
 function imprimirConteo(){
   const mats=filasInv();
-  if(!mats.length){ alert("No hay materiales que imprimir con los filtros actuales."); return; }
-  const hoy=new Date().toLocaleDateString('es-MX',{day:'2-digit',month:'long',year:'numeric'});
-  const label=invSel===TODO?"TODO EL INVENTARIO":invSel.toUpperCase();
+  if(!mats.length){ alert("No hay materiales con los filtros actuales."); return; }
   // agrupar por ubicación
   const grupos={};
   mats.forEach(m=>{ const u=m.ubic||"Sin asignar"; (grupos[u] ||= []).push(m); });
+  const ubis=Object.keys(grupos).sort();
+  if(ubis.length===1){
+    // si solo hay una ubicación, imprimir directo
+    _generarImpresion(grupos, ubis);
+    return;
+  }
+  // modal de selección
+  const modal=document.createElement("div"); modal.className="modal on"; modal.id="conteoModal";
+  modal.innerHTML=`<div class="modal-box">
+    <h3>🖨 Lista de conteo — Elegir ubicaciones</h3>
+    <div class="modal-body">
+      <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:7px;text-transform:uppercase;letter-spacing:.4px">
+        Ubicaciones disponibles
+        <button class="linkish" id="cntAll" style="float:right;text-transform:none;letter-spacing:0">Todas / ninguna</button>
+      </div>
+      <div style="display:grid;gap:5px;max-height:240px;overflow-y:auto" id="cntChecks">
+        ${ubis.map(u=>`<label style="display:flex;align-items:center;gap:7px;font-size:13px;padding:5px 8px;border-radius:7px;background:#f7f9fc;border:1px solid var(--line);cursor:pointer">
+          <input type="checkbox" data-u="${u}" checked>
+          <span><b>${u}</b> <span style="color:var(--muted)">(${grupos[u].length} materiales)</span></span>
+        </label>`).join("")}
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" id="cntCancel">Cancelar</button>
+      <button class="btn-prim" id="cntOk">🖨 Imprimir selección</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+  $("#cntAll").onclick=()=>{ const cbs=modal.querySelectorAll("input"); const any=[...cbs].some(c=>!c.checked); cbs.forEach(c=>c.checked=any); };
+  $("#cntCancel").onclick=()=> modal.remove();
+  $("#cntOk").onclick=()=>{
+    const sel=[...modal.querySelectorAll("input:checked")].map(c=>c.dataset.u);
+    if(!sel.length){ alert("Selecciona al menos una ubicación."); return; }
+    modal.remove();
+    _generarImpresion(grupos, sel);
+  };
+}
+function _generarImpresion(grupos, ubis){
+  const hoy=new Date().toLocaleDateString('es-MX',{day:'2-digit',month:'long',year:'numeric'});
+  const label=invSel===TODO?"TODO EL INVENTARIO":invSel.toUpperCase();
   const pa=$("#printArea"); pa.innerHTML="";
-  Object.keys(grupos).sort().forEach(u=>{
-    const lista=grupos[u];
+  ubis.forEach(u=>{
+    const lista=grupos[u]; if(!lista) return;
     const div=document.createElement("div"); div.className="pg";
     div.innerHTML=`
       <div class="ph">
         <div class="ph-top">TELMEX — ALMACÉN DISTRIBUIDOR D041 PUEBLA · ÁREA: ${label}</div>
         <div class="ph-sub">Inventario físico · Lista de conteo</div>
         <div class="ph-ubi">Ubicación: ${u}</div>
-        <div class="ph-meta">Fecha: <u>&nbsp;</u>&nbsp;&nbsp;&nbsp;Responsable: <u>&nbsp;</u></div>
+        <div class="ph-meta">Fecha: <u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u>&nbsp;&nbsp;&nbsp;Responsable: <u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u></div>
       </div>
       <table class="pt"><thead><tr>
         <th style="width:78px">Catálogo</th><th>Descripción</th>
@@ -628,8 +686,7 @@ function imprimirConteo(){
             <td class="col-fis">&nbsp;</td></tr>`;
           const subs=(m.lotes&&m.lotes.length)? m.lotes.map(l=>`<tr style="background:#fffaf2">
             <td style="font-family:monospace;font-size:7.5pt;padding-left:16px;color:#9a5a00">↳ ${l.lote}</td>
-            <td style="font-size:7.5pt;color:#777;font-style:italic">Lote</td>
-            <td></td>
+            <td style="font-size:7.5pt;color:#777;font-style:italic">Lote</td><td></td>
             <td style="text-align:center;font-size:7.5pt">${nfmt(l.lib)}</td>
             <td style="text-align:center;font-size:7.5pt">${nfmt(l.tras||0)}</td>
             <td class="col-fis">&nbsp;</td></tr>`).join(""):"";
@@ -642,82 +699,281 @@ function imprimirConteo(){
   setTimeout(()=>{ window.print(); setTimeout(()=>{ pa.innerHTML=""; },800); },250);
 }
 
-/* ============ ANÁLISIS (por almacén / por catálogo) ============ */
-let anView="almacen", anSort={col:"exist",dir:-1};
+/* ============ ANÁLISIS (por catálogo / por almacén) ============ */
+// Nombres canónicos de almacenes (sigla vieja → nombre)
+const AN_NOMBRES={
+  D041:'Distribuidor Puebla', A084:'Teziutlán',    A085:'Puerto Escondido',
+  A08A:'San Pedro',           A08B:'Zaragoza',      A08C:'Orizaba',
+  A08D:'Tlaxcala',            A08E:'Tehuacán',      A08F:'San Bruno',
+  A08G:'Xalapa Cristal',      A08H:'Mocambo',       A08I:'Córdoba Dos Caminos',
+  A08J:'Aquiles Serdán',      A08K:'Altamirano',    A08L:'Lerdo',
+  A08M:'Peñuela',             A08X:'Atlixco',       A08Y:'Mayorazgo',
+  A09O:'Oaxaca I Belisario',  A09P:'Pinotepa Nacional',
+  A09Q:'Oaxaca II',           A09R:'Huajuapan',     A09T:'Cholula',
+  A09U:'Amalucan',
+};
+function anNombre(alm){ return AN_NOMBRES[alm]||(DB.directorio?.almacenes?.[alm]?.desc)||alm; }
+
+let anTab_="cat", anSortCatCol="dist", anSortCatDir=-1, anSortAlmCol="dist", anSortAlmDir=-1;
+let anDatosCat=[], anDatosAlm=[], anCatSel=null;
+
 function modAnalisis(){
-  const conEx=almacenesConExistencia(), porCentro={};
+  const conCons=Object.keys(DB.consumos||{});
+  const almsCons=conCons;
+  const porCentro={}; const conEx=almacenesConExistencia();
   almList().filter(a=>conEx.has(a.clave)).forEach(a=> (porCentro[a.centro_desc||a.centro] ||= []).push(a));
   const optg=Object.keys(porCentro).sort().map(c=>`<optgroup label="${c}">${
     porCentro[c].sort((x,y)=>x.desc.localeCompare(y.desc)).map(a=>{
-      const dist=a.clave===DIST()?" — Distribuidor":""; return `<option value="${a.clave}">${a.clave} · ${a.desc}${dist}</option>`;}).join("")
+      const isCons=almsCons.includes(a.clave); const d=a.clave===DIST()?" — Distribuidor":"";
+      return `<option value="${a.clave}" ${isCons?'style="font-weight:700"':''}>${a.clave} · ${a.desc}${d}${isCons?" ★":""}</option>`;}).join("")
   }</optgroup>`).join("");
+  const mCPM=DB.meta?.meses_cpm||6, mStk=DB.meta?.meses_stock||1.5;
+  const almsConsCombos=almsCons.map(a=>`<option value="${a}">${a} · ${anNombre(a)}</option>`).join("");
+  const tieneConsumos=almsCons.length>0;
+
   $("#moduleView").innerHTML=`
     <div class="controls">
-      <div class="seg" id="anSeg"><button data-v="almacen" class="on">Por almacén</button><button data-v="catalogo">Por catálogo</button></div>
-      <span id="anSelWrap"><select id="anAlm">${optg}</select></span>
-      <input type="search" id="anSearch" placeholder="Buscar catálogo o descripción…">
-      <button class="btn" id="anExport">Exportar Excel</button>
+      <div class="seg" id="anSeg">
+        <button data-v="cat" class="${anTab_==="cat"?"on":""}">Por catálogo</button>
+        <button data-v="alm" class="${anTab_==="alm"?"on":""}">Por almacén</button>
+      </div>
+      <label class="chk">Meses CPM <input type="number" id="anMCPM" value="${mCPM}" min="1" max="24" step="1" style="width:58px"></label>
+      <label class="chk">Stock obj. <input type="number" id="anMStk" value="${mStk}" min="0.5" max="12" step="0.5" style="width:58px"></label>
     </div>
-    <div class="panel"><div class="panel-head"><h2 id="anTitle"></h2><span class="pill" id="anCount"></span></div>
-      <div class="scroll"><table id="anTable"></table></div></div>`;
-  const sel=$("#anAlm");
-  if([...sel.options].some(o=>o.value===DIST())) sel.value=DIST();
-  $("#anSeg").querySelectorAll("button").forEach(b=> b.onclick=()=>{ anView=b.dataset.v;
+    <!-- Panel POR CATÁLOGO -->
+    <div id="an-panel-cat" ${anTab_!=="cat"?"hidden":""}>
+      <div class="controls" style="margin-top:4px">
+        <div class="an-cat-wrap" style="flex:1;min-width:200px">
+          <input id="an-cat-input" class="an-cat-input" placeholder="Buscar catálogo por número o descripción…" autocomplete="off">
+          <div id="an-cat-sugs" class="an-cat-sugs"></div>
+        </div>
+        <input type="search" id="an-cat-filtro" placeholder="Filtrar almacén…">
+        <label class="chk"><input type="checkbox" id="an-cat-solo"> Solo con demanda</label>
+        <button class="btn" id="an-btn-exp-cat" style="display:none">⬇ Exportar</button>
+      </div>
+      <div id="an-cat-desc" class="an-desc" style="font-size:13px;color:var(--muted);padding:4px 2px"></div>
+      <div class="panel"><div class="panel-head"><h2 id="an-cat-title">Distribución por almacén</h2><span class="pill" id="an-cat-count"></span></div>
+        <div class="scroll"><table id="an-tabla-cat"></table></div></div>
+    </div>
+    <!-- Panel POR ALMACÉN -->
+    <div id="an-panel-alm" ${anTab_!=="alm"?"hidden":""}>
+      ${!tieneConsumos?`<div class="panel"><div style="padding:16px;color:var(--muted)">
+          Carga archivos de consumo en Configuración para ver el análisis por almacén.</div></div>`:`
+      <div class="controls" style="margin-top:4px">
+        <div class="an-cat-wrap" style="min-width:200px">
+          <input id="an-alm-input" class="an-cat-input" placeholder="Buscar almacén…" autocomplete="off">
+          <div id="an-alm-sugs" class="an-cat-sugs"></div>
+          <input type="hidden" id="an-alm-sel">
+        </div>
+        <input type="search" id="an-alm-buscar" placeholder="Buscar catálogo o descripción…">
+        <label class="chk"><input type="checkbox" id="an-solo-pos" checked> Solo con demanda</label>
+        <button class="btn" id="an-btn-exp-alm" style="display:none">⬇ Exportar</button>
+      </div>
+      <div class="panel"><div class="panel-head"><h2 id="an-alm-title">Selecciona un almacén</h2><span class="pill" id="an-alm-count"></span></div>
+        <div class="scroll" id="an-tabla-alm"><div class="empty" style="padding:24px">Selecciona un almacén con consumos (★) para ver el análisis.</div></div></div>`}
+    </div>`;
+
+  // ---- Tab ----
+  $("#anSeg").querySelectorAll("button").forEach(b=> b.onclick=()=>{
+    anTab_=b.dataset.v;
+    ["cat","alm"].forEach(v=>{ document.getElementById("an-panel-"+v).hidden=anTab_!==v; });
     $("#anSeg").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));
-    $("#anSelWrap").style.display=anView==="almacen"?"":"none";
-    $("#anSearch").placeholder=anView==="almacen"?"Buscar catálogo o descripción…":"Escribe un catálogo exacto…"; pintarAn(); });
-  sel.onchange=pintarAn; $("#anSearch").oninput=pintarAn; $("#anExport").onclick=exportarAn;
-  pintarAn();
-}
-function filasAn(){
-  const q=$("#anSearch").value.trim().toLowerCase();
-  if(anView==="almacen"){
-    const alm=$("#anAlm").value; let rows=[];
-    for(const [cat,e] of Object.entries(DB.existencias)){
-      if(!(alm in e)) continue; const m=mat(cat);
-      if(q && !(cat.toLowerCase().includes(q)||m.desc.toLowerCase().includes(q))) continue;
-      rows.push({cat,desc:m.desc,um:m.um,area:m.area,ubic:m.ubic,exist:e[alm]});
-    } return rows;
-  } else {
-    const qx=$("#anSearch").value.trim(); let rows=[];
-    if(qx){ const e=DB.existencias[qx]||{}; for(const [alm,qty] of Object.entries(e)) rows.push({alm,nombre:almName(alm),exist:qty}); }
-    return rows;
+  });
+  // ---- Params ----
+  const repintarCat=()=>{ if(anCatSel) anRenderTablaCat(anSortCatCol); };
+  const repintarAlm=()=>{ if($("#an-alm-sel")?.value) anRenderAlm(); };
+  $("#anMCPM").oninput=()=>{ repintarCat(); repintarAlm(); };
+  $("#anMStk").oninput=()=>{ repintarCat(); repintarAlm(); };
+  // ---- Buscador catálogo ----
+  const catInp=$("#an-cat-input"), catSugs=$("#an-cat-sugs"), catDesc=$("#an-cat-desc");
+  catInp.oninput=()=>{
+    const q=catInp.value.trim().toLowerCase(); anCatSel=null; $("#an-btn-exp-cat").style.display="none";
+    if(!q||q.length<2){ catSugs.style.display="none"; catDesc.textContent="Escribe para buscar"; return; }
+    const hits=Object.entries(DB.materiales).filter(([c,m])=>c.startsWith(q)||m.desc.toLowerCase().includes(q)).slice(0,14);
+    catSugs.innerHTML=hits.map(([c,m])=>`<div class="an-cat-sug" data-c="${c}"><b>${c}</b> · ${m.desc} <span style="color:var(--muted)">${m.um||""}</span></div>`).join("");
+    catSugs.style.display=hits.length?"block":"none";
+  };
+  catSugs.addEventListener("pointerdown", e=>{
+    const t=e.target.closest("[data-c]"); if(!t) return;
+    anCatSel=t.dataset.c; const m=mat(anCatSel);
+    catInp.value=anCatSel+" — "+m.desc; catSugs.style.display="none";
+    catDesc.textContent=m.desc+(m.um?" · "+m.um:""); catDesc.className="an-desc ok";
+    $("#an-btn-exp-cat").style.display="inline-flex";
+    anDatosCat=[]; anRenderTablaCat(anSortCatCol);
+  });
+  document.addEventListener("click", e=>{ if(!catSugs.contains(e.target)&&e.target!==catInp) catSugs.style.display="none"; },{once:false,capture:false});
+  $("#an-cat-filtro")?.addEventListener("input",()=>anRenderTablaCat(anSortCatCol));
+  $("#an-cat-solo")?.addEventListener("change",()=>anRenderTablaCat(anSortCatCol));
+  $("#an-btn-exp-cat")?.addEventListener("click",anExportarCat);
+  // ---- Buscador almacén ----
+  if(tieneConsumos){
+    const almInp=$("#an-alm-input"), almSugs=$("#an-alm-sugs"), almHid=$("#an-alm-sel");
+    almInp.oninput=()=>{
+      const q=almInp.value.trim().toLowerCase();
+      const hits=almsCons.filter(a=> a.toLowerCase().includes(q)||anNombre(a).toLowerCase().includes(q));
+      almSugs.innerHTML=hits.map(a=>`<div class="an-cat-sug" data-a="${a}"><b style="color:var(--primary)">${a}</b> · ${anNombre(a)}</div>`).join("");
+      almSugs.style.display=hits.length?"block":"none";
+    };
+    almInp.addEventListener("focus",()=>{ almInp.oninput(); });
+    almSugs.addEventListener("pointerdown",e=>{ const t=e.target.closest("[data-a]"); if(!t) return;
+      almHid.value=t.dataset.a; almInp.value=t.dataset.a+" — "+anNombre(t.dataset.a); almSugs.style.display="none"; anRenderAlm(); });
+    $("#an-alm-buscar").oninput=()=>{ if(almHid.value) anRenderAlm(); };
+    $("#an-solo-pos").onchange=()=>{ if(almHid.value) anRenderAlm(); };
+    $("#an-btn-exp-alm").onclick=anExportarAlm;
   }
 }
-function pintarAn(){
-  const tbl=$("#anTable");
-  if(anView==="almacen"){
-    const alm=$("#anAlm").value, isD=alm===DIST(), rows=filasAn();
-    rows.sort((a,b)=>{const c=anSort.col,k=anSort.dir; return c==="exist"?(a.exist-b.exist)*k:String(a[c]||"").localeCompare(String(b[c]||""))*k;});
-    $("#anTitle").innerHTML=`${alm} · ${almName(alm)} `+(isD?`<span class="pill dist">DISTRIBUIDOR</span>`:"");
-    $("#anCount").textContent=`${rows.length} materiales`;
-    tbl.innerHTML=`<thead><tr><th data-c="cat">Catálogo</th><th data-c="desc">Descripción</th>
-      <th data-c="area">Área</th><th data-c="ubic">Ubicación</th><th data-c="exist" class="r">Existencia</th></tr></thead><tbody>${
-      rows.length? rows.map(r=>`<tr><td class="cat num">${r.cat}</td><td class="desc">${r.desc||"—"}</td>
-        <td><span class="area-tag">${r.area||"—"}</span></td><td>${r.ubic||"—"}</td>
-        <td class="r"><span class="stk ${stkClass(r.exist)}">${nfmt(r.exist)}</span> <small style="color:var(--muted)">${r.um}</small></td></tr>`).join("")
-        : `<tr><td colspan="5" class="empty">Sin coincidencias.</td></tr>`}</tbody>`;
-    tbl.querySelectorAll("th[data-c]").forEach(th=> th.onclick=()=>{ const c=th.dataset.c;
-      anSort={col:c,dir:anSort.col===c?-anSort.dir:(c==="exist"?-1:1)}; pintarAn(); });
-  } else {
-    const qx=$("#anSearch").value.trim(), rows=filasAn().sort((a,b)=>b.exist-a.exist);
-    $("#anTitle").textContent=qx?`Catálogo ${qx}`:"Por catálogo";
-    $("#anCount").textContent=qx?(mat(qx).desc||""):"";
-    tbl.innerHTML=`<thead><tr><th>Almacén</th><th>Nombre</th><th class="r">Existencia</th></tr></thead><tbody>${
-      !qx? `<tr><td colspan="3" class="empty">Escribe un catálogo para ver su existencia en todos los almacenes.</td></tr>`
-        : rows.length? rows.map(r=>`<tr><td class="cat num">${r.alm}${r.alm===DIST()?' <span class="pill dist">DIST</span>':''}</td>
-            <td>${r.nombre}</td><td class="r"><span class="stk ${stkClass(r.exist)}">${nfmt(r.exist)}</span></td></tr>`).join("")
-          : `<tr><td colspan="3" class="empty">Ese catálogo no tiene existencia en ningún almacén.</td></tr>`}</tbody>`;
-  }
+
+function anMCPM(){ return Math.max(1,parseFloat($("#anMCPM")?.value)||6); }
+function anMStk(){ return Math.max(0.1,parseFloat($("#anMStk")?.value)||1.5); }
+
+/* ---- Análisis por catálogo (distribución entre almacenes) ---- */
+function anRenderTablaCat(col){
+  if(!anCatSel) return;
+  if(anSortCatCol===col) anSortCatDir=-anSortCatDir; else { anSortCatCol=col; anSortCatDir=col==="alm"?1:-1; }
+  const per=anMCPM(), obj=anMStk(), cat=anCatSel, m=mat(cat);
+  const qFilt=($("#an-cat-filtro")?.value||"").toLowerCase(), soloDem=$("#an-cat-solo")?.checked;
+  const alms=almList().map(a=>a.clave);
+  anDatosCat=alms.map(alm=>{
+    const cons=(DB.consumos?.[alm]?.[cat])||0;
+    const ex=(DB.existencias?.[cat]?.[alm])||0;
+    const mens=cons/per, nec=mens*obj, dist=Math.max(0,nec-ex);
+    const exD=(DB.existencias?.[cat]?.[DIST()])||0;
+    return {alm,cons,mens,ex,nec,dist,exD};
+  }).filter(r=>{
+    if(qFilt && !(r.alm.toLowerCase().includes(qFilt)||anNombre(r.alm).toLowerCase().includes(qFilt))) return false;
+    if(soloDem && r.dist<0.5) return false;
+    return true;
+  });
+  anDatosCat.sort((a,b)=>{
+    if(anSortCatCol==="alm") return a.alm.localeCompare(b.alm)*anSortCatDir;
+    return ((a[anSortCatCol]||0)-(b[anSortCatCol]||0))*anSortCatDir;
+  });
+  const ic=c=>c===anSortCatCol?(anSortCatDir===1?" ▲":" ▼"):" ⇅";
+  const anFmt=(n,d=0)=>n==null||isNaN(n)?"-":Number(n).toLocaleString("es-MX",{minimumFractionDigits:d,maximumFractionDigits:d});
+  $("#an-cat-title").innerHTML=`${cat} · ${m.desc} <span style="color:var(--muted);font-size:13px;font-weight:400">${m.um||""}</span>`;
+  $("#an-cat-count").textContent=`${anDatosCat.length} almacenes`;
+  const tbl=$("#an-tabla-cat");
+  tbl.innerHTML=`<thead><tr>
+    <th onclick="_anSortCat('alm')">Almacén${ic("alm")}</th>
+    <th class="r" onclick="_anSortCat('cons')">Consumo total${ic("cons")}</th>
+    <th class="r" onclick="_anSortCat('mens')">Cons. mensual${ic("mens")}</th>
+    <th class="r" onclick="_anSortCat('ex')">Existencia${ic("ex")}</th>
+    <th class="r" onclick="_anSortCat('nec')">Stock obj.(${obj.toFixed(1)}m)${ic("nec")}</th>
+    <th class="r" onclick="_anSortCat('dist')">Distribución${ic("dist")}</th>
+    <th>Estado</th>
+  </tr></thead><tbody>${anDatosCat.length? anDatosCat.map(({alm,cons,mens,ex,nec,dist})=>{
+    const nc=cons===0;
+    const badge=nc?`<span class="an-badge g">Sin consumo</span>`
+      :dist<0.5?`<span class="an-badge v">✓ Suficiente</span>`
+      :dist<=mens?`<span class="an-badge a">↑ Bajo</span>`
+      :`<span class="an-badge r">⚠ Déficit</span>`;
+    return `<tr>
+      <td><div class="an-alm-code">${alm}</div><div class="an-alm-name">${anNombre(alm)}</div></td>
+      <td class="r num">${nc?"—":anFmt(cons)}</td>
+      <td class="r num">${nc?"—":anFmt(mens,1)}</td>
+      <td class="r num">${anFmt(ex)}</td>
+      <td class="r num">${nc?"—":anFmt(nec,1)}</td>
+      <td class="r num" style="font-weight:700;color:${dist>0.5?"var(--low)":"var(--ok)"}">${dist>0.5?anFmt(dist,1):"—"}</td>
+      <td>${badge}</td></tr>`;}).join(""):`<tr><td colspan="7" class="empty">Sin datos con los filtros actuales.</td></tr>`}</tbody>`;
 }
-function exportarAn(){
-  const rows=filasAn();
-  if(anView==="almacen"){ const alm=$("#anAlm").value;
-    descargarXLSX([["Catálogo","Descripción","Unidad","Área","Ubicación","Existencia"],...rows.map(r=>[r.cat,r.desc,r.um,r.area,r.ubic,r.exist])],
-      "Análisis", `Analisis_${alm}_${almName(alm).replace(/\s+/g,'')}`);
-  } else { const qx=$("#anSearch").value.trim();
-    descargarXLSX([["Almacén","Nombre","Existencia"],...rows.map(r=>[r.alm,r.nombre,r.exist])], "Análisis", `Catalogo_${qx||'export'}`); }
+function _anSortCat(col){ anRenderTablaCat(col); }
+
+/* ---- Análisis por almacén ---- */
+function anRenderAlm(){
+  const alm=$("#an-alm-sel")?.value; if(!alm) return;
+  const per=anMCPM(), obj=anMStk();
+  const cAlm=DB.consumos?.[alm]||{}, eAlm={};
+  // existencias del almacén
+  for(const [cat,e] of Object.entries(DB.existencias)) if(alm in e) eAlm[cat]=e[alm];
+  const q=($("#an-alm-buscar")?.value||"").toLowerCase();
+  const soloDem=$("#an-solo-pos")?.checked;
+  const D=DIST(), eD={};
+  for(const [cat,e] of Object.entries(DB.existencias)) if(D in e) eD[cat]=e[D];
+  anDatosAlm=Object.keys(cAlm).filter(cat=>{
+    const m=mat(cat);
+    if(q && !(cat.includes(q)||(m.desc||"").toLowerCase().includes(q))) return false;
+    const dist=Math.max(0,(cAlm[cat]/per)*obj-(eAlm[cat]||0));
+    if(soloDem && dist<0.5) return false;
+    return true;
+  }).map(cat=>{
+    const m=mat(cat), cons=cAlm[cat]||0, ex=eAlm[cat]||0;
+    const mens=cons/per, nec=mens*obj, dist=Math.max(0,nec-ex), exD=eD[cat]||0;
+    return {cat,desc:m.desc,um:m.um,area:m.area,cons,mens,ex,nec,dist,exD};
+  }).sort((a,b)=>b.dist-a.dist);
+  anSortAlmCol="dist"; anSortAlmDir=-1;
+  $("#an-alm-title").innerHTML=`${alm} · ${anNombre(alm)}`;
+  _pintarTablaAlm(obj);
 }
+function _pintarTablaAlm(obj){
+  const col_=anSortAlmCol, dir_=anSortAlmDir;
+  const ic=c=>c===col_?(dir_===1?" ▲":" ▼"):" ⇅";
+  const anFmt=(n,d=0)=>n==null||isNaN(n)?"-":Number(n).toLocaleString("es-MX",{minimumFractionDigits:d,maximumFractionDigits:d});
+  const o=obj||anMStk();
+  const filas=[...anDatosAlm].sort((a,b)=>{
+    if(["cat","desc","area"].includes(col_)) return String(a[col_]||"").localeCompare(String(b[col_]||""))*dir_;
+    return ((a[col_]||0)-(b[col_]||0))*dir_;
+  });
+  const alm=$("#an-alm-sel")?.value||"";
+  const wrap=document.getElementById("an-tabla-alm");
+  const btnExp=document.getElementById("an-btn-exp-alm");
+  if(!filas.length){ wrap.innerHTML=`<div class="empty" style="padding:24px">Sin coincidencias.</div>`; if(btnExp) btnExp.style.display="none"; return; }
+  $("#an-alm-count").textContent=`${filas.length} catálogos`;
+  wrap.innerHTML=`<div class="scroll"><table>
+    <thead><tr>
+      <th onclick="_anSortAlm('cat')">Catálogo${ic("cat")}</th>
+      <th onclick="_anSortAlm('desc')">Descripción${ic("desc")}</th>
+      <th class="r">UM</th>
+      <th class="r" onclick="_anSortAlm('mens')">Cons. mensual${ic("mens")}</th>
+      <th class="r" onclick="_anSortAlm('ex')">Existencia ${alm}${ic("ex")}</th>
+      <th class="r" onclick="_anSortAlm('nec')">Stock obj.(${o.toFixed(1)}m)${ic("nec")}</th>
+      <th class="r" onclick="_anSortAlm('dist')">Distribución${ic("dist")}</th>
+      <th class="r" onclick="_anSortAlm('exD')">D041 disponible${ic("exD")}</th>
+      <th>D041</th>
+    </tr></thead><tbody>${filas.map(({cat,desc,um,mens,ex,nec,dist,exD})=>{
+      const badge=dist<0.5?""
+        :exD>=dist?`<span class="an-badge v">✓</span>`:`<span class="an-badge r">Insuf.</span>`;
+      return `<tr>
+        <td class="cat num">${cat}</td>
+        <td style="font-size:12px;max-width:220px">${desc||""}</td>
+        <td class="r" style="font-size:11px;color:var(--muted)">${um||""}</td>
+        <td class="r num">${anFmt(mens,1)}</td>
+        <td class="r num">${anFmt(ex)}</td>
+        <td class="r num">${anFmt(nec,1)}</td>
+        <td class="r num" style="font-weight:700;color:${dist>0.5?"var(--low)":"var(--ok)"}">${dist>0.5?anFmt(dist,1):"—"}</td>
+        <td class="r num">${anFmt(exD)}</td>
+        <td>${badge}</td></tr>`;
+    }).join("")}</tbody></table></div>`;
+  if(btnExp) btnExp.style.display="inline-flex";
+}
+function _anSortAlm(col){
+  if(col===anSortAlmCol) anSortAlmDir=-anSortAlmDir; else { anSortAlmCol=col; anSortAlmDir=["cat","desc","area"].includes(col)?1:-1; }
+  _pintarTablaAlm(anMStk());
+}
+function anExportarCat(){
+  if(!anCatSel) return; const cat=anCatSel, m=mat(cat), per=anMCPM(), obj=anMStk();
+  const rows=almList().map(a=>{
+    const alm=a.clave; const cons=(DB.consumos?.[alm]?.[cat])||0;
+    const ex=(DB.existencias?.[cat]?.[alm])||0;
+    const mens=cons/per, nec=mens*obj, dist=Math.max(0,nec-ex);
+    const exD=(DB.existencias?.[cat]?.[DIST()])||0;
+    return [alm,anNombre(alm),cons,+(mens.toFixed(2)),ex,+(nec.toFixed(2)),+(dist.toFixed(1)),exD];
+  });
+  descargarXLSX([
+    [`Catálogo: ${cat} — ${m.desc||""}`,""],[`Periodo: ${per}m | Stock obj: ${obj}m`,""],
+    [],["Almacén","Nombre","Consumo total","Cons. mensual","Existencia",`Stock obj.(${obj}m)`,"Distribución","D041 disponible"],
+    ...rows
+  ],"Distribución",`Dist_${cat}_${fechaTag()}`);
+}
+function anExportarAlm(){
+  const alm=$("#an-alm-sel")?.value; if(!alm||!anDatosAlm.length) return;
+  const per=anMCPM(), obj=anMStk();
+  descargarXLSX([
+    [`Almacén: ${alm} — ${anNombre(alm)}`,""],[`Periodo: ${per}m | Stock obj: ${obj}m`,""],
+    [],["Catálogo","Descripción","UM","Consumo total","Cons. mensual","Existencia",`Stock obj.(${obj}m)`,"Distribución","D041 disponible"],
+    ...[...anDatosAlm].sort((a,b)=>b.dist-a.dist).map(r=>[r.cat,r.desc,r.um,r.cons,+(r.mens.toFixed(2)),r.ex,+(r.nec.toFixed(2)),+(r.dist.toFixed(1)),r.exD])
+  ], alm, `Dist_${alm}_${fechaTag()}`);
+}
+
 
 /* ============ DIRECTORIO ============ */
 let dirScope="recurrentes";
@@ -748,106 +1004,236 @@ function pintarDir(){
 }
 
 /* ============ ORDEN DE REABASTO ============ */
-let orParams={mesesCPM:6, mesesStock:1.5}, orAlm="", orSort={col:"calcSurtir",dir:-1}, orData=[], _orManual={};
+let orAlm="", orSort={col:"calcSurtir",dir:-1}, _orManual={};
 function consumosDisp(){ return DB.consumos ? Object.keys(DB.consumos).sort() : []; }
+
 function modOR(){
   const alms=consumosDisp();
   if(!alms.length){
     $("#moduleView").innerHTML=`<div class="panel"><div class="soon">
       <h2>Orden de Reabasto</h2>
       <p>Aún no hay archivos de consumo cargados.</p>
-      <p>Ve a <b>Configuración → Archivos de consumo</b>, sube los consumos por almacén (ej. <b>TX8A</b>) y pulsa <b>Usar ahora</b> o publica. Después este módulo calculará el reabasto automáticamente.</p>
+      <p>Ve a <b>Configuración → Archivos de consumo</b>, sube el export de consumo (ej. <b>TX8A</b>) y publica.</p>
     </div></div>`; return;
   }
   if(!orAlm || !alms.includes(orAlm)) orAlm=alms[0];
-  const opts=alms.map(a=>`<option value="${a}" ${a===orAlm?'selected':''}>${a} · ${almName(a)}</option>`).join("");
+  const m=DB.meta, mCPM=m?.meses_cpm||6, mStk=m?.meses_stock||1.5;
+  const opts=alms.map(a=>`<option value="${a}" ${a===orAlm?"selected":""}>${a} · ${almName(a)}</option>`).join("");
+  const ngs=ngLista(); const ngOpts=ngs.map(n=>`<option value="${n}">${n}</option>`).join("");
+  const areasOR=AREAS.concat(["Sin clasificar"]);
+  const areaOpts=areasOR.map(a=>`<option value="${a}">${a}</option>`).join("");
+
   $("#moduleView").innerHTML=`
-    <div class="controls">
-      <select id="orAlm">${opts}</select>
-      <label class="chk">Meses CPM <input type="number" id="orMCPM" value="${orParams.mesesCPM}" min="1" max="24" step="1" style="width:62px"></label>
-      <label class="chk">Meses stock <input type="number" id="orMS" value="${orParams.mesesStock}" min="0.5" max="12" step="0.5" style="width:62px"></label>
-      <input type="search" id="orSearch" placeholder="Buscar catálogo o descripción…">
-      <label class="chk"><input type="checkbox" id="orSolo" checked> Solo lo que hay que surtir</label>
-      <button class="btn" id="orExport">⬇ Exportar OR</button>
+    <div style="overflow-x:auto">
+    <div class="controls" style="flex-wrap:wrap">
+      <label class="chk" style="font-weight:700;color:var(--ink)">Almacén
+        <select id="orAlm">${opts}</select></label>
+      <label class="chk">CPM (meses) <input type="number" id="orMCPM" value="${mCPM}" min="1" max="24" step="1" style="width:58px"></label>
+      <label class="chk">Stock obj. <input type="number" id="orMS" value="${mStk}" min="0.5" max="12" step="0.5" style="width:58px"></label>
+      <input type="search" id="orSearch" placeholder="Buscar catálogo / descripción…" style="min-width:190px">
+      <select id="orFArea"><option value="">Todas las áreas</option>${areaOpts}</select>
+      <select id="orFNG"><option value="">Todos los nombres genéricos</option>${ngOpts}</select>
+      <label class="chk"><input type="checkbox" id="orSolo" checked> Solo a surtir</label>
+      <button class="btn-prim" id="orExport">⬇ Exportar OR</button>
     </div>
-    <div class="panel"><div class="panel-head"><h2 id="orTitle"></h2><span class="pill" id="orCount"></span></div>
-      <div class="scroll"><table id="orTable"></table></div></div>
-    <p style="color:var(--muted);font-size:12px;margin:10px 2px">
-      <b>CPM</b> = consumo ÷ meses CPM · <b>Cálculo surtir</b> = (meses stock × CPM) − existencia del auxiliar.
-      <b>X surtir</b> es editable (sugerencia: lo que alcanza a cubrir D041).</p>`;
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;font-size:12px">
+      <span class="pill" id="orResumen"></span>
+      <span style="color:var(--muted)">CPM = consumo ÷ meses · Cálc. surtir = (meses stock × CPM) − existencia aux · <b>X Surtir</b> editable</span>
+    </div>
+    <div class="panel"><div class="panel-head" style="gap:8px">
+      <h2 id="orTitle"></h2><span class="pill" id="orCount"></span></div>
+      <div style="overflow-x:auto"><table id="orTable" style="min-width:900px"></table></div></div>
+    </div>`;
   $("#orAlm").onchange=e=>{ orAlm=e.target.value; pintarOR(); };
-  $("#orMCPM").onchange=e=>{ orParams.mesesCPM=Math.max(1,+e.target.value||6); pintarOR(); };
-  $("#orMS").onchange=e=>{ orParams.mesesStock=Math.max(0.5,+e.target.value||1.5); pintarOR(); };
-  $("#orSearch").oninput=pintarOR; $("#orSolo").onchange=pintarOR; $("#orExport").onclick=exportarOR;
+  ["orMCPM","orMS"].forEach(id=>{ const el=$("#"+id); el.oninput=pintarOR; el.onchange=pintarOR; });
+  ["orSearch","orFArea","orFNG"].forEach(id=> $("#"+id).oninput=pintarOR);
+  $("#orSolo").onchange=pintarOR;
+  $("#orExport").onclick=abrirModalOR;
   pintarOR();
 }
+
 function calcularOR(){
-  const D=DIST(), cons=DB.consumos[orAlm]||{}, m=orParams.mesesCPM, ms=orParams.mesesStock, out=[];
+  const D=DIST(), cons=DB.consumos?.[orAlm]||{};
+  const mCPM=Math.max(1,+$("#orMCPM")?.value||6), mStk=Math.max(0.1,+$("#orMS")?.value||1.5);
+  const out=[];
   for(const [cat,consumo] of Object.entries(cons)){
-    const info=mat(cat);
-    const cpm=consumo/m;
-    const exAux=(DB.existencias[cat]&&DB.existencias[cat][orAlm])||0;
-    const exD=(DB.existencias[cat]&&DB.existencias[cat][D])||0;
-    const calcSurtir=ms*cpm-exAux;
-    const surtir=Math.max(0,Math.round(calcSurtir));
+    const info=mat(cat), ng=ngDe(cat);
+    const cpm=consumo/mCPM;
+    const exAux=(DB.existencias?.[cat]?.[orAlm])||0;
+    const exD=(DB.existencias?.[cat]?.[D])||0;
+    const calcSurtir=mStk*cpm-exAux;
+    const man=_orManual[orAlm+"|"+cat]||{};
+    const xsurtir=man.xs!=null?man.xs:Math.max(0,Math.min(Math.round(calcSurtir),exD));
     const mdInv=cpm>0?exAux/cpm:null;
     const excedente=(3*cpm-exAux)<0;
-    out.push({cat,desc:info.desc,um:info.um,area:info.area,consumo,cpm,exAux,exD,calcSurtir,surtir,mdInv,excedente,
-              xsurtir:Math.min(surtir,exD)});
+    out.push({cat,desc:info.desc,um:info.um,area:info.area||"Sin clasificar",ng,consumo,cpm,exAux,exD,calcSurtir,xsurtir,mdInv,excedente,obs:man.obs||""});
   }
   return out;
 }
+
 function filasOR(){
-  const q=($("#orSearch")?.value||"").trim().toLowerCase(), solo=$("#orSolo")?.checked;
+  const q=($("#orSearch")?.value||"").trim().toLowerCase();
+  const solo=$("#orSolo")?.checked;
+  const fArea=$("#orFArea")?.value||"";
+  const fNG=$("#orFNG")?.value||"";
   let rows=calcularOR().filter(r=>{
     if(q && !(r.cat.toLowerCase().includes(q)||(r.desc||"").toLowerCase().includes(q))) return false;
-    if(solo && !(r.calcSurtir>0.5)) return false;
+    if(fArea && r.area!==fArea) return false;
+    if(fNG && r.ng!==fNG) return false;
+    if(solo && r.calcSurtir<=0.5) return false;
     return true;
   });
-  const k=orSort.dir,c=orSort.col, numCol=["consumo","cpm","exAux","exD","calcSurtir","surtir"].includes(c);
-  rows.sort((a,b)=> numCol?((a[c]||0)-(b[c]||0))*k:String(a[c]||"").localeCompare(String(b[c]||""))*k);
+  const c=orSort.col, k=orSort.dir;
+  const numCols=["consumo","cpm","exAux","exD","calcSurtir","xsurtir","mdInv"];
+  rows.sort((a,b)=> numCols.includes(c)?((a[c]??-1)-(b[c]??-1))*k:String(a[c]||"").localeCompare(String(b[c]||""))*k);
   return rows;
 }
-function fmt1(n){ return n==null?"—":(Math.round(n*10)/10).toLocaleString('es-MX'); }
+
+const fmt1=n=>n==null?"S/C":(Math.round(n*10)/10).toLocaleString("es-MX");
+
 function pintarOR(){
-  orData=filasOR();
-  $("#orTitle").innerHTML=`OR · ${orAlm} · ${almName(orAlm)} <span class="pill" style="background:#eef2f8;color:var(--muted)">CPM ${orParams.mesesCPM}m · stock ${orParams.mesesStock}m</span>`;
-  const totalSurtir=orData.reduce((s,r)=>s+(r.calcSurtir>0.5?r.surtir:0),0);
-  $("#orCount").textContent=`${orData.length} catálogos · ${nfmt(totalSurtir)} sugerido a surtir`;
+  const rows=filasOR();
+  const nNec=rows.filter(r=>r.calcSurtir>0.5).length;
+  const totalX=rows.reduce((s,r)=>s+r.xsurtir,0);
+  $("#orTitle").innerHTML=`OR · ${orAlm} · ${almName(orAlm)}`;
+  $("#orCount").textContent=`${rows.length} catálogos`;
+  $("#orResumen").textContent=`${nNec} a surtir · Total X surtir: ${nfmt(totalX)}`;
+  const thEx=`style="background:#e8f1fb;color:#0a4ea3;font-weight:800"`;
+  const thExD=`style="background:#1a3a6a;color:#fff;font-weight:800"`;
   $("#orTable").innerHTML=`<thead><tr>
     <th data-c="cat">Catálogo</th><th data-c="desc">Descripción</th>
-    <th data-c="consumo" class="r">Consumo</th><th data-c="cpm" class="r">CPM</th>
-    <th data-c="exAux" class="r">Exist. ${orAlm}</th><th data-c="exD" class="r">Exist. D041</th>
-    <th data-c="calcSurtir" class="r">Cálc. surtir</th><th class="r">X surtir</th><th>Obs.</th></tr></thead><tbody>${
-    orData.length? orData.map(r=>{
-      const necesita=r.calcSurtir>0.5;
-      const exc=r.excedente?` <span class="lote-badge" title="posible excedente en el auxiliar">exc</span>`:"";
-      return `<tr>
-        <td class="cat num">${r.cat}</td><td class="desc">${r.desc||"—"}${exc}</td>
-        <td class="r num">${nfmt(r.consumo)}</td><td class="r num">${fmt1(r.cpm)}</td>
-        <td class="r num">${nfmt(r.exAux)}</td><td class="r num">${nfmt(r.exD)}</td>
-        <td class="r num" style="font-weight:700;color:${necesita?'var(--low)':'var(--muted)'}">${fmt1(r.calcSurtir)}</td>
-        <td class="r"><input type="number" class="or-xs" data-cat="${r.cat}" value="${r.xsurtir}" min="0" style="width:68px;text-align:right;padding:4px 6px;border:1px solid var(--line);border-radius:6px"></td>
-        <td><input type="text" class="or-obs" data-cat="${r.cat}" placeholder="…" style="min-width:120px;padding:4px 6px;border:1px solid var(--line);border-radius:6px"></td></tr>`;
-    }).join("") : `<tr><td colspan="9" class="empty">Sin catálogos con estos filtros.</td></tr>`}</tbody>`;
-  $("#orTable").querySelectorAll("th[data-c]").forEach(th=> th.onclick=()=>{ const c=th.dataset.c;
-    orSort={col:c,dir:orSort.col===c?-orSort.dir:(["cat","desc"].includes(c)?1:-1)}; pintarOR(); });
-  $("#orTable").querySelectorAll(".or-xs").forEach(inp=>{ const v=_orManual[orAlm+"|"+inp.dataset.cat];
-    if(v&&v.xs!=null) inp.value=v.xs;
-    inp.onchange=()=>{ const k=orAlm+"|"+inp.dataset.cat; (_orManual[k]=_orManual[k]||{}).xs=+inp.value; }; });
-  $("#orTable").querySelectorAll(".or-obs").forEach(inp=>{ const v=_orManual[orAlm+"|"+inp.dataset.cat];
-    if(v&&v.obs!=null) inp.value=v.obs;
-    inp.oninput=()=>{ const k=orAlm+"|"+inp.dataset.cat; (_orManual[k]=_orManual[k]||{}).obs=inp.value; }; });
+    <th data-c="area">Área</th><th data-c="ng">Nombre genérico</th><th>UM</th>
+    <th class="r" data-c="consumo">Consumo</th><th class="r" data-c="cpm">CPM</th>
+    <th class="r" data-c="mdInv">mdInv</th>
+    <th class="r" data-c="exAux" ${thEx}>Exist. ${orAlm}</th>
+    <th class="r" data-c="exD" ${thExD}>Exist. D041</th>
+    <th class="r" data-c="calcSurtir">Cálc. surtir</th>
+    <th class="r" data-c="xsurtir">X Surtir</th>
+    <th>Excedente</th><th>Observaciones</th>
+  </tr></thead><tbody>${
+  rows.length? rows.map(r=>{
+    const nec=r.calcSurtir>0.5;
+    const rowBg=nec?`style="background:#fdf1f1"`:(r.excedente?`style="background:var(--low-bg)"`:"");
+    return `<tr ${rowBg}>
+      <td class="cat num">${r.cat}</td>
+      <td class="desc">${r.desc||"—"}</td>
+      <td><span class="area-tag">${r.area}</span></td>
+      <td style="font-size:12px;color:var(--muted)">${r.ng||"—"}</td>
+      <td>${r.um||""}</td>
+      <td class="r num">${nfmt(r.consumo)}</td>
+      <td class="r num">${fmt1(r.cpm)}</td>
+      <td class="r num">${fmt1(r.mdInv)}</td>
+      <td class="r num" style="background:#eef5ff;font-weight:700">${nfmt(r.exAux)}</td>
+      <td class="r num" style="background:#1a3a6a;color:#fff;font-weight:700">${nfmt(r.exD)}</td>
+      <td class="r num" style="font-weight:700;color:${nec?"#c0392b":"var(--muted)"}">${fmt1(r.calcSurtir)}</td>
+      <td class="r"><input type="number" class="or-xs" data-cat="${r.cat}" value="${r.xsurtir}" min="0"
+          style="width:70px;text-align:right;padding:4px 6px;border:1px solid var(--line);border-radius:6px"></td>
+      <td style="text-align:center">${r.excedente?"⚠️":""}</td>
+      <td><input type="text" class="or-obs" data-cat="${r.cat}" value="${r.obs.replace(/"/g,"&quot;")}" placeholder="…"
+          style="min-width:110px;padding:4px 6px;border:1px solid var(--line);border-radius:6px"></td>
+    </tr>`;
+  }).join("") : `<tr><td colspan="14" class="empty">Sin catálogos con estos filtros.</td></tr>`}</tbody>`;
+  $("#orTable").querySelectorAll("th[data-c]").forEach(th=>th.onclick=()=>{
+    const c=th.dataset.c; orSort={col:c,dir:orSort.col===c?-orSort.dir:(["cat","desc","area","ng"].includes(c)?1:-1)}; pintarOR(); });
+  $("#orTable").querySelectorAll(".or-xs").forEach(inp=>
+    inp.onchange=()=>{ (_orManual[orAlm+"|"+inp.dataset.cat]||=({xs:0,obs:""})).xs=+inp.value||0; });
+  $("#orTable").querySelectorAll(".or-obs").forEach(inp=>
+    inp.oninput=()=>{ (_orManual[orAlm+"|"+inp.dataset.cat]||=({xs:0,obs:""})).obs=inp.value; });
 }
-function exportarOR(){
-  const rows=filasOR();
-  const aoa=[["Catálogo","Descripción","U.M.","Área","Consumo","CPM","Exist "+orAlm,"Exist D041","Cálculo surtir","X surtir","mdInv (meses)","Excedente","Observaciones"]];
-  rows.forEach(r=>{ const man=_orManual[orAlm+"|"+r.cat]||{};
-    aoa.push([r.cat,r.desc,r.um,r.area,r.consumo,Math.round(r.cpm*100)/100,r.exAux,r.exD,
-      Math.round(r.calcSurtir*100)/100, man.xs!=null?man.xs:r.xsurtir,
-      r.mdInv==null?"S/C":Math.round(r.mdInv*10)/10, r.excedente?"Sí":"", man.obs||""]); });
-  descargarXLSX(aoa, ("OR_"+orAlm).substring(0,28), `OR_${orAlm}_${almName(orAlm).replace(/\s+/g,'')}_${fechaTag()}`);
+
+/* ---- Modal exportación OR (captura Nº Reabasto y Genera OR) ---- */
+function abrirModalOR(){
+  const rows=filasOR().filter(r=>r.xsurtir>0||r.calcSurtir>0.5);
+  if(!rows.length){ alert("No hay catálogos para exportar (todos con X Surtir = 0)."); return; }
+  // agrupar por área (para exportar múltiples hojas)
+  const areasPresentes=[...new Set(rows.map(r=>r.area))].sort();
+  const mCPM=+$("#orMCPM")?.value||6, mStk=+$("#orMS")?.value||1.5;
+  const modal=document.createElement("div"); modal.className="modal on"; modal.id="orModal";
+  modal.innerHTML=`<div class="modal-box" style="max-width:380px">
+    <h3>⬇ Exportar Orden de Reabasto</h3>
+    <div class="modal-body" style="gap:14px">
+      <div>
+        <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:5px">Número de Reabasto</label>
+        <input type="number" id="orNumReabasto" min="1" placeholder="Ej. 4" style="width:100%">
+      </div>
+      <div>
+        <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:5px">¿Quién genera la OR?</label>
+        <input type="text" id="orGenerador" placeholder="Nombre del responsable" style="width:100%">
+      </div>
+      <div>
+        <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:5px">Exportar por área</label>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          ${areasPresentes.map(a=>`<label class="chk" style="background:#f7f9fc;padding:5px 9px;border:1px solid var(--line);border-radius:8px">
+            <input type="checkbox" class="or-area-chk" data-a="${a}" checked> ${a}</label>`).join("")}
+        </div>
+      </div>
+      <p style="font-size:12px;color:var(--muted);margin:0">${nfmt(rows.length)} catálogos · CPM ${mCPM}m · Stock obj. ${mStk}m</p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" id="orModalCancel">Cancelar</button>
+      <button class="btn-prim" id="orModalOk">Descargar Excel</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+  $("#orModalCancel").onclick=()=>modal.remove();
+  $("#orModalOk").onclick=()=>{
+    const num=$("#orNumReabasto").value.trim()||"—";
+    const gen=$("#orGenerador").value.trim()||"";
+    const selAreas=[...modal.querySelectorAll(".or-area-chk:checked")].map(c=>c.dataset.a);
+    if(!selAreas.length){ alert("Selecciona al menos un área."); return; }
+    modal.remove();
+    _exportarORFormato(rows.filter(r=>selAreas.includes(r.area)), num, gen, selAreas);
+  };
 }
+
+/* ---- Generador de Excel con formato TX8A_Misc ---- */
+function _exportarORFormato(rows, numReabasto, generador, areasSeleccionadas){
+  const wb=XLSX.utils.book_new();
+  const alm=orAlm, almNom=almName(alm);
+  const hoy=new Date().toLocaleDateString("es-MX",{day:"2-digit",month:"2-digit",year:"numeric"});
+  const mCPM=+$("#orMCPM")?.value||6, mStk=+$("#orMS")?.value||1.5;
+  const porArea={}; rows.forEach(r=>{ (porArea[r.area]||=[]).push(r); });
+  areasSeleccionadas.forEach(area=>{
+    const filas=porArea[area]; if(!filas||!filas.length) return;
+    const ws=XLSX.utils.aoa_to_sheet([]);
+    // -- Encabezado formato TX8A_Misc --
+    // Fila 1: Almacén
+    XLSX.utils.sheet_add_aoa(ws,[[`Almacén: ${almNom}`]], {origin:"A1"});
+    // Fila 2: OR Área
+    XLSX.utils.sheet_add_aoa(ws,[[`OR ${area}`]], {origin:"A2"});
+    // Fila 3: D3 = Reabasto: N
+    XLSX.utils.sheet_add_aoa(ws,[["","","",`Reabasto: ${numReabasto}`]], {origin:"A3"});
+    // Fila 4: Fecha
+    XLSX.utils.sheet_add_aoa(ws,[["","","",`Fecha: ${hoy}`]], {origin:"A4"});
+    // Fila 6: Encabezados de tabla
+    // Columnas vacías primero (A,B) + datos
+    const header=["","","CATÁLOGO","DESCRIPCIÓN","Unidad","X SURTIR","","OBSERVs"];
+    XLSX.utils.sheet_add_aoa(ws,[header], {origin:"A6"});
+    // Filas de datos desde fila 7 (cols vacías A,B + datos en C,D,E,F,G,H)
+    const dataRows=filas.filter(r=>r.xsurtir>0).map(r=>["","",r.cat,r.desc,r.um,r.xsurtir,"",r.obs]);
+    XLSX.utils.sheet_add_aoa(ws, dataRows, {origin:"A7"});
+    const lastDataRow=6+dataRows.length;
+    // Fila vacía + totales (como TX8A_Misc: fila 34 tiene HLog y SUM)
+    const totRow=lastDataRow+2;
+    XLSX.utils.sheet_add_aoa(ws,[["","","","","HLog",`=SUM(F7:F${lastDataRow})`]], {origin:`A${totRow}`});
+    // Filas finales (despachador + genera OR)
+    const sigRow=totRow+3;
+    XLSX.utils.sheet_add_aoa(ws,[["","","Despacha:"]], {origin:`A${sigRow}`});
+    XLSX.utils.sheet_add_aoa(ws,[["","","","Nombre"]], {origin:`A${sigRow+1}`});
+    if(generador){
+      XLSX.utils.sheet_add_aoa(ws,[["","","Genera OR:",generador]], {origin:`A${sigRow+3}`});
+    } else {
+      XLSX.utils.sheet_add_aoa(ws,[["","","Genera OR:",""]], {origin:`A${sigRow+3}`});
+    }
+    // Anchos de columna (A,B vacías angostas, resto útil)
+    ws["!cols"]=[{wch:3},{wch:3},{wch:12},{wch:38},{wch:8},{wch:10},{wch:3},{wch:30}];
+    XLSX.utils.book_append_sheet(wb, ws, area.substring(0,28));
+  });
+  if(wb.SheetNames.length===0){ alert("Sin datos para exportar."); return; }
+  const almSlug=alm.replace(/\s+/g,"");
+  XLSX.writeFile(wb, `OR_${almSlug}_${areasSeleccionadas.join("-").substring(0,20)}_Reb${numReabasto}_${hoy.replace(/\//g,"-")}.xlsx`);
+}
+
 
 /* ============ CONFIGURACIÓN / ADMIN ============ */
 let _adminTotal=null, _adminConsumos=null;
@@ -1069,9 +1455,11 @@ function construirBundleJS(parsed){
   valoracion.sort();
   const out={ meta:{ generado:new Date().toISOString().slice(0,19), almacen_distribuidor:D,
       n_materiales:Object.keys(materiales).length, n_almacenes:Object.keys(DB.directorio.almacenes).length,
-      n_con_existencia:Object.keys(existencias).length },
+      n_con_existencia:Object.keys(existencias).length,
+      meses_cpm:DB.meta?.meses_cpm||6, meses_stock:DB.meta?.meses_stock||1.5 },
     directorio:DB.directorio, materiales, existencias, traslados, lotes, valoracion };
-  if(DB.consumos) out.consumos=DB.consumos; // conservar consumos existentes
+  if(DB.consumos) out.consumos=DB.consumos;
+  if(DB.nombresGenericos) out.nombresGenericos=DB.nombresGenericos;
   return out;
 }
 /* ---- Cifrado en navegador (replica publicar.py) ---- */
