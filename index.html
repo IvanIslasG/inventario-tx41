@@ -1557,7 +1557,15 @@ function construirBundleJS(parsed){
   return out;
 }
 /* ---- Cifrado en navegador (replica publicar.py) ---- */
-const _b64enc = buf => btoa(String.fromCharCode(...new Uint8Array(buf)));
+function _b64enc(buf){
+  // fromCharCode con spread falla en buffers grandes; procesar en chunks de 8KB
+  const u8=new Uint8Array(buf), chunk=8192;
+  let s="";
+  for(let i=0;i<u8.length;i+=chunk){
+    s+=String.fromCharCode.apply(null, u8.subarray(i, i+chunk));
+  }
+  return btoa(s);
+}
 async function _gzip(bytes){
   const cs=new CompressionStream("gzip");
   const r=new Response(new Blob([bytes]).stream().pipeThrough(cs));
