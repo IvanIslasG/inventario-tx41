@@ -1156,6 +1156,9 @@ function filasOR(){
 const fmt1=n=>n==null?"S/C":(Math.round(n*10)/10).toLocaleString("es-MX");
 
 function pintarOR(){
+  // Limpiar banda NG anterior siempre
+  document.querySelectorAll("#orBandaNG").forEach(el=>el.remove());
+
   const rows=filasOR();
   const nNec=rows.filter(r=>r.calcSurtir>0.5).length;
   const totalX=rows.reduce((s,r)=>s+r.xsurtir,0);
