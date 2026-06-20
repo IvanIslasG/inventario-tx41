@@ -134,6 +134,12 @@
   details summary::-webkit-details-marker{display:none}
   details summary{outline:none}
   .an-cat-wrap{position:relative}
+  .fijadas-bar{background:#eaf1fb;border:1px solid #b8d0f0;border-radius:10px;padding:10px 14px;margin-bottom:12px;display:none}
+  .fijadas-bar.on{display:block}
+  .fijadas-bar h4{margin:0 0 8px;font-size:13px;color:var(--primary);display:flex;align-items:center;gap:8px}
+  .fijadas-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+  .fijada-chip{background:#fff;border:1px solid #b8d0f0;border-radius:8px;padding:3px 10px;font-size:12px;display:flex;align-items:center;gap:6px}
+  .fijada-chip button{background:none;border:none;color:#c0392b;cursor:pointer;font-size:14px;line-height:1;padding:0}
   .an-cat-input{width:100%;padding:9px 12px;border:1.5px solid var(--line);border-radius:8px;font:inherit;font-size:14px}
   .an-cat-input:focus{border-color:var(--primary);outline:none}
   .an-cat-sugs{position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--line);border-radius:8px;z-index:300;max-height:200px;overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,.1);margin-top:2px;display:none}
@@ -724,6 +730,7 @@ function anNombre(alm){ return AN_NOMBRES[alm]||(DB.directorio?.almacenes?.[alm]
 
 let anTab_="cat", anSortCatCol="dist", anSortCatDir=-1, anSortAlmCol="dist", anSortAlmDir=-1;
 let anDatosCat=[], anDatosAlm=[], anCatSel=null;
+let _anFijadas=[]; // filas fijadas para tabla custom
 
 function modAnalisis(){
   const conCons=Object.keys(DB.consumos||{});
@@ -747,6 +754,14 @@ function modAnalisis(){
       </div>
       <label class="chk">Meses CPM <input type="number" id="anMCPM" value="${mCPM}" min="1" max="24" step="1" style="width:58px"></label>
       <label class="chk">Stock obj. <input type="number" id="anMStk" value="${mStk}" min="0.5" max="12" step="0.5" style="width:58px"></label>
+    </div>
+    <!-- Panel de filas fijadas -->
+    <div class="fijadas-bar" id="an-fijadas-bar">
+      <h4>📌 Tabla personalizada
+        <button class="btn" id="an-exp-custom" style="margin-left:auto">⬇ Exportar tabla</button>
+        <button class="linkish" id="an-clear-custom" style="color:#c0392b">Limpiar todo</button>
+      </h4>
+      <div class="fijadas-chips" id="an-fijadas-chips"></div>
     </div>
     <!-- Panel POR CATÁLOGO -->
     <div id="an-panel-cat" ${anTab_!=="cat"?"hidden":""}>
@@ -787,6 +802,10 @@ function modAnalisis(){
     ["cat","alm"].forEach(v=>{ document.getElementById("an-panel-"+v).hidden=anTab_!==v; });
     $("#anSeg").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));
   });
+  // Panel fijadas
+  _renderFijadas();
+  document.getElementById("an-clear-custom")?.addEventListener("click",()=>{ _anFijadas=[]; _renderFijadas(); });
+  document.getElementById("an-exp-custom")?.addEventListener("click", _exportarCustom);
   // ---- Params ----
   const repintarCat=()=>{ if(anCatSel) anRenderTablaCat(anSortCatCol); };
   const repintarAlm=()=>{ if($("#an-alm-sel")?.value) anRenderAlm(); };
@@ -868,13 +887,14 @@ function anRenderTablaCat(col){
     <th class="r" onclick="_anSortCat('ex')">Existencia${ic("ex")}</th>
     <th class="r" onclick="_anSortCat('nec')">Stock obj.(${obj.toFixed(1)}m)${ic("nec")}</th>
     <th class="r" onclick="_anSortCat('dist')">Distribución${ic("dist")}</th>
-    <th>Estado</th>
+    <th>Estado</th><th></th>
   </tr></thead><tbody>${anDatosCat.length? anDatosCat.map(({alm,cons,mens,ex,nec,dist})=>{
     const nc=cons===0;
     const badge=nc?`<span class="an-badge g">Sin consumo</span>`
       :dist<0.5?`<span class="an-badge v">✓ Suficiente</span>`
       :dist<=mens?`<span class="an-badge a">↑ Bajo</span>`
       :`<span class="an-badge r">⚠ Déficit</span>`;
+    const yaFijada=_anFijadas.some(f=>f.cat===cat&&f.alm===alm);
     return `<tr>
       <td><div class="an-alm-code">${alm}</div><div class="an-alm-name">${anNombre(alm)}</div></td>
       <td class="r num">${nc?"—":anFmt(cons)}</td>
@@ -882,7 +902,58 @@ function anRenderTablaCat(col){
       <td class="r num">${anFmt(ex)}</td>
       <td class="r num">${nc?"—":anFmt(nec,1)}</td>
       <td class="r num" style="font-weight:700;color:${dist>0.5?"var(--low)":"var(--ok)"}">${dist>0.5?anFmt(dist,1):"—"}</td>
-      <td>${badge}</td></tr>`;}).join(""):`<tr><td colspan="7" class="empty">Sin datos con los filtros actuales.</td></tr>`}</tbody>`;
+      <td>${badge}</td>
+      <td><button class="btn an-fijar" data-cat="${cat}" data-alm="${alm}"
+          data-desc="${(m.desc||"").replace(/"/g,"")}" data-um="${m.um||""}"
+          data-cons="${cons}" data-ex="${ex}" data-dist="${dist}"
+          style="${yaFijada?"background:var(--primary);color:#fff":""}"
+          title="${yaFijada?"Ya fijada":"Fijar en tabla custom"}">📌</button></td>
+    </tr>`;}).join(""):`<tr><td colspan="8" class="empty">Sin datos con los filtros actuales.</td></tr>`}</tbody>`;
+  tbl.querySelectorAll(".an-fijar").forEach(btn=>btn.onclick=()=>{
+    const {cat,alm,desc,um,cons,ex,dist}=btn.dataset;
+    _fijarFila({cat,alm,desc,um,cons:+cons,ex:+ex,dist:+dist});
+    anRenderTablaCat(anSortCatCol);
+  });
+}
+function _fijarFila(fila){
+  const idx=_anFijadas.findIndex(f=>f.cat===fila.cat&&f.alm===fila.alm);
+  if(idx>=0) _anFijadas.splice(idx,1); // toggle: si ya existe, quitar
+  else _anFijadas.push(fila);
+  _renderFijadas();
+}
+function _renderFijadas(){
+  const bar=document.getElementById("an-fijadas-bar");
+  const chips=document.getElementById("an-fijadas-chips");
+  if(!bar||!chips) return;
+  if(!_anFijadas.length){ bar.classList.remove("on"); return; }
+  bar.classList.add("on");
+  chips.innerHTML=_anFijadas.map((f,i)=>`
+    <div class="fijada-chip">
+      <span><b>${f.cat}</b> · ${f.alm} <span style="color:var(--muted);font-size:11px">${(f.desc||"").substring(0,25)}</span></span>
+      <button onclick="_quitarFijada(${i})" title="Quitar">×</button>
+    </div>`).join("");
+}
+function _quitarFijada(i){ _anFijadas.splice(i,1); _renderFijadas(); }
+function _exportarCustom(){
+  if(!_anFijadas.length){ alert("No hay filas fijadas."); return; }
+  const per=anMCPM(), obj=anMStk();
+  const aoa=[
+    [`Tabla personalizada · CPM ${per}m · Stock obj. ${obj}m`],
+    [],
+    ["Catálogo","Descripción","U.M.","Almacén","Nombre almacén","Consumo total",
+     "Cons. mensual","Existencia",`Stock obj.(${obj}m)`,"Distribución","D041 disponible"],
+    ..._anFijadas.map(f=>{
+      const m=mat(f.cat);
+      const cons=(DB.consumos?.[f.alm]?.[f.cat])||0;
+      const mens=cons/per, nec=mens*obj;
+      const dist=Math.max(0,nec-(DB.existencias?.[f.cat]?.[f.alm]||0));
+      const exD=(DB.existencias?.[f.cat]?.[DIST()])||0;
+      return [f.cat,m.desc||f.desc,m.um||f.um,f.alm,anNombre(f.alm),
+              cons,+(mens.toFixed(2)),DB.existencias?.[f.cat]?.[f.alm]||0,
+              +(nec.toFixed(2)),+(dist.toFixed(1)),exD];
+    })
+  ];
+  descargarXLSX(aoa,"Distribución",`Analisis_Custom_${fechaTag()}`);
 }
 function _anSortCat(col){ anRenderTablaCat(col); }
 
@@ -1400,41 +1471,49 @@ function _exportarORJson(rows, numReabasto, generador, areasSeleccionadas){
   setTimeout(()=>URL.revokeObjectURL(url),3000);
 }
 
-/* ---- Excel con formato completo via servidor local (puerto 8001) ---- */
+/* ---- Excel OR directo (sin servidor externo) ---- */
 async function _exportarORSimple(rows, numReabasto, generador, areasSeleccionadas){
   const hoy=new Date().toLocaleDateString("es-MX",{day:"2-digit",month:"2-digit",year:"numeric"});
   const alm=orAlm, almNom=almName(alm);
   const mCPM=+document.getElementById("orMCPM")?.value||6;
   const mStk=+document.getElementById("orMS")?.value||1.5;
-  const porArea={}; rows.forEach(r=>(porArea[r.area]||=[]).push(r));
   const filename=`OR_${alm}_Reb${numReabasto}_${hoy.replace(/\//g,"-")}.xlsx`;
-  const areas={};
-  areasSeleccionadas.forEach(a=>{ areas[a]=(porArea[a]||[]).filter(r=>r.xsurtir>0)
-    .map(r=>({cat:r.cat,desc:r.desc,um:r.um,xs:r.xsurtir,obs:r.obs||""})); });
-  const payload={meta:{alm_sigla:alm,alm_nombre:almNom,num_reabasto:numReabasto,
-    generador,fecha:hoy,meses_cpm:mCPM,meses_stock:mStk,filename},areas};
-
-  // Intentar servidor local (puerto 8001)
-  try{
-    const res=await fetch("http://localhost:8001/exportar_or",{
-      method:"POST", headers:{"Content-Type":"application/json"},
-      body:JSON.stringify(payload)});
-    if(!res.ok) throw new Error("HTTP "+res.status);
-    const blob=await res.blob();
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement("a"); a.href=url; a.download=filename;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    setTimeout(()=>URL.revokeObjectURL(url),3000);
-  } catch(e){
-    // Servidor no disponible → xlsx plano como fallback
-    const ok=confirm(
-      "⚠️ El servidor de exportación no está corriendo (puerto 8001).\n\n"+
-      "Para obtener el Excel con formato completo, abre una terminal y corre:\n\n"+
-      "    python servidor_export.py\n\n"+
-      "¿Descargar Excel sin formato por ahora?");
-    if(!ok) return;
-    _exportarORPlano(rows, numReabasto, generador, areasSeleccionadas, hoy, filename);
-  }
+  const porArea={}; rows.forEach(r=>(porArea[r.area]||=[]).push(r));
+  const wb=XLSX.utils.book_new();
+  areasSeleccionadas.forEach(area=>{
+    const filas=(porArea[area]||[]).filter(r=>r.xsurtir>0);
+    if(!filas.length) return;
+    const aoa=[
+      [`Almacén: ${almNom} - ${alm}`,"","","","","","","","No. Guía",""],
+      [`OR ${area}`],
+      [`Reabasto: ${numReabasto}`,"","","","Pedido","","","","Siatel",""],
+      [`Fecha: ${hoy}`],
+      [],
+      ["","","CATÁLOGO","DESCRIPCIÓN","Unidad","X SURTIR","","OBSERVs"],
+      ...filas.map(f=>["","",f.cat,f.desc,f.um,f.xsurtir,"",f.obs||""]),
+      [],
+      ["","","","","HLog",`=SUM(F7:F${6+filas.length})`],
+      [],[],[],
+      ["","","Despacha:"],
+      ["","","","Nombre"],
+      [],[],[],
+      ["","","Genera OR:",generador||""],
+      [],
+      ["","",`CPM ${mCPM} meses · Stock obj. ${mStk} meses`],
+    ];
+    const ws=XLSX.utils.aoa_to_sheet(aoa);
+    ws["!merges"]=[
+      {s:{r:0,c:0},e:{r:0,c:7}},{s:{r:0,c:8},e:{r:0,c:9}},
+      {s:{r:1,c:0},e:{r:1,c:7}},
+      {s:{r:2,c:0},e:{r:2,c:3}},{s:{r:2,c:4},e:{r:2,c:7}},{s:{r:2,c:8},e:{r:2,c:9}},
+      {s:{r:3,c:0},e:{r:3,c:3}},
+    ];
+    ws["!cols"]=[{wch:3},{wch:3},{wch:13},{wch:40},{wch:8},{wch:11},{wch:3},{wch:32},{wch:14},{wch:14}];
+    ws["!rows"]=[{hpt:22},{hpt:18},{hpt:20},{hpt:18},{hpt:6},{hpt:16}];
+    XLSX.utils.book_append_sheet(wb, ws, area.substring(0,28));
+  });
+  if(!wb.SheetNames.length){ alert("Sin datos para exportar."); return; }
+  XLSX.writeFile(wb, filename);
 }
 
 /* ---- Fallback: xlsx plano sin formato ---- */
@@ -1587,8 +1666,14 @@ function modConfig(){
       setTimeout(()=>{ btn.disabled=false; btn.textContent="⬇ Descargar datos.enc"; }, 3000);
     }
   };
-  $("#genUsar").onclick=()=>{ DB=bundleFinal(); SOBRE=null; _adminTotal=null; _adminConsumos=null;
-    alert("Datos actualizados en esta sesión. Para que todos los vean el cambio, descarga y publica el datos.enc."); mostrarMenu(); };
+  $("#genUsar").onclick=()=>{
+    DB=bundleFinal(); SOBRE=null; _adminTotal=null; _adminConsumos=null;
+    // Actualizar el meta en el header
+    const m=DB.meta;
+    $("#meta").innerHTML=`Generado ${new Date(m.generado).toLocaleString('es-MX')}<br>${m.n_materiales.toLocaleString('es-MX')} materiales · ${m.n_almacenes} almacenes`;
+    mostrarMenu();
+    setTimeout(()=>alert("✅ Datos actualizados en esta sesión.\nPara que todos lo vean, descarga y publica el datos.enc."),100);
+  };
   $("#ghPublicar").onclick=()=> publicarGitHub();
   $("#cfgOut").onclick=()=>{ sessionStorage.removeItem("tx41_pass"); location.reload(); };
 }
@@ -1608,11 +1693,15 @@ function actualizarGenResumen(){
     : "Procesa un TOTAL o agrega consumos para generar un paquete nuevo. También puedes re-publicar el actual.";
 }
 // Combina: TOTAL nuevo (o DB actual) + consumos (nuevos sobre los existentes)
+function fechaLocalISO(){
+  const d=new Date();
+  const pad=n=>String(n).padStart(2,"0");
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
 function bundleFinal(){
-  const b = _adminTotal ? _adminTotal : JSON.parse(JSON.stringify(DB));
   const cons = Object.assign({}, b.consumos||{}, _adminConsumos||{});
   if(Object.keys(cons).length) b.consumos = cons;
-  b.meta = Object.assign({}, b.meta, { generado:new Date().toISOString().slice(0,19),
+  b.meta = Object.assign({}, b.meta, { generado:fechaLocalISO(),
     n_materiales:Object.keys(b.materiales).length, n_almacenes:Object.keys(b.directorio.almacenes).length,
     n_con_existencia:Object.keys(b.existencias).length });
   return b;
@@ -1698,7 +1787,7 @@ function construirBundleJS(parsed){
     if(Object.keys(m.lotes).length) valoracion.push(cat);
   }
   valoracion.sort();
-  const out={ meta:{ generado:new Date().toISOString().slice(0,19), almacen_distribuidor:D,
+  const out={ meta:{ generado:fechaLocalISO(), almacen_distribuidor:D,
       n_materiales:Object.keys(materiales).length, n_almacenes:Object.keys(DB.directorio.almacenes).length,
       n_con_existencia:Object.keys(existencias).length,
       meses_cpm:DB.meta?.meses_cpm||6, meses_stock:DB.meta?.meses_stock||1.5 },
