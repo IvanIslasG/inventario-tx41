@@ -1052,6 +1052,7 @@ function modOR(){
       <span class="pill" id="orResumen"></span>
       <span style="color:var(--muted)">CPM = consumo ÷ meses · Cálc. surtir = (meses stock × CPM) − existencia aux · <b>X Surtir</b> editable</span>
     </div>
+    <div id="orBandaNG"></div>
     <div class="panel"><div class="panel-head" style="gap:8px">
       <h2 id="orTitle"></h2><span class="pill" id="orCount"></span></div>
       <div style="overflow-x:auto"><table id="orTable" style="min-width:1200px"></table></div></div>`;
@@ -1156,9 +1157,6 @@ function filasOR(){
 const fmt1=n=>n==null?"S/C":(Math.round(n*10)/10).toLocaleString("es-MX");
 
 function pintarOR(){
-  // Limpiar banda NG anterior siempre
-  document.querySelectorAll("#orBandaNG").forEach(el=>el.remove());
-
   const rows=filasOR();
   const nNec=rows.filter(r=>r.calcSurtir>0.5).length;
   const totalX=rows.reduce((s,r)=>s+r.xsurtir,0);
@@ -1166,8 +1164,8 @@ function pintarOR(){
   $("#orCount").textContent=`${rows.length} catálogos`;
   $("#orResumen").textContent=`${nNec} a surtir · Total X surtir: ${nfmt(totalX)}`;
 
-  // Punto 4: sumatoria de calcSurtir y xsurtir agrupadas por nombre genérico (excluyendo SIN SUSTITUTO)
-  const sumNG={};  // ng -> {calcSurtir, xsurtir, cats:[]}
+  // Punto 4: sumatoria por nombre genérico — siempre actualizar el contenedor fijo
+  const sumNG={};
   rows.forEach(r=>{
     if(r.ng==="SIN SUSTITUTO") return;
     if(!sumNG[r.ng]) sumNG[r.ng]={calc:0,xs:0,cats:[]};
@@ -1175,34 +1173,30 @@ function pintarOR(){
     sumNG[r.ng].xs+=r.xsurtir;
     sumNG[r.ng].cats.push(r.cat);
   });
-  const tieneNG=Object.keys(sumNG).length>0;
-  const bandaNG = tieneNG ? `
-    <div style="margin-bottom:8px;background:#fffbe8;border:1px solid #f0d060;border-radius:10px;padding:8px 12px">
-      <div style="font-size:11px;font-weight:800;color:#7a5c00;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">
-        ∑ Sustitutos por nombre genérico <span style="font-weight:400;color:#9a7a00">(materiales que se pueden sustituir entre sí)</span>
-      </div>
-      <div style="display:flex;flex-wrap:wrap;gap:6px">
-        ${Object.entries(sumNG).sort((a,b)=>b[1].calc-a[1].calc).map(([ng,v])=>`
-          <div title="${v.cats.join(', ')}" style="background:#fff;border:1px solid #e8d080;border-radius:8px;padding:5px 10px;font-size:12px;cursor:default">
-            <span style="font-weight:700;color:#5a3e00">${ng}</span>
-            <span style="color:#7a5c00;margin-left:6px">Cálc: <b>${fmt1(v.calc)}</b></span>
-            <span style="color:#0a4ea3;margin-left:6px">X: <b style="font-size:13px">${nfmt(v.xs)}</b></span>
-            <span style="color:var(--muted);font-size:10.5px;margin-left:5px">${v.cats.length} cat.</span>
-          </div>`).join("")}
-      </div>
-    </div>` : "";
-
-  const thEx=`style="background:#e8f1fb;color:#0a4ea3;font-weight:800"`;
-  const thExD=`style="background:#1a3a6a;color:#fff;font-weight:800"`;
-  const tbl=$("#orTable").closest("div");
-  tbl.insertAdjacentHTML("beforebegin", "");
-  // insertar banda antes del panel
-  const panelEl=$("#orTable").closest(".panel");
-  const bandaId="orBandaNG";
-  const vieja=document.getElementById(bandaId); if(vieja) vieja.remove();
-  if(tieneNG){
-    const div=document.createElement("div"); div.id=bandaId; div.innerHTML=bandaNG;
-    panelEl.insertAdjacentElement("beforebegin", div.firstElementChild);
+  const bandaEl=$("#orBandaNG");
+  const ngsActivos=Object.keys(sumNG);
+  if(bandaEl){
+    if(ngsActivos.length){
+      bandaEl.style.display="";
+      bandaEl.innerHTML=`
+        <div style="background:#fffbe8;border:1px solid #f0d060;border-radius:10px;padding:8px 12px;margin-bottom:8px">
+          <div style="font-size:11px;font-weight:800;color:#7a5c00;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">
+            ∑ Sustitutos por nombre genérico <span style="font-weight:400;color:#9a7a00">(materiales que se pueden sustituir entre sí)</span>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            ${Object.entries(sumNG).sort((a,b)=>b[1].calc-a[1].calc).map(([ng,v])=>`
+              <div title="${v.cats.join(', ')}" style="background:#fff;border:1px solid #e8d080;border-radius:8px;padding:5px 10px;font-size:12px;cursor:default">
+                <span style="font-weight:700;color:#5a3e00">${ng}</span>
+                <span style="color:#7a5c00;margin-left:6px">Cálc: <b>${fmt1(v.calc)}</b></span>
+                <span style="color:#0a4ea3;margin-left:6px">X: <b style="font-size:13px">${nfmt(v.xs)}</b></span>
+                <span style="color:var(--muted);font-size:10.5px;margin-left:5px">${v.cats.length} cat.</span>
+              </div>`).join("")}
+          </div>
+        </div>`;
+    } else {
+      bandaEl.style.display="none";
+      bandaEl.innerHTML="";
+    }
   }
 
   $("#orTable").innerHTML=`
@@ -1287,7 +1281,6 @@ function pintarOR(){
   });
 }
 
-// Repintar solo la banda NG sin re-renderizar toda la tabla (cuando cambia X surtir)
 function _repintarBandaNG(){
   const rows=filasOR();
   const sumNG={};
@@ -1295,30 +1288,32 @@ function _repintarBandaNG(){
     if(r.ng==="SIN SUSTITUTO") return;
     if(!sumNG[r.ng]) sumNG[r.ng]={calc:0,xs:0,cats:[]};
     sumNG[r.ng].calc+=r.calcSurtir;
-    // leer el valor actual del input (ya guardado en _orManual)
     const man=_orManual[orAlm+"|"+r.cat];
-    const xs=man?.xs!=null ? man.xs : r.xsurtir;
-    sumNG[r.ng].xs+=xs;
+    sumNG[r.ng].xs+=(man?.xs!=null?man.xs:r.xsurtir);
     sumNG[r.ng].cats.push(r.cat);
   });
   const totalX=rows.reduce((s,r)=>{
     const man=_orManual[orAlm+"|"+r.cat]; return s+(man?.xs!=null?man.xs:r.xsurtir);
   },0);
   $("#orResumen").textContent=`${rows.filter(r=>r.calcSurtir>0.5).length} a surtir · Total X surtir: ${nfmt(totalX)}`;
-  const vieja=document.getElementById("orBandaNG"); if(!vieja) return;
-  if(!Object.keys(sumNG).length){ vieja.remove(); return; }
-  vieja.innerHTML=`<div style="font-size:11px;font-weight:800;color:#7a5c00;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">
-    ∑ Sustitutos por nombre genérico <span style="font-weight:400;color:#9a7a00">(materiales que se pueden sustituir entre sí)</span>
-  </div>
-  <div style="display:flex;flex-wrap:wrap;gap:6px">
-    ${Object.entries(sumNG).sort((a,b)=>b[1].calc-a[1].calc).map(([ng,v])=>`
-      <div title="${v.cats.join(', ')}" style="background:#fff;border:1px solid #e8d080;border-radius:8px;padding:5px 10px;font-size:12px;cursor:default">
-        <span style="font-weight:700;color:#5a3e00">${ng}</span>
-        <span style="color:#7a5c00;margin-left:6px">Cálc: <b>${fmt1(v.calc)}</b></span>
-        <span style="color:#0a4ea3;margin-left:6px">X: <b style="font-size:13px">${nfmt(v.xs)}</b></span>
-        <span style="color:var(--muted);font-size:10.5px;margin-left:5px">${v.cats.length} cat.</span>
-      </div>`).join("")}
-  </div>`;
+  const bandaEl=$("#orBandaNG"); if(!bandaEl) return;
+  if(!Object.keys(sumNG).length){ bandaEl.style.display="none"; bandaEl.innerHTML=""; return; }
+  bandaEl.style.display="";
+  bandaEl.innerHTML=`
+    <div style="background:#fffbe8;border:1px solid #f0d060;border-radius:10px;padding:8px 12px;margin-bottom:8px">
+      <div style="font-size:11px;font-weight:800;color:#7a5c00;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">
+        ∑ Sustitutos por nombre genérico <span style="font-weight:400;color:#9a7a00">(materiales que se pueden sustituir entre sí)</span>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        ${Object.entries(sumNG).sort((a,b)=>b[1].calc-a[1].calc).map(([ng,v])=>`
+          <div title="${v.cats.join(', ')}" style="background:#fff;border:1px solid #e8d080;border-radius:8px;padding:5px 10px;font-size:12px;cursor:default">
+            <span style="font-weight:700;color:#5a3e00">${ng}</span>
+            <span style="color:#7a5c00;margin-left:6px">Cálc: <b>${fmt1(v.calc)}</b></span>
+            <span style="color:#0a4ea3;margin-left:6px">X: <b style="font-size:13px">${nfmt(v.xs)}</b></span>
+            <span style="color:var(--muted);font-size:10.5px;margin-left:5px">${v.cats.length} cat.</span>
+          </div>`).join("")}
+      </div>
+    </div>`;
 }
 
 /* ---- Modal exportación OR (captura Nº Reabasto y Genera OR) ---- */
