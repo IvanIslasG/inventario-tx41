@@ -1400,105 +1400,67 @@ function _exportarORJson(rows, numReabasto, generador, areasSeleccionadas){
   setTimeout(()=>URL.revokeObjectURL(url),3000);
 }
 
-/* ---- Excel con formato completo ---- */
-function _exportarORSimple(rows, numReabasto, generador, areasSeleccionadas){
+/* ---- Excel con formato completo via servidor local (puerto 8001) ---- */
+async function _exportarORSimple(rows, numReabasto, generador, areasSeleccionadas){
   const hoy=new Date().toLocaleDateString("es-MX",{day:"2-digit",month:"2-digit",year:"numeric"});
+  const alm=orAlm, almNom=almName(alm);
+  const mCPM=+document.getElementById("orMCPM")?.value||6;
+  const mStk=+document.getElementById("orMS")?.value||1.5;
+  const porArea={}; rows.forEach(r=>(porArea[r.area]||=[]).push(r));
+  const filename=`OR_${alm}_Reb${numReabasto}_${hoy.replace(/\//g,"-")}.xlsx`;
+  const areas={};
+  areasSeleccionadas.forEach(a=>{ areas[a]=(porArea[a]||[]).filter(r=>r.xsurtir>0)
+    .map(r=>({cat:r.cat,desc:r.desc,um:r.um,xs:r.xsurtir,obs:r.obs||""})); });
+  const payload={meta:{alm_sigla:alm,alm_nombre:almNom,num_reabasto:numReabasto,
+    generador,fecha:hoy,meses_cpm:mCPM,meses_stock:mStk,filename},areas};
+
+  // Intentar servidor local (puerto 8001)
+  try{
+    const res=await fetch("http://localhost:8001/exportar_or",{
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(payload)});
+    if(!res.ok) throw new Error("HTTP "+res.status);
+    const blob=await res.blob();
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a"); a.href=url; a.download=filename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),3000);
+  } catch(e){
+    // Servidor no disponible → xlsx plano como fallback
+    const ok=confirm(
+      "⚠️ El servidor de exportación no está corriendo (puerto 8001).\n\n"+
+      "Para obtener el Excel con formato completo, abre una terminal y corre:\n\n"+
+      "    python servidor_export.py\n\n"+
+      "¿Descargar Excel sin formato por ahora?");
+    if(!ok) return;
+    _exportarORPlano(rows, numReabasto, generador, areasSeleccionadas, hoy, filename);
+  }
+}
+
+/* ---- Fallback: xlsx plano sin formato ---- */
+function _exportarORPlano(rows, numReabasto, generador, areasSeleccionadas, hoy, filename){
   const alm=orAlm, almNom=almName(alm);
   const mCPM=+document.getElementById("orMCPM")?.value||6;
   const mStk=+document.getElementById("orMS")?.value||1.5;
   const wb=XLSX.utils.book_new();
   const porArea={}; rows.forEach(r=>(porArea[r.area]||=[]).push(r));
-
   areasSeleccionadas.forEach(area=>{
     const filas=(porArea[area]||[]).filter(r=>r.xsurtir>0);
     if(!filas.length) return;
-
-    // Construir como AOA primero (simple y seguro)
-    const aoa=[];
-    aoa.push([`Almacén: ${almNom} - ${alm}`,"","","","","","","","No. Guía",""]);
-    aoa.push([`OR ${area}`,"","","","","","","","",""]);
-    aoa.push([`Reabasto: ${numReabasto}`,"","","","Pedido","","","","Siatel",""]);
-    aoa.push([`Fecha: ${hoy}`,"","","","","","","","",""]);
-    aoa.push([]); // fila 5 vacía
-    aoa.push(["","","CATÁLOGO","DESCRIPCIÓN","Unidad","X SURTIR","","OBSERVs","",""]);
-    filas.forEach(f=>aoa.push(["","",f.cat,f.desc,f.um,f.xsurtir,"",f.obs||"","",""]));
-    const lastD=6+filas.length;
-    aoa.push([]); // vacía
-    aoa.push(["","","","","HLog",`=SUM(F7:F${lastD})`,"","","",""]);
-    aoa.push([]); aoa.push([]); aoa.push([]);
-    aoa.push(["","","Despacha:","","","","","","",""]);
-    aoa.push(["","","","Nombre","","","","","",""]);
-    aoa.push([]); aoa.push([]); aoa.push([]);
-    aoa.push(["","","Genera OR:",generador||"","","","","","",""]);
-    aoa.push([]); aoa.push([]);
-    aoa.push(["","",`CPM ${mCPM} meses · Stock obj. ${mStk} meses`,"","","","","","",""]);
-
-    const ws=XLSX.utils.aoa_to_sheet(aoa);
-
-    // Merges
-    ws["!merges"]=[
-      {s:{r:0,c:0},e:{r:0,c:7}},  // A1:H1 almacén
-      {s:{r:0,c:8},e:{r:0,c:9}},  // I1:J1 no guía
-      {s:{r:1,c:0},e:{r:1,c:7}},  // A2:H2 OR área
-      {s:{r:2,c:0},e:{r:2,c:3}},  // A3:D3 reabasto
-      {s:{r:2,c:4},e:{r:2,c:7}},  // E3:H3 pedido
-      {s:{r:2,c:8},e:{r:2,c:9}},  // I3:J3 siatel
-      {s:{r:3,c:0},e:{r:3,c:3}},  // A4:D4 fecha
+    const aoa=[
+      [`Almacén: ${almNom} - ${alm}`],
+      [`OR ${area}`],
+      [`Reabasto: ${numReabasto}`,"","","","Pedido","","","","Siatel"],
+      [`Fecha: ${hoy}`],[], 
+      ["","","CATÁLOGO","DESCRIPCIÓN","Unidad","X SURTIR","","OBSERVs"],
+      ...filas.map(f=>["","",f.cat,f.desc,f.um,f.xsurtir,"",f.obs||""]),
+      [],[],[],[],[`Genera OR: ${generador}`],
     ];
-
-    // Anchos
-    ws["!cols"]=[{wch:3},{wch:3},{wch:13},{wch:40},{wch:8},{wch:11},{wch:3},{wch:32},{wch:14},{wch:14}];
-    ws["!rows"]=[{hpt:22},{hpt:18},{hpt:20},{hpt:18},{hpt:6},{hpt:16}];
-
-    // Aplicar estilos celda por celda
-    const BT={style:"thin",color:{rgb:"CBD5E1"}};
-    const BM={style:"medium",color:{rgb:"0A4EA3"}};
-    const bT={top:BT,bottom:BT,left:BT,right:BT};
-    const bM={top:BM,bottom:BM,left:BM,right:BM};
-
-    function sty(ws,addr,s){ if(ws[addr]) ws[addr].s=s; }
-
-    // Fila 1: Almacén
-    sty(ws,"A1",{font:{name:"Calibri",sz:14,bold:true,color:{rgb:"FFFFFF"}},fill:{fgColor:{rgb:"1A3A6A"}},alignment:{horizontal:"center",vertical:"center"}});
-    sty(ws,"I1",{font:{name:"Calibri",sz:10,bold:true},alignment:{horizontal:"center",vertical:"center"},border:bM});
-    // Fila 2: OR área
-    sty(ws,"A2",{font:{name:"Calibri",sz:12,bold:true,color:{rgb:"0A4EA3"}},fill:{fgColor:{rgb:"EAF1FB"}},alignment:{horizontal:"center",vertical:"center"}});
-    // Fila 3: Reabasto, Pedido, Siatel
-    sty(ws,"A3",{font:{name:"Calibri",sz:11,bold:true}});
-    sty(ws,"E3",{font:{name:"Calibri",sz:10,bold:true},alignment:{horizontal:"center",vertical:"center"},border:bM});
-    sty(ws,"I3",{font:{name:"Calibri",sz:10,bold:true},alignment:{horizontal:"center",vertical:"center"},border:bM});
-    // Fila 4: Fecha
-    sty(ws,"A4",{font:{name:"Calibri",sz:11}});
-    // Fila 6: cabeceras
-    ["A","B","C","D","E","F","G","H","I","J"].forEach(c=>{
-      sty(ws,c+"6",{font:{name:"Calibri",sz:10,bold:true,color:{rgb:"FFFFFF"}},fill:{fgColor:{rgb:"2F2F2F"}},alignment:{horizontal:"center",vertical:"center"},border:bT});
-    });
-    // Filas de datos
-    filas.forEach((_,i)=>{
-      const r=7+i, alt=i%2===1;
-      const bg=alt?"F2F5FA":null;
-      const base={font:{name:"Calibri",sz:10},border:bT};
-      const baseAlt={font:{name:"Calibri",sz:10},fill:{fgColor:{rgb:"F2F5FA"}},border:bT};
-      const ds=bg?baseAlt:base;
-      ["A","B","D","E","G","H"].forEach(c=> sty(ws,c+r,ds));
-      sty(ws,"C"+r,{font:{name:"Courier New",sz:10},alignment:{horizontal:"center"},border:bT,...(bg?{fill:{fgColor:{rgb:bg}}}:{})});
-      sty(ws,"F"+r,{font:{name:"Calibri",sz:10,bold:true},alignment:{horizontal:"center"},border:bT,...(bg?{fill:{fgColor:{rgb:bg}}}:{})});
-    });
-    // Total
-    const rT=lastD+2;
-    sty(ws,"F"+rT,{font:{name:"Calibri",sz:11,bold:true,color:{rgb:"0A4EA3"}},alignment:{horizontal:"center"},border:bM});
-    // Firma
-    const rS=rT+3;
-    sty(ws,"C"+rS,{font:{name:"Calibri",sz:10,bold:true}});
-    sty(ws,"D"+(rS+1),{border:{bottom:{style:"thin",color:{rgb:"333333"}}}});
-
+    const ws=XLSX.utils.aoa_to_sheet(aoa);
+    ws["!cols"]=[{wch:3},{wch:3},{wch:13},{wch:40},{wch:8},{wch:11},{wch:3},{wch:32}];
     XLSX.utils.book_append_sheet(wb, ws, area.substring(0,28));
   });
-
-  if(!wb.SheetNames.length){ alert("Sin datos para exportar (X Surtir = 0 en todos)."); return; }
-  XLSX.writeFile(wb,
-    `OR_${alm}_Reb${numReabasto}_${hoy.replace(/\//g,"-")}.xlsx`,
-    {cellStyles:true, type:"binary"});
+  if(wb.SheetNames.length) XLSX.writeFile(wb, filename||"OR.xlsx");
 }
 
 
