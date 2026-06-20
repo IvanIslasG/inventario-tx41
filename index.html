@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Almacén Distribuidor Puebla · D041</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx-js-style/1.2.0/xlsx.bundle.js"></script>
 <style>
   :root{
     --bg:#eef2f6; --surface:#fff; --line:#dde4ec;
@@ -1324,23 +1324,22 @@ function _repintarBandaNG(){
 function abrirModalOR(){
   const rows=filasOR().filter(r=>r.xsurtir>0||r.calcSurtir>0.5);
   if(!rows.length){ alert("No hay catálogos para exportar (todos con X Surtir = 0)."); return; }
-  // agrupar por área (para exportar múltiples hojas)
   const areasPresentes=[...new Set(rows.map(r=>r.area))].sort();
   const mCPM=+$("#orMCPM")?.value||6, mStk=+$("#orMS")?.value||1.5;
   const modal=document.createElement("div"); modal.className="modal on"; modal.id="orModal";
-  modal.innerHTML=`<div class="modal-box" style="max-width:380px">
+  modal.innerHTML=`<div class="modal-box" style="max-width:400px">
     <h3>⬇ Exportar Orden de Reabasto</h3>
     <div class="modal-body" style="gap:14px">
       <div>
         <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:5px">Número de Reabasto</label>
-        <input type="number" id="orNumReabasto" min="1" placeholder="Ej. 4" style="width:100%">
+        <input type="number" id="orNumReabasto" min="1" placeholder="Ej. 5" style="width:100%">
       </div>
       <div>
         <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:5px">¿Quién genera la OR?</label>
         <input type="text" id="orGenerador" placeholder="Nombre del responsable" style="width:100%">
       </div>
       <div>
-        <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:5px">Exportar por área</label>
+        <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:5px">Áreas a exportar</label>
         <div style="display:flex;flex-wrap:wrap;gap:6px">
           ${areasPresentes.map(a=>`<label class="chk" style="background:#f7f9fc;padding:5px 9px;border:1px solid var(--line);border-radius:8px">
             <input type="checkbox" class="or-area-chk" data-a="${a}" checked> ${a}</label>`).join("")}
@@ -1348,69 +1347,153 @@ function abrirModalOR(){
       </div>
       <p style="font-size:12px;color:var(--muted);margin:0">${nfmt(rows.length)} catálogos · CPM ${mCPM}m · Stock obj. ${mStk}m</p>
     </div>
-    <div class="modal-foot">
+    <div class="modal-foot" style="gap:8px">
       <button class="btn" id="orModalCancel">Cancelar</button>
-      <button class="btn-prim" id="orModalOk">Descargar Excel</button>
+      <button class="btn-prim" id="orModalOk">⬇ Exportar Excel</button>
     </div>
   </div>`;
   document.body.appendChild(modal);
   $("#orModalCancel").onclick=()=>modal.remove();
-  $("#orModalOk").onclick=()=>{
+
+  const getParams=()=>{
     const num=$("#orNumReabasto").value.trim()||"—";
     const gen=$("#orGenerador").value.trim()||"";
     const selAreas=[...modal.querySelectorAll(".or-area-chk:checked")].map(c=>c.dataset.a);
+    return {num, gen, selAreas};
+  };
+
+  // Excel con formato completo
+  $("#orModalOk").onclick=()=>{
+    const {num,gen,selAreas}=getParams();
     if(!selAreas.length){ alert("Selecciona al menos un área."); return; }
     modal.remove();
-    _exportarORFormato(rows.filter(r=>selAreas.includes(r.area)), num, gen, selAreas);
+    _exportarORSimple(rows.filter(r=>selAreas.includes(r.area)), num, gen, selAreas);
   };
 }
 
-/* ---- Generador de Excel con formato TX8A_Misc ---- */
-function _exportarORFormato(rows, numReabasto, generador, areasSeleccionadas){
-  const wb=XLSX.utils.book_new();
-  const alm=orAlm, almNom=almName(alm);
+/* ---- Export JSON para exportar_or.py ---- */
+function _exportarORJson(rows, numReabasto, generador, areasSeleccionadas){
   const hoy=new Date().toLocaleDateString("es-MX",{day:"2-digit",month:"2-digit",year:"numeric"});
   const mCPM=+$("#orMCPM")?.value||6, mStk=+$("#orMS")?.value||1.5;
-  const porArea={}; rows.forEach(r=>{ (porArea[r.area]||=[]).push(r); });
+  const areas={};
+  areasSeleccionadas.forEach(a=>{ areas[a]=[]; });
+  rows.forEach(r=>{ if(areas[r.area]) areas[r.area].push({cat:r.cat,desc:r.desc,um:r.um,xs:r.xsurtir,obs:r.obs}); });
+  const payload={
+    meta:{
+      alm_sigla:orAlm, alm_nombre:almName(orAlm),
+      num_reabasto:numReabasto, generador, fecha:hoy,
+      meses_cpm:mCPM, meses_stock:mStk
+    },
+    areas
+  };
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a"); a.href=url;
+  a.download=`OR_${orAlm}_Reb${numReabasto}_${hoy.replace(/\//g,"-")}_datos.json`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),3000);
+}
+
+/* ---- Excel con formato completo (xlsx-js-style) ---- */
+function _exportarORSimple(rows, numReabasto, generador, areasSeleccionadas){
+  const hoy=new Date().toLocaleDateString("es-MX",{day:"2-digit",month:"2-digit",year:"numeric"});
+  const alm=orAlm, almNom=almName(alm);
+  const mCPM=+$("#orMCPM")?.value||6, mStk=+$("#orMS")?.value||1.5;
+  const wb=XLSX.utils.book_new();
+  const porArea={}; rows.forEach(r=>(porArea[r.area]||=[]).push(r));
+
+  const BRD={style:"thin",color:{rgb:"CBD5E1"}};
+  const BRDM={style:"medium",color:{rgb:"0A4EA3"}};
+  const brd={top:BRD,bottom:BRD,left:BRD,right:BRD};
+  const brdM={top:BRDM,bottom:BRDM,left:BRDM,right:BRDM};
+
+  const ST={
+    tit:{font:{name:"Calibri",sz:14,bold:true,color:{rgb:"FFFFFF"}},fill:{fgColor:{rgb:"1A3A6A"}},alignment:{horizontal:"center",vertical:"center"}},
+    sub:{font:{name:"Calibri",sz:12,bold:true,color:{rgb:"0A4EA3"}},fill:{fgColor:{rgb:"EAF1FB"}},alignment:{horizontal:"center",vertical:"center"}},
+    reb:{font:{name:"Calibri",sz:11,bold:true}},
+    fecha:{font:{name:"Calibri",sz:11}},
+    caja:{font:{name:"Calibri",sz:10,bold:true},alignment:{horizontal:"center",vertical:"center"},border:brdM},
+    cab:{font:{name:"Calibri",sz:10,bold:true,color:{rgb:"FFFFFF"}},fill:{fgColor:{rgb:"2F2F2F"}},alignment:{horizontal:"center",vertical:"center"},border:brd},
+    dat:{font:{name:"Calibri",sz:10},border:brd},
+    datA:{font:{name:"Calibri",sz:10},fill:{fgColor:{rgb:"F2F5FA"}},border:brd},
+    cat:{font:{name:"Courier New",sz:10},alignment:{horizontal:"center"},border:brd},
+    catA:{font:{name:"Courier New",sz:10},fill:{fgColor:{rgb:"F2F5FA"}},alignment:{horizontal:"center"},border:brd},
+    xs:{font:{name:"Calibri",sz:10,bold:true},alignment:{horizontal:"center"},border:brd},
+    xsA:{font:{name:"Calibri",sz:10,bold:true},fill:{fgColor:{rgb:"F2F5FA"}},alignment:{horizontal:"center"},border:brd},
+    sum:{font:{name:"Calibri",sz:11,bold:true,color:{rgb:"0A4EA3"}},alignment:{horizontal:"center"},border:brdM},
+    firma:{font:{name:"Calibri",sz:10,bold:true}},
+    pie:{font:{name:"Calibri",sz:8,color:{rgb:"AAAAAA"}}},
+  };
+
+  function C(v,s){ return {v,s,t:typeof v==="number"?"n":"s"}; }
+  function F(f,s){ return {f,t:"n",s}; }
+  function addr(r,c){ const cols="ABCDEFGHIJ"; return cols[c]+r; }
+  function set(ws,r,c,cell){ ws[addr(r,c)]=cell; }
+
   areasSeleccionadas.forEach(area=>{
-    const filas=porArea[area]; if(!filas||!filas.length) return;
-    const ws=XLSX.utils.aoa_to_sheet([]);
-    // -- Encabezado formato TX8A_Misc --
-    // Fila 1: Almacén
-    XLSX.utils.sheet_add_aoa(ws,[[`Almacén: ${almNom}`]], {origin:"A1"});
-    // Fila 2: OR Área
-    XLSX.utils.sheet_add_aoa(ws,[[`OR ${area}`]], {origin:"A2"});
-    // Fila 3: D3 = Reabasto: N
-    XLSX.utils.sheet_add_aoa(ws,[["","","",`Reabasto: ${numReabasto}`]], {origin:"A3"});
-    // Fila 4: Fecha
-    XLSX.utils.sheet_add_aoa(ws,[["","","",`Fecha: ${hoy}`]], {origin:"A4"});
-    // Fila 6: Encabezados de tabla
-    // Columnas vacías primero (A,B) + datos
-    const header=["","","CATÁLOGO","DESCRIPCIÓN","Unidad","X SURTIR","","OBSERVs"];
-    XLSX.utils.sheet_add_aoa(ws,[header], {origin:"A6"});
-    // Filas de datos desde fila 7 (cols vacías A,B + datos en C,D,E,F,G,H)
-    const dataRows=filas.filter(r=>r.xsurtir>0).map(r=>["","",r.cat,r.desc,r.um,r.xsurtir,"",r.obs]);
-    XLSX.utils.sheet_add_aoa(ws, dataRows, {origin:"A7"});
-    const lastDataRow=6+dataRows.length;
-    // Fila vacía + totales (como TX8A_Misc: fila 34 tiene HLog y SUM)
-    const totRow=lastDataRow+2;
-    XLSX.utils.sheet_add_aoa(ws,[["","","","","HLog",`=SUM(F7:F${lastDataRow})`]], {origin:`A${totRow}`});
-    // Filas finales (despachador + genera OR)
-    const sigRow=totRow+3;
-    XLSX.utils.sheet_add_aoa(ws,[["","","Despacha:"]], {origin:`A${sigRow}`});
-    XLSX.utils.sheet_add_aoa(ws,[["","","","Nombre"]], {origin:`A${sigRow+1}`});
-    if(generador){
-      XLSX.utils.sheet_add_aoa(ws,[["","","Genera OR:",generador]], {origin:`A${sigRow+3}`});
-    } else {
-      XLSX.utils.sheet_add_aoa(ws,[["","","Genera OR:",""]], {origin:`A${sigRow+3}`});
-    }
-    // Anchos de columna (A,B vacías angostas, resto útil)
-    ws["!cols"]=[{wch:3},{wch:3},{wch:12},{wch:38},{wch:8},{wch:10},{wch:3},{wch:30}];
+    const filas=(porArea[area]||[]).filter(r=>r.xsurtir>0);
+    if(!filas.length) return;
+    const ws={};
+    const mg=[];
+
+    // Fila 1: Almacén C1:H1
+    set(ws,1,2,C(`Almacén: ${almNom} - ${alm}`,ST.tit));
+    mg.push({s:{r:0,c:2},e:{r:0,c:7}});
+    // No.Guía I1:J1
+    set(ws,1,8,C("No. Guía",ST.caja)); mg.push({s:{r:0,c:8},e:{r:0,c:9}});
+
+    // Fila 2: OR área C2:H2
+    set(ws,2,2,C(`OR ${area}`,ST.sub)); mg.push({s:{r:1,c:2},e:{r:1,c:7}});
+
+    // Fila 3: Reabasto C3:D3 | Pedido E3:H3 | Siatel I3:J3
+    set(ws,3,2,C(`Reabasto: ${numReabasto}`,ST.reb)); mg.push({s:{r:2,c:2},e:{r:2,c:3}});
+    set(ws,3,4,C("Pedido",ST.caja)); mg.push({s:{r:2,c:4},e:{r:2,c:7}});
+    set(ws,3,8,C("Siatel",ST.caja)); mg.push({s:{r:2,c:8},e:{r:2,c:9}});
+
+    // Fila 4: Fecha C4:D4
+    set(ws,4,2,C(`Fecha: ${hoy}`,ST.fecha)); mg.push({s:{r:3,c:2},e:{r:3,c:3}});
+
+    // Fila 6: cabeceras
+    ["","","CATÁLOGO","DESCRIPCIÓN","Unidad","X SURTIR","","OBSERVs"].forEach((h,c)=> set(ws,6,c,C(h,ST.cab)));
+
+    // Filas de datos
+    filas.forEach((f,i)=>{
+      const r=7+i, alt=i%2===1;
+      const ds=alt?ST.datA:ST.dat, cs=alt?ST.catA:ST.cat, xs=alt?ST.xsA:ST.xs;
+      set(ws,r,0,C("",ds)); set(ws,r,1,C("",ds));
+      set(ws,r,2,C(f.cat,cs));
+      set(ws,r,3,C(f.desc,ds));
+      set(ws,r,4,C(f.um,{...ds,alignment:{horizontal:"center"}}));
+      set(ws,r,5,C(f.xsurtir,xs));
+      set(ws,r,6,C("",ds));
+      set(ws,r,7,C(f.obs||"",ds));
+    });
+
+    const lastD=6+filas.length;
+    const rTot=lastD+2;
+    set(ws,rTot,4,C("HLog",ST.firma));
+    set(ws,rTot,5,F(`SUM(F7:F${lastD})`,ST.sum));
+
+    const rSig=rTot+3;
+    set(ws,rSig,2,C("Despacha:",ST.firma));
+    // línea de firma
+    [2,3,4,5,6,7].forEach(c=>{
+      set(ws,rSig+1,c,{v:"",t:"s",s:{border:{bottom:{style:"thin",color:{rgb:"333333"}}}}});
+    });
+    const rGen=rSig+3;
+    set(ws,rGen,2,C("Genera OR:",ST.firma));
+    set(ws,rGen,3,C(generador,{font:{name:"Calibri",sz:10}}));
+    set(ws,rGen+2,2,C(`CPM ${mCPM} meses · Stock obj. ${mStk} meses`,ST.pie));
+
+    ws["!cols"]=[{wch:3},{wch:3},{wch:13},{wch:42},{wch:8},{wch:12},{wch:4},{wch:34},{wch:14},{wch:14}];
+    ws["!rows"]=[{hpt:22},{hpt:18},{hpt:20},{hpt:18},{hpt:6},{hpt:16}];
+    ws["!merges"]=mg;
+    ws["!ref"]=`A1:J${rGen+3}`;
     XLSX.utils.book_append_sheet(wb, ws, area.substring(0,28));
   });
-  if(wb.SheetNames.length===0){ alert("Sin datos para exportar."); return; }
-  const almSlug=alm.replace(/\s+/g,"");
-  XLSX.writeFile(wb, `OR_${almSlug}_${areasSeleccionadas.join("-").substring(0,20)}_Reb${numReabasto}_${hoy.replace(/\//g,"-")}.xlsx`);
+
+  if(!wb.SheetNames.length){ alert("Sin datos para exportar."); return; }
+  XLSX.writeFile(wb, `OR_${alm}_${areasSeleccionadas.join("-").substring(0,20)}_Reb${numReabasto}_${hoy.replace(/\//g,"-")}.xlsx`);
 }
 
 
