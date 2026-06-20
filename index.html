@@ -1277,7 +1277,7 @@ function _htmlBandaNG(sumNG, open=true){
   const n=entries.length;
   // Resumen compacto para mostrar en el summary (siempre visible)
   const resumen=entries.slice(0,4).map(([ng,v])=>
-    `<span style="font-weight:700;color:#5a3e00">${ng}</span> <span style="color:#0a4ea3">X:${nfmt(v.xs)}</span>`
+    `<span style="font-weight:700;color:#5a3e00">${ng}</span> <span style="color:#c0392b">Cálc:${fmt1(v.calc)}</span>`
   ).join(' · ')+(n>4?` <span style="color:var(--muted)">+${n-4} más</span>`:"");
   // Chips completos dentro del body del details
   const chips=entries.map(([ng,v])=>`
