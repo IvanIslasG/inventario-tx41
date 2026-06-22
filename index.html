@@ -1850,7 +1850,7 @@ async function publicarGitHub(){
   const st=$("#ghStatus");
   const repo="IvanIslasG/inventario-tx41";
   const path="datos.enc";
-  const token="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";
+  const token="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";
   const api=`https://api.github.com/repos/${repo}/contents/${path}`;
   const headers={"Authorization":"Bearer "+token,"Accept":"application/vnd.github+json"};
   const btn=$("#ghPublicar"); btn.disabled=true; btn.textContent="⏳ Publicando…";
