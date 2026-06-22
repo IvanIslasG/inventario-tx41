@@ -1699,6 +1699,7 @@ function fechaLocalISO(){
   return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
 function bundleFinal(){
+  const b = _adminTotal ? _adminTotal : JSON.parse(JSON.stringify(DB));
   const cons = Object.assign({}, b.consumos||{}, _adminConsumos||{});
   if(Object.keys(cons).length) b.consumos = cons;
   b.meta = Object.assign({}, b.meta, { generado:fechaLocalISO(),
