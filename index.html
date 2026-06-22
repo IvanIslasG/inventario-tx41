@@ -220,14 +220,20 @@
 <!-- ===== GATE ===== -->
 <div id="gate">
   <div class="card">
-    <h1>Almacén Distribuidor Puebla · <b>D041</b></h1>
-    <p>Consulta de existencias por almacén. Ingresa la contraseña de acceso.</p>
-    <label for="pass">Contraseña</label>
-    <input type="password" id="pass" autocomplete="off" placeholder="........">
-    <button id="enter">Entrar</button>
-    <div class="err" id="gateErr"></div>
-    <div class="alt">¿Sin conexión? <label for="filePick">Cargar datos.enc local</label>
-      <input type="file" id="filePick" accept=".enc,.json" hidden></div>
+    <div style="text-align:center;margin-bottom:18px">
+      <div style="width:56px;height:56px;background:var(--primary);border-radius:14px;display:grid;place-items:center;margin:0 auto 12px;font-size:26px">📦</div>
+      <h1 style="margin:0 0 4px;font-size:20px">Almacén Distribuidor Puebla · <b>D041</b></h1>
+      <p style="margin:0;color:var(--muted);font-size:13px">Sistema de inventario y reabasto · Telmex TX41</p>
+    </div>
+    <div style="background:#f7f9fc;border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:16px;text-align:center">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Última actualización</div>
+      <div id="gate-generado" style="font-size:14px;font-weight:700;color:var(--primary)">Cargando…</div>
+      <div id="gate-mats" style="font-size:12px;color:var(--muted);margin-top:2px"></div>
+    </div>
+    <button id="enter" style="width:100%;padding:13px;background:var(--primary);color:#fff;border:0;border-radius:10px;font:700 15px/1 inherit;cursor:pointer;transition:.12s">
+      Entrar al sistema
+    </button>
+    <div class="err" id="gateErr" style="margin-top:10px;text-align:center"></div>
   </div>
 </div>
 
@@ -305,36 +311,39 @@ async function cargarSobre(){
   if(!res.ok) throw new Error("fetch");
   SOBRE = await res.json(); return SOBRE;
 }
-async function intentarEntrar(clave){
-  const err = $("#gateErr"); err.textContent = "";
-  if(!window.crypto || !window.crypto.subtle){
-    err.innerHTML = "Este navegador bloquea el cifrado en páginas locales (file://).<br>Ábrela vía <b>http://localhost:8000</b> o desde GitHub Pages.";
-    return;
-  }
+/* ============ GATE ============ */
+async function cargarSobre(){
+  if(SOBRE) return SOBRE;
+  const res = await fetch(DATA_URL, {cache:"no-store"});
+  if(!res.ok) throw new Error("fetch");
+  SOBRE = await res.json(); return SOBRE;
+}
+
+// Clave embebida — el cifrado protege el archivo en tránsito, no el acceso
+const _K = "TX41-Puebla-2026";
+
+async function intentarEntrar(){
+  const btn=$("#enter"), err=$("#gateErr");
+  btn.disabled=true; btn.textContent="Cargando…";
+  err.textContent="";
   try{
     const sobre = await cargarSobre();
-    DB = await descifrar(sobre, clave);
-    sessionStorage.setItem("tx41_pass", clave);
-    arrancarApp();
+    DB = await descifrar(sobre, _K);
+    // Mostrar datos de última actualización
+    const m=DB.meta;
+    $("#gate-generado").textContent=new Date(m.generado).toLocaleString("es-MX");
+    $("#gate-mats").textContent=(m.n_materiales||0).toLocaleString("es-MX")+" materiales · "+(m.n_almacenes||0)+" almacenes";
+    btn.textContent="✓ Listo — Entrando…";
+    setTimeout(()=>arrancarApp(), 600);
   }catch(e){
-    console.error("[TX41] Falló:", e);
-    if(e.message==="fetch") err.textContent = "No se encontró datos.enc. Usa 'Cargar datos.enc local'.";
-    else if(e.name==="OperationError" || e.name==="InvalidAccessError") err.textContent = "Contraseña incorrecta.";
-    else err.textContent = "Error inesperado: "+e.name+(e.message? " — "+e.message:"");
+    console.error("[TX41]",e);
+    btn.disabled=false; btn.textContent="Entrar al sistema";
+    if(e.message==="fetch") err.textContent="No se pudo cargar los datos. Verifica tu conexión.";
+    else err.textContent="Error al cargar: "+e.message;
   }
 }
-$("#enter").onclick = ()=> intentarEntrar($("#pass").value);
-$("#pass").addEventListener("keydown", e=>{ if(e.key==="Enter") intentarEntrar($("#pass").value); });
-$("#filePick").addEventListener("change", async e=>{
-  const f = e.target.files[0]; if(!f) return;
-  SOBRE = JSON.parse(await f.text());
-  $("#gateErr").textContent = "Archivo cargado. Ingresa la contraseña.";
-});
-window.addEventListener("DOMContentLoaded", ()=>{
-  const saved = sessionStorage.getItem("tx41_pass");
-  if(saved) intentarEntrar(saved);
-  $("#pass").focus();
-});
+
+window.addEventListener("DOMContentLoaded", ()=>{ intentarEntrar(); });
 
 /* ============ APP / ROUTER ============ */
 function arrancarApp(){
@@ -1605,7 +1614,7 @@ function modConfig(){
       </div>
     </div>
 
-    <div class="panel"><div style="padding:16px"><button class="btn" id="cfgOut">Cerrar sesión</button></div></div>
+    <div class="panel"><div style="padding:16px"><button class="btn" id="cfgOut">Recargar datos</button></div></div>
   </div>`;
 
   // Actualizar existencias
@@ -1648,7 +1657,7 @@ function modConfig(){
     const btn=$("#genDescargar");
     btn.disabled=true; btn.textContent="⏳ Cifrando…";
     try{
-      const clave=sessionStorage.getItem("tx41_pass")||"";
+      const clave=`${_K}`;
       if(!clave){ alert("No se encontró la clave de sesión. Cierra sesión y vuelve a entrar."); return; }
       const sobre=await cifrarJS(bundleFinal(), clave);
       const json=JSON.stringify(sobre);
@@ -1675,7 +1684,7 @@ function modConfig(){
     setTimeout(()=>alert("✅ Datos actualizados en esta sesión.\nPara que todos lo vean, descarga y publica el datos.enc."),100);
   };
   $("#ghPublicar").onclick=()=> publicarGitHub();
-  $("#cfgOut").onclick=()=>{ sessionStorage.removeItem("tx41_pass"); location.reload(); };
+  $("#cfgOut").onclick=()=>{ location.reload(); };
 }
 function renderConsLine(alm,info,n,suma,err){
   const div=document.createElement("div");
@@ -1833,7 +1842,7 @@ async function publicarGitHub(){
   const headers={ "Authorization":"Bearer "+token, "Accept":"application/vnd.github+json" };
   st.style.color="var(--muted)"; st.textContent="Cifrando y publicando…";
   try{
-    const clave=sessionStorage.getItem("tx41_pass")||"";
+    const clave=`${_K}`;
     const sobre=await cifrarJS(bundleFinal(), clave);
     let sha=null; const g=await fetch(api,{headers}); if(g.ok){ sha=(await g.json()).sha; }
     const body={ message:"Actualización "+new Date().toLocaleString('es-MX'), content:btoa(JSON.stringify(sobre)) };
