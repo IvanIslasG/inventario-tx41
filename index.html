@@ -1500,6 +1500,7 @@ function _exportarORJson(rows, numReabasto, generador, areasSeleccionadas){
 async function _exportarORSimple(rows, numReabasto, generador, areasSeleccionadas){
   const hoy=new Date().toLocaleDateString("es-MX",{day:"2-digit",month:"2-digit",year:"numeric"});
   const alm=orAlm, almNom=almName(alm);
+  console.log("[OR export] orAlm:", orAlm, "rows:", rows.length, "areas:", areasSeleccionadas);
   const mCPM=+document.getElementById("orMCPM")?.value||6;
   const mStk=+document.getElementById("orMS")?.value||1.5;
   const filename=`OR_${alm}_Reb${numReabasto}_${hoy.replace(/\//g,"-")}.xlsx`;
@@ -1566,7 +1567,7 @@ async function _exportarORSimple(rows, numReabasto, generador, areasSeleccionada
       XLSX.utils.book_append_sheet(wb, wsaSAP, "SAP ME21N");
 
       // ---- Hoja MIGO 351 — salida de mercancías D041 ----
-      const hdr351=["Material","Ctd. en UME","Lote","Cl. Valoración"];
+      const hdr351=["Material","Ctd. en UME","Lote","Cl. Valoracion"];
       const datRows351=filasSAP.map(f=>{
         const lotesD041=DB.lotes?.[f.cat];
         let lote="", clVal="";
