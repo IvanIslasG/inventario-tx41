@@ -1584,10 +1584,7 @@ async function _exportarORSimple(rows, numReabasto, generador, areasSeleccionada
         ws351["!cols"]=[{wch:13},{wch:13},{wch:18},{wch:16}];
         XLSX.utils.book_append_sheet(wb, ws351, "SAP MIGO 351");
       }
-      return;
     }
-    wsaSAP["!cols"]=colWidths;
-    XLSX.utils.book_append_sheet(wb, wsaSAP, "SAP MIGO 313");
   }
 
   if(!wb.SheetNames.length){ alert("Sin datos para exportar."); return; }
