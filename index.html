@@ -1544,8 +1544,10 @@ async function _exportarORSimple(rows, numReabasto, generador, areasSeleccionada
   const filasSAP=rows.filter(r=>r.xsurtir>0);
   if(filasSAP.length){
     // Detectar centro destino (todas las filas son del mismo centro)
-    const siglaDestino=orAlm; // orAlm es el almacén destino seleccionado
-    const centroDestino=(DB.directorio?.almacenes?.[siglaDestino]?.centro)||"";
+    const siglaDestino=orAlm; // orAlm es el almacén auxiliar = destino de la OR
+    const entryDir=DB.directorio?.almacenes?.[siglaDestino];
+    // El bundle puede tener el centro como string directo o como objeto {centro, desc, ...}
+    const centroDestino=(typeof entryDir==="string" ? entryDir : entryDir?.centro)||"";
     const esRN58=centroDestino==="RN58";
 
     let wsaSAP, colWidths;
