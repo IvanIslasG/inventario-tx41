@@ -1207,22 +1207,35 @@ function modOR(){
 function calcularOR(){
   const D=DIST(), cons=DB.consumos?.[orAlm]||{};
   const mCPM=Math.max(1,+$("#orMCPM")?.value||6), mStk=Math.max(0.1,+$("#orMS")?.value||1.5);
-  const out=[];
-  for(const [cat,consumo] of Object.entries(cons)){
+  const out=[], vistos=new Set();
+
+  const calcFila=(cat, consumo)=>{
     const info=mat(cat), ng=ngDe(cat)||"SIN SUSTITUTO";
     const cpm=consumo/mCPM;
     const exAux=(DB.existencias?.[cat]?.[orAlm])||0;
     const exD=(DB.existencias?.[cat]?.[D])||0;
     const calcSurtir=mStk*cpm-exAux;
     const man=_orManual[orAlm+"|"+cat]||{};
-    // Punto 1: solo proponer X surtir para SIN SUSTITUTO; los demás arrancan en 0
     const esSinSust=ng==="SIN SUSTITUTO";
     const sugerido=esSinSust ? Math.max(0,Math.min(Math.round(calcSurtir),exD)) : 0;
     const xsurtir=man.xs!=null ? man.xs : sugerido;
     const mdInv=cpm>0?exAux/cpm:null;
     const excedente=(3*cpm-exAux)<0;
-    out.push({cat,desc:info.desc,um:info.um,area:info.area||"Sin clasificar",ng,consumo,cpm,exAux,exD,calcSurtir,xsurtir,mdInv,excedente,obs:man.obs||""});
+    return {cat,desc:info.desc,um:info.um,area:info.area||"Sin clasificar",ng,consumo,cpm,exAux,exD,calcSurtir,xsurtir,mdInv,excedente,obs:man.obs||""};
+  };
+
+  // 1. Materiales con consumo en el almacén
+  for(const [cat,consumo] of Object.entries(cons)){
+    out.push(calcFila(cat, consumo));
+    vistos.add(cat);
   }
+
+  // 2. Críticos sin consumo — siempre deben aparecer
+  for(const cat of (DB.criticos||[])){
+    if(vistos.has(cat)) continue;
+    out.push(calcFila(cat, 0));
+  }
+
   return out;
 }
 
