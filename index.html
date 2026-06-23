@@ -1562,11 +1562,32 @@ async function _exportarORSimple(rows, numReabasto, generador, areasSeleccionada
       const hdr=["Material","Txt.brv.","Ctd.Pedido","Lote","Almacén Procedencia","Centro","Almacén"];
       const datRows=filasSAP.map(f=>[f.cat, "", f.xsurtir, "", "D041", centroDestino, siglaDestino]);
       wsaSAP=XLSX.utils.aoa_to_sheet([hdr,...datRows]);
-      colWidths=[{wch:13},{wch:8},{wch:13},{wch:8},{wch:20},{wch:10},{wch:10}];
+      wsaSAP["!cols"]=[{wch:13},{wch:8},{wch:13},{wch:8},{wch:20},{wch:10},{wch:10}];
+      XLSX.utils.book_append_sheet(wb, wsaSAP, "SAP ME21N");
+
+      // ---- Hoja MIGO 351 — salida de mercancías D041 ----
+      const hdr351=["Material","Ctd. en UME","Lote","Cl. Valoración"];
+      const datRows351=filasSAP.map(f=>{
+        const lotesD041=DB.lotes?.[f.cat];
+        let lote="", clVal="";
+        if(lotesD041 && lotesD041.length){
+          lote=lotesD041[0].lote;
+          clVal=lotesD041[0].lote;
+        } else {
+          const exD041=(DB.existencias?.[f.cat]?.["D041"])||0;
+          if(exD041>0) clVal="NUEVO";
+        }
+        return [f.cat, f.xsurtir, lote, clVal];
+      }).filter(r=>r[3]!=="");
+      if(datRows351.length){
+        const ws351=XLSX.utils.aoa_to_sheet([hdr351,...datRows351]);
+        ws351["!cols"]=[{wch:13},{wch:13},{wch:18},{wch:16}];
+        XLSX.utils.book_append_sheet(wb, ws351, "SAP MIGO 351");
+      }
+      return;
     }
     wsaSAP["!cols"]=colWidths;
-    const sheetName=esRN58?"SAP MIGO 313":"SAP ME21N";
-    XLSX.utils.book_append_sheet(wb, wsaSAP, sheetName);
+    XLSX.utils.book_append_sheet(wb, wsaSAP, "SAP MIGO 313");
   }
 
   if(!wb.SheetNames.length){ alert("Sin datos para exportar."); return; }
