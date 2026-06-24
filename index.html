@@ -2126,11 +2126,22 @@ function iniciarConteo(area){
         <option value="faltante">🔴 Faltantes</option>
         <option value="sobrante">🟡 Sobrantes</option>
       </select>
+      <select id="conteo-ubic" onchange="filtrarConteo()" style="min-width:140px">
+        <option value="">Todas las ubicaciones</option>
+      </select>
       <label class="chk"><input type="checkbox" id="conteo-solo-ex" onchange="filtrarConteo()"> Solo con existencia</label>
     </div>
 
     <div id="conteo-lista"></div>
   `;
+
+  // Poblar select de ubicaciones
+  const ubics = [...new Set(matsArea.map(m=>m.ubicacion).filter(Boolean))].sort();
+  const selUbic = $("#conteo-ubic");
+  if(selUbic){
+    selUbic.innerHTML = `<option value="">Todas las ubicaciones</option>` +
+      ubics.map(u=>`<option value="${u}">${u}</option>`).join("");
+  }
 
   // Filtrar materiales del área y renderizar
   _conteoLista = matsArea;
@@ -2141,12 +2152,14 @@ function filtrarConteo(){
   const q   = ($("#conteo-q")?.value||"").toLowerCase();
   const dif    = $("#conteo-dif")?.value||"";
   const soloEx = $("#conteo-solo-ex")?.checked;
+  const ubic   = $("#conteo-ubic")?.value||"";
   const esTodo = _conteoAreaActual === "Todo el inventario";
   const base = esTodo ? _conteoMats : _conteoMats.filter(m=>m.area===_conteoAreaActual);
 
   _conteoLista = base.filter(m=>{
     const mQ = !q || m.catalogo.includes(q) || m.descripcion.toLowerCase().includes(q);
     if(soloEx && (m.existencia||0) <= 0) return false;
+    if(ubic && m.ubicacion !== ubic) return false;
     let mD = true;
     if(dif){
       const fisico    = _conteoData[m.catalogo];
@@ -2216,7 +2229,7 @@ function renderConteo(){
               value="${cap?fis:""}"
               data-cat="${m.catalogo}" data-lote="${lote.lote}" data-idx="${idx}"
               data-libre="${lote.lib||0}" data-traslado="${lote.tras||0}"
-              onchange="guardarFisicoLoteC(this)" onfocus="_conteoFocoInput(this)" enterkeyhint="next"
+              onchange="guardarFisicoLoteC(this)" onfocus="_conteoFocoInput(this)" enterkeyhint="next" inputmode="numeric"
               onkeydown="navegarInputLoteC(event,'${m.catalogo}',${idx})">
             <div class="cap-input-l">Físico</div>
           </div>
@@ -2254,7 +2267,7 @@ function renderConteo(){
           <input class="cap-input" type="number" inputmode="numeric" min="0" placeholder="—"
             value="${cap?fis:""}"
             data-cat="${m.catalogo}" data-libre="${lib}" data-traslado="${tra}"
-            onchange="guardarFisicoC(this)" onfocus="_conteoFocoInput(this)" enterkeyhint="next"
+            onchange="guardarFisicoC(this)" onfocus="_conteoFocoInput(this)" enterkeyhint="next" inputmode="numeric"
             onkeydown="navegarInputC(event,'${m.catalogo}')">
           <div class="cap-input-l">Físico</div>
         </div>
@@ -2321,12 +2334,14 @@ function guardarFisicoLoteC(input){
 }
 
 function _conteoFocoInput(el){
-  el.focus();
-  el.select();
-  // Scroll para centrar el elemento en pantalla (importante en móvil)
-  setTimeout(()=>{
-    el.scrollIntoView({behavior:"smooth", block:"center"});
-  }, 100);
+  // Mantener teclado desplegado en móvil usando requestAnimationFrame
+  requestAnimationFrame(()=>{
+    el.focus();
+    try{ el.setSelectionRange(0, el.value.length); } catch(e){}
+    setTimeout(()=>{
+      el.scrollIntoView({behavior:"smooth", block:"center"});
+    }, 150);
+  });
 }
 
 function navegarInputC(event, cat){
@@ -2402,7 +2417,9 @@ function exportarConteo(){
   const filas = [];
   let capOk=0,capFalt=0,capSob=0,capPend=0;
 
-  _conteoMats.forEach(m=>{
+  // Exportar solo los materiales de la lista filtrada actual
+  const matExport = _conteoLista.length > 0 ? _conteoLista : _conteoMats;
+  matExport.forEach(m=>{
     if(m.lotes && m.lotes.length>0){
       m.lotes.forEach(lote=>{
         const key=`${m.catalogo}__${lote.lote}`;
