@@ -728,7 +728,7 @@ function _generarImpresion(grupos, ubis){
   const label=invSel===TODO?"TODO EL INVENTARIO":invSel.toUpperCase();
   const pa=$("#printArea"); pa.innerHTML="";
   ubis.forEach(u=>{
-    const lista=grupos[u]; if(!lista) return;
+    const lista=(grupos[u]||[]).slice().sort((a,b)=>+a.cat - +b.cat); if(!lista.length) return;
     const div=document.createElement("div"); div.className="pg";
     div.innerHTML=`
       <div class="ph">
