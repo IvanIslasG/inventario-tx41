@@ -2231,7 +2231,7 @@ function renderConteo(){
               value="${cap?fis:""}"
               data-cat="${m.catalogo}" data-lote="${lote.lote}" data-idx="${idx}"
               data-libre="${lote.lib||0}" data-traslado="${lote.tras||0}"
-              onchange="guardarFisicoLoteC(this)" onfocus="_conteoFocoInput(this)" enterkeyhint="next" inputmode="numeric"
+              onkeyup="if(event.key==='Enter'||event.keyCode===13)guardarFisicoLoteC(this)" onblur="guardarFisicoLoteC(this)" onfocus="_conteoFocoInput(this)" enterkeyhint="next" inputmode="numeric"
               onkeydown="navegarInputLoteC(event,'${m.catalogo}',${idx})">
             <div class="cap-input-l">Físico</div>
           </div>
@@ -2269,7 +2269,7 @@ function renderConteo(){
           <input class="cap-input" type="number" inputmode="numeric" min="0" placeholder="—"
             value="${cap?fis:""}"
             data-cat="${m.catalogo}" data-libre="${lib}" data-traslado="${tra}"
-            onchange="guardarFisicoC(this)" onfocus="_conteoFocoInput(this)" enterkeyhint="next" inputmode="numeric"
+            onkeyup="if(event.key==='Enter'||event.keyCode===13)guardarFisicoC(this)" onblur="guardarFisicoC(this)" onfocus="_conteoFocoInput(this)" enterkeyhint="next" inputmode="numeric"
             onkeydown="navegarInputC(event,'${m.catalogo}')">
           <div class="cap-input-l">Físico</div>
         </div>
@@ -2301,14 +2301,13 @@ function guardarFisicoC(input){
   }
   _conteoGuardarLS();
   actualizarTotalesConteo();
-  if($("#conteo-dif")?.value) filtrarConteo();
-  else {
-    const idx = _conteoLista.findIndex(m=>m.catalogo===cat);
-    const sig = _conteoLista[idx+1];
-    if(sig){
-      const next=document.querySelector(`input[data-cat="${sig.catalogo}"]`);
-      if(next){ _conteoFocoInput(next); }
-    }
+  const idx = _conteoLista.findIndex(m=>m.catalogo===cat);
+  const sig = _conteoLista[idx+1];
+  if(sig){
+    const next=document.querySelector(`input[data-cat="${sig.catalogo}"]`);
+    if(next){ _conteoFocoInput(next); }
+  } else if($("#conteo-dif")?.value) {
+    filtrarConteo();
   }
 }
 
