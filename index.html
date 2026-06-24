@@ -2433,8 +2433,9 @@ function exportarConteo(){
   const filas = [];
   let capOk=0,capFalt=0,capSob=0,capPend=0;
 
-  // Exportar solo los materiales de la lista filtrada actual
-  const matExport = _conteoLista.length > 0 ? _conteoLista : _conteoMats;
+  // Exportar solo los materiales de la lista filtrada actual, ordenados por catálogo
+  const matExport = (_conteoLista.length > 0 ? _conteoLista : _conteoMats)
+    .slice().sort((a,b)=>+a.catalogo - +b.catalogo);
   matExport.forEach(m=>{
     if(m.lotes && m.lotes.length>0){
       m.lotes.forEach(lote=>{
