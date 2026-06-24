@@ -824,6 +824,7 @@ function modAnalisis(){
         </div>
         <input type="search" id="an-cat-filtro" placeholder="Filtrar almacén…">
         <label class="chk"><input type="checkbox" id="an-cat-solo"> Solo con demanda</label>
+        <label class="chk"><input type="checkbox" id="an-cat-rec"> Almacenes recurrentes</label>
         <button class="btn" id="an-btn-exp-cat" style="display:none">⬇ Exportar</button>
       </div>
       <div id="an-cat-desc" class="an-desc" style="font-size:13px;color:var(--muted);padding:4px 2px"></div>
@@ -883,6 +884,7 @@ function modAnalisis(){
   document.addEventListener("click", e=>{ if(!catSugs.contains(e.target)&&e.target!==catInp) catSugs.style.display="none"; },{once:false,capture:false});
   $("#an-cat-filtro")?.addEventListener("input",()=>anRenderTablaCat(anSortCatCol));
   $("#an-cat-solo")?.addEventListener("change",()=>anRenderTablaCat(anSortCatCol));
+  $("#an-cat-rec")?.addEventListener("change",()=>anRenderTablaCat(anSortCatCol));
   $("#an-btn-exp-cat")?.addEventListener("click",anExportarCat);
   // ---- Buscador almacén ----
   if(tieneConsumos){
@@ -910,7 +912,7 @@ function anRenderTablaCat(col){
   if(!anCatSel) return;
   if(anSortCatCol===col) anSortCatDir=-anSortCatDir; else { anSortCatCol=col; anSortCatDir=col==="alm"?1:-1; }
   const per=anMCPM(), obj=anMStk(), cat=anCatSel, m=mat(cat);
-  const qFilt=($("#an-cat-filtro")?.value||"").toLowerCase(), soloDem=$("#an-cat-solo")?.checked;
+  const qFilt=($("#an-cat-filtro")?.value||"").toLowerCase(), soloDem=$("#an-cat-solo")?.checked, soloRec=$("#an-cat-rec")?.checked;
   const alms=almList().map(a=>a.clave);
   anDatosCat=alms.map(alm=>{
     const cons=(DB.consumos?.[alm]?.[cat])||0;
@@ -921,6 +923,7 @@ function anRenderTablaCat(col){
   }).filter(r=>{
     if(qFilt && !(r.alm.toLowerCase().includes(qFilt)||anNombre(r.alm).toLowerCase().includes(qFilt))) return false;
     if(soloDem && r.dist<0.5) return false;
+    if(soloRec && !((DB.directorio?.almacenes?.[r.alm])?.recurrente)) return false;
     return true;
   });
   anDatosCat.sort((a,b)=>{
@@ -2118,9 +2121,11 @@ function iniciarConteo(area){
       <select id="conteo-dif" onchange="filtrarConteo()" style="min-width:140px">
         <option value="">Todos</option>
         <option value="pendiente">⏳ Pendientes</option>
+        <option value="capturado">✏️ Solo capturados</option>
         <option value="ok">✓ Sin diferencia</option>
         <option value="faltante">🔴 Faltantes</option>
         <option value="sobrante">🟡 Sobrantes</option>
+        <option value="con-existencia">📦 Con existencia (Libre &gt; 0)</option>
       </select>
     </div>
 
@@ -2146,10 +2151,12 @@ function filtrarConteo(){
       const cap       = fisico !== undefined;
       const total     = (m.existencia||0) + (m.traslado||0);
       const diferencia = cap ? fisico - total : null;
-      if(dif==="pendiente") mD = !cap;
-      else if(dif==="ok")       mD = cap && diferencia===0;
-      else if(dif==="faltante") mD = cap && diferencia<0;
-      else if(dif==="sobrante") mD = cap && diferencia>0;
+      if(dif==="pendiente")        mD = !cap;
+      else if(dif==="capturado")    mD = cap;
+      else if(dif==="ok")           mD = cap && diferencia===0;
+      else if(dif==="faltante")     mD = cap && diferencia<0;
+      else if(dif==="sobrante")     mD = cap && diferencia>0;
+      else if(dif==="con-existencia") mD = (m.existencia||0) > 0;
     }
     return mQ && mD;
   });
