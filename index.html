@@ -4,7 +4,379 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Almacén Distribuidor Puebla · D041</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js">
+
+/* ============ CONTEO FÍSICO ============ */
+let _conteoData = {};   // cat (o cat__lote) → físico capturado
+let _conteoLista = [];  // lista filtrada actual
+let _conteoMats  = [];  // materiales del módulo actual (D041)
+
+function modConteo(){
+  // Construir lista de materiales de D041 con existencias y lotes
+  _conteoData = {};
+  _conteoMats = [];
+  const mats = DB.materiales || {};
+  const exs  = DB.existencias || {};
+  const tras  = DB.traslados || {};
+  const lotes = DB.lotes || {};
+
+  Object.keys(mats).forEach(cat => {
+    const m    = mats[cat];
+    const lib  = (exs[cat] && exs[cat]["D041"]) || 0;
+    const tra  = (tras[cat] && tras[cat]["D041"]) || 0;
+    const ls   = lotes[cat] || [];
+    if(lib > 0 || tra > 0 || ls.length > 0){
+      _conteoMats.push({
+        catalogo:    cat,
+        descripcion: m.desc || m.descripcion || "",
+        um:          m.um || "",
+        area:        m.area || "",
+        ubicacion:   m.ubic || m.ubicacion || "",
+        existencia:  lib,
+        traslado:    tra,
+        lotes:       ls,
+      });
+    }
+  });
+  _conteoMats.sort((a,b) => a.catalogo.localeCompare(b.catalogo));
+
+  showMod(`
+    <div style="margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <div style="flex:1">
+        <h2 style="margin:0;font-size:18px">Inventario Físico · D041 PUEBLA</h2>
+        <div id="conteo-subtitulo" style="font-size:12px;color:var(--muted);margin-top:2px">${_conteoMats.length} materiales con existencia</div>
+      </div>
+      <button class="btn btn-outline btn-sm" onclick="exportarConteo()">⬇ Exportar</button>
+      <button class="btn btn-outline btn-sm" style="color:var(--rojo,#dc2626)" onclick="limpiarConteo()">🗑 Limpiar</button>
+    </div>
+
+    <div class="cap-stats">
+      <div class="cap-stat"><div class="cap-stat-n" id="cc-cap">0</div><div class="cap-stat-l">Capturados</div></div>
+      <div class="cap-stat"><div class="cap-stat-n dif-pending" id="cc-pen">${_conteoMats.length}</div><div class="cap-stat-l">Pendientes</div></div>
+      <div class="cap-stat"><div class="cap-stat-n dif-ok" id="cc-ok">0</div><div class="cap-stat-l">Sin diferencia</div></div>
+      <div class="cap-stat"><div class="cap-stat-n dif-neg" id="cc-falt">0</div><div class="cap-stat-l">Faltantes</div></div>
+      <div class="cap-stat"><div class="cap-stat-n dif-pos" id="cc-sob">0</div><div class="cap-stat-l">Sobrantes</div></div>
+    </div>
+
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <input id="conteo-q" type="search" placeholder="Buscar catálogo o descripción..."
+        style="flex:1;min-width:180px" oninput="filtrarConteo()">
+      <select id="conteo-area" onchange="filtrarConteo()"
+        style="min-width:140px">
+        <option value="">Todas las áreas</option>
+        ${[...new Set(_conteoMats.map(m=>m.area).filter(Boolean))].sort()
+          .map(a=>`<option value="${a}">${a}</option>`).join("")}
+      </select>
+      <select id="conteo-dif" onchange="filtrarConteo()" style="min-width:140px">
+        <option value="">Todos</option>
+        <option value="pendiente">⏳ Pendientes</option>
+        <option value="ok">✓ Sin diferencia</option>
+        <option value="faltante">🔴 Faltantes</option>
+        <option value="sobrante">🟡 Sobrantes</option>
+      </select>
+    </div>
+
+    <div id="conteo-lista"></div>
+  `);
+
+  filtrarConteo();
+}
+
+function filtrarConteo(){
+  const q    = ($("#conteo-q")?.value||"").toLowerCase();
+  const area = $("#conteo-area")?.value||"";
+  const dif  = $("#conteo-dif")?.value||"";
+
+  _conteoLista = _conteoMats.filter(m=>{
+    const mQ = !q || m.catalogo.includes(q) || m.descripcion.toLowerCase().includes(q);
+    const mA = !area || m.area === area;
+    let mD = true;
+    if(dif){
+      const fisico    = _conteoData[m.catalogo];
+      const cap       = fisico !== undefined;
+      const total     = (m.existencia||0) + (m.traslado||0);
+      const diferencia = cap ? fisico - total : null;
+      if(dif==="pendiente") mD = !cap;
+      else if(dif==="ok")       mD = cap && diferencia===0;
+      else if(dif==="faltante") mD = cap && diferencia<0;
+      else if(dif==="sobrante") mD = cap && diferencia>0;
+    }
+    return mQ && mA && mD;
+  });
+
+  $("#conteo-subtitulo").textContent =
+    `${_conteoLista.length} visibles · ${Object.keys(_conteoData).length} capturados`;
+
+  renderConteo();
+  actualizarTotalesConteo();
+}
+
+function renderConteo(){
+  const lista = $("#conteo-lista");
+  if(!lista) return;
+  lista.innerHTML = "";
+
+  _conteoLista.forEach(m=>{
+    const tieneLotes = m.lotes && m.lotes.length > 0;
+
+    if(tieneLotes){
+      const div = document.createElement("div");
+      div.id = `cc-${m.catalogo}`;
+      div.style.cssText = "background:white;border-radius:12px;border:2px solid var(--borde);overflow:hidden;margin-bottom:8px";
+      div.innerHTML = `
+        <div style="padding:10px 14px;background:#fff7ed;border-bottom:1px solid #fed7aa;display:flex;align-items:center;gap:10px">
+          <span class="cap-cat" style="color:#9a3412">${m.catalogo}</span>
+          <span style="font-size:10px;background:#fed7aa;color:#9a3412;padding:2px 6px;border-radius:8px">📦 ${m.lotes.length} lotes</span>
+          <div style="flex:1;font-size:12px;color:var(--texto)">${m.descripcion}</div>
+          <div style="font-size:10px;color:var(--muted)">${m.ubicacion||"—"} · ${m.um||"—"}</div>
+        </div>`;
+
+      const tbody = document.createElement("div");
+      tbody.style.padding = "8px";
+
+      m.lotes.forEach((lote, idx)=>{
+        const key  = `${m.catalogo}__${lote.lote}`;
+        const fis  = _conteoData[key];
+        const cap  = fis !== undefined;
+        const tot  = (lote.lib||0) + (lote.tras||0);
+        const dif  = cap ? fis - tot : null;
+        let difCls = "dif-pending", difTxt = "—", bg = "transparent";
+        if(cap){
+          if(dif===0)    {difCls="dif-ok";  difTxt="✓ 0"; bg="#f0fdf4";}
+          else if(dif<0) {difCls="dif-neg"; difTxt=dif;   bg="#fff5f5";}
+          else           {difCls="dif-pos"; difTxt="+"+dif; bg="#fffdf0";}
+        }
+        const row = document.createElement("div");
+        row.style.cssText = `display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;margin-bottom:4px;background:${bg}`;
+        row.innerHTML = `
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#9a3412;font-weight:600;min-width:80px">${lote.lote}</div>
+          <div class="cap-siatel"><div class="cap-siatel-n">${(lote.lib||0).toLocaleString()}</div><div class="cap-siatel-l">Libre</div></div>
+          <div class="cap-siatel"><div class="cap-siatel-n" style="color:var(--naranja,#ea580c)">${(lote.tras||0).toLocaleString()}</div><div class="cap-siatel-l">Traslado</div></div>
+          <div style="flex:1"></div>
+          <div class="cap-input-wrap">
+            <input class="cap-input" type="number" inputmode="numeric" min="0" placeholder="—"
+              value="${cap?fis:""}"
+              data-cat="${m.catalogo}" data-lote="${lote.lote}" data-idx="${idx}"
+              data-libre="${lote.lib||0}" data-traslado="${lote.tras||0}"
+              onchange="guardarFisicoLoteC(this)" onfocus="this.select()"
+              onkeydown="navegarInputLoteC(event,'${m.catalogo}',${idx})">
+            <div class="cap-input-l">Físico</div>
+          </div>
+          <div class="cap-dif"><div class="cap-dif-n ${difCls}" id="ccdif-${m.catalogo}-${idx}">${difTxt}</div><div class="cap-dif-l">Dif.</div></div>`;
+        tbody.appendChild(row);
+      });
+      div.appendChild(tbody);
+      lista.appendChild(div);
+
+    } else {
+      const fis  = _conteoData[m.catalogo];
+      const cap  = fis !== undefined;
+      const lib  = m.existencia||0;
+      const tra  = m.traslado||0;
+      const tot  = lib + tra;
+      const dif  = cap ? fis - tot : null;
+      let cardCls = "cap-card", difCls = "dif-pending", difTxt = "—";
+      if(cap){
+        if(dif===0)    {cardCls+=" capturado"; difCls="dif-ok";  difTxt="✓ 0";}
+        else if(dif<0) {cardCls+=" faltante";  difCls="dif-neg"; difTxt=dif;}
+        else           {cardCls+=" sobrante";  difCls="dif-pos"; difTxt="+"+dif;}
+      }
+      const div = document.createElement("div");
+      div.className = cardCls;
+      div.id = `cc-${m.catalogo}`;
+      div.innerHTML = `
+        <div class="cap-cat">${m.catalogo}</div>
+        <div style="flex:1">
+          <div class="cap-desc">${m.descripcion}</div>
+          <div class="cap-ubi">${m.ubicacion||"—"} · ${m.um||"—"}</div>
+        </div>
+        <div class="cap-siatel"><div class="cap-siatel-n">${lib.toLocaleString()}</div><div class="cap-siatel-l">Libre</div></div>
+        <div class="cap-siatel"><div class="cap-siatel-n" style="color:var(--naranja,#ea580c)">${tra.toLocaleString()}</div><div class="cap-siatel-l">Traslado</div></div>
+        <div class="cap-input-wrap">
+          <input class="cap-input" type="number" inputmode="numeric" min="0" placeholder="—"
+            value="${cap?fis:""}"
+            data-cat="${m.catalogo}" data-libre="${lib}" data-traslado="${tra}"
+            onchange="guardarFisicoC(this)" onfocus="this.select()"
+            onkeydown="navegarInputC(event,'${m.catalogo}')">
+          <div class="cap-input-l">Físico</div>
+        </div>
+        <div class="cap-dif"><div class="cap-dif-n ${difCls}" id="ccdif-${m.catalogo}">${difTxt}</div><div class="cap-dif-l">Diferencia</div></div>`;
+      lista.appendChild(div);
+    }
+  });
+}
+
+function guardarFisicoC(input){
+  const cat = input.dataset.cat;
+  const lib = parseInt(input.dataset.libre)||0;
+  const tra = parseInt(input.dataset.traslado)||0;
+  const tot = lib + tra;
+  const val = input.value.trim();
+  if(val===""||isNaN(val)) delete _conteoData[cat];
+  else _conteoData[cat] = parseInt(val);
+  const fis = _conteoData[cat];
+  const cap = fis !== undefined;
+  const dif = cap ? fis - tot : null;
+  const card = document.getElementById(`cc-${cat}`);
+  if(card){
+    card.className = "cap-card" + (cap?(dif===0?" capturado":dif<0?" faltante":" sobrante"):"");
+    const difEl = card.querySelector(".cap-dif-n");
+    if(difEl){
+      difEl.className  = "cap-dif-n " + (cap?(dif===0?"dif-ok":dif<0?"dif-neg":"dif-pos"):"dif-pending");
+      difEl.textContent = cap?(dif===0?"✓ 0":dif<0?dif:"+"+dif):"—";
+    }
+  }
+  actualizarTotalesConteo();
+  if($("#conteo-dif")?.value) filtrarConteo();
+  else {
+    const idx = _conteoLista.findIndex(m=>m.catalogo===cat);
+    const sig = _conteoLista[idx+1];
+    if(sig){ const next=document.querySelector(`input[data-cat="${sig.catalogo}"]`); if(next){next.focus();next.select();} }
+  }
+}
+
+function guardarFisicoLoteC(input){
+  const cat = input.dataset.cat;
+  const lote= input.dataset.lote;
+  const idx = parseInt(input.dataset.idx);
+  const lib = parseFloat(input.dataset.libre)||0;
+  const tra = parseFloat(input.dataset.traslado)||0;
+  const tot = lib + tra;
+  const key = `${cat}__${lote}`;
+  const val = input.value.trim();
+  if(val===""||isNaN(val)) delete _conteoData[key];
+  else _conteoData[key] = parseInt(val);
+  const fis = _conteoData[key];
+  const cap = fis !== undefined;
+  const dif = cap ? fis - tot : null;
+  const difEl = document.getElementById(`ccdif-${cat}-${idx}`);
+  if(difEl){
+    difEl.className  = "cap-dif-n " + (cap?(dif===0?"dif-ok":dif<0?"dif-neg":"dif-pos"):"dif-pending");
+    difEl.textContent = cap?(dif===0?"✓ 0":dif<0?dif:"+"+dif):"—";
+  }
+  actualizarTotalesConteo();
+}
+
+function navegarInputC(event, cat){
+  if(event.key==="Enter"||event.key==="Tab"){
+    event.preventDefault();
+    const idx = _conteoLista.findIndex(m=>m.catalogo===cat);
+    const sig = _conteoLista[idx+1];
+    if(sig){ const next=document.querySelector(`input[data-cat="${sig.catalogo}"]`); if(next){next.focus();next.select();} }
+  }
+}
+
+function navegarInputLoteC(event, cat, idx){
+  if(event.key==="Enter"||event.key==="Tab"){
+    event.preventDefault();
+    const m = _conteoMats.find(m=>m.catalogo===cat);
+    if(m && idx < m.lotes.length-1){
+      const next = document.querySelector(`input[data-cat="${cat}"][data-idx="${idx+1}"]`);
+      if(next){next.focus();next.select();}
+    } else {
+      const mi = _conteoLista.findIndex(m=>m.catalogo===cat);
+      const sig = _conteoLista[mi+1];
+      if(sig){ const next=document.querySelector(`input[data-cat="${sig.catalogo}"]`); if(next){next.focus();next.select();} }
+    }
+  }
+}
+
+function actualizarTotalesConteo(){
+  let cap=0,pen=0,ok=0,falt=0,sob=0;
+  _conteoMats.forEach(m=>{
+    if(m.lotes && m.lotes.length>0){
+      m.lotes.forEach(lote=>{
+        const key=`${m.catalogo}__${lote.lote}`;
+        const fis=_conteoData[key];
+        const tot=(lote.lib||0)+(lote.tras||0);
+        if(fis===undefined){pen++;return;}
+        cap++;
+        const dif=fis-tot;
+        if(dif===0)ok++;else if(dif<0)falt++;else sob++;
+      });
+    } else {
+      const fis=_conteoData[m.catalogo];
+      const tot=(m.existencia||0)+(m.traslado||0);
+      if(fis===undefined){pen++;return;}
+      cap++;
+      const dif=fis-tot;
+      if(dif===0)ok++;else if(dif<0)falt++;else sob++;
+    }
+  });
+  const s=id=>{ const el=document.getElementById(id); if(el) el.textContent=el.id==="cc-pen"?pen:el.id==="cc-ok"?ok:el.id==="cc-falt"?falt:el.id==="cc-sob"?sob:cap; };
+  ["cc-cap","cc-pen","cc-ok","cc-falt","cc-sob"].forEach(s);
+  const vals={cap,pen,ok,falt,sob};
+  ["cc-cap","cc-pen","cc-ok","cc-falt","cc-sob"].forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el) return;
+    const n=id==="cc-cap"?cap:id==="cc-pen"?pen:id==="cc-ok"?ok:id==="cc-falt"?falt:sob;
+    el.textContent=n;
+  });
+}
+
+function limpiarConteo(){
+  if(!confirm("¿Limpiar todos los datos capturados?")) return;
+  _conteoData = {};
+  filtrarConteo();
+}
+
+function exportarConteo(){
+  if(Object.keys(_conteoData).length===0){ alert("No hay datos capturados."); return; }
+  const hoy = new Date().toLocaleDateString("es-MX",{day:"2-digit",month:"2-digit",year:"numeric"}).replace(/\//g,"-");
+  const wb  = XLSX.utils.book_new();
+  const filas = [];
+  let capOk=0,capFalt=0,capSob=0,capPend=0;
+
+  _conteoMats.forEach(m=>{
+    if(m.lotes && m.lotes.length>0){
+      m.lotes.forEach(lote=>{
+        const key=`${m.catalogo}__${lote.lote}`;
+        const fis=_conteoData[key];
+        const tot=(lote.lib||0)+(lote.tras||0);
+        const dif=fis!==undefined?fis-tot:"";
+        if(fis!==undefined){if(dif===0)capOk++;else if(dif<0)capFalt++;else capSob++;}else capPend++;
+        filas.push([m.catalogo,m.descripcion,m.um||"",m.ubicacion||"",lote.lote,lote.lib||0,lote.tras||0,tot,fis!==undefined?fis:"",dif]);
+      });
+    } else {
+      const fis=_conteoData[m.catalogo];
+      const lib=m.existencia||0,tra=m.traslado||0,tot=lib+tra;
+      const dif=fis!==undefined?fis-tot:"";
+      if(fis!==undefined){if(dif===0)capOk++;else if(typeof dif==="number"&&dif<0)capFalt++;else if(typeof dif==="number")capSob++;}else capPend++;
+      filas.push([m.catalogo,m.descripcion,m.um||"",m.ubicacion||"","",lib,tra,tot,fis!==undefined?fis:"",dif]);
+    }
+  });
+
+  const wsData=[
+    ["INVENTARIO FÍSICO — ALMACÉN D041 PUEBLA","","","","","","","","",""],
+    [`Fecha: ${hoy}   ·   Materiales: ${_conteoMats.length}   ·   Capturados: ${capOk+capFalt+capSob}   ·   Pendientes: ${capPend}`,"","","","","","","","",""],
+    [""],
+    ["Catálogo","Descripción","U.M.","Ubicación","Lote","Lib. Utiliz.","Traslado","Total SAP","Físico","Diferencia"],
+    ...filas,
+    [""],
+    ["RESUMEN","","","","","","","","",""],
+    ["Sin diferencia",capOk,"","","Faltantes",capFalt,"","",""],
+    ["Sobrantes",capSob,"","","Pendientes",capPend,"","",""],
+  ];
+  const ws=XLSX.utils.aoa_to_sheet(wsData);
+  ws["!merges"]=[{s:{r:0,c:0},e:{r:0,c:9}},{s:{r:1,c:0},e:{r:1,c:9}}];
+  ws["!cols"]=[{wch:12},{wch:40},{wch:7},{wch:16},{wch:14},{wch:12},{wch:10},{wch:12},{wch:10},{wch:12}];
+  XLSX.utils.book_append_sheet(wb,ws,"Inventario");
+
+  // Hoja solo diferencias
+  const difData=[
+    ["DIFERENCIAS — D041 — "+hoy,"","","","","","","","",""],
+    ["Catálogo","Descripción","U.M.","Ubicación","Lote","Lib. Utiliz.","Traslado","Total SAP","Físico","Diferencia"],
+    ...filas.filter(f=>f[9]!==""&&f[9]!==0).sort((a,b)=>(a[9]||0)-(b[9]||0))
+  ];
+  if(difData.length===2) difData.push(["Sin diferencias","","","","","","","",""]);
+  const wsDif=XLSX.utils.aoa_to_sheet(difData);
+  wsDif["!cols"]=ws["!cols"];
+  XLSX.utils.book_append_sheet(wb,wsDif,"Solo Diferencias");
+
+  XLSX.writeFile(wb,`Inventario_D041_${hoy}.xlsx`);
+}
+
+</script>
 <style>
   :root{
     --bg:#eef2f6; --surface:#fff; --line:#dde4ec;
@@ -213,6 +585,33 @@
   #printArea table.pt td{border:1px solid #cbd5e1;padding:3px 6px}
   #printArea .col-fis{background:#fffbe9}
   #printArea .pf{display:flex;justify-content:space-between;font-size:7.5pt;color:#666;margin-top:6px}
+
+  /* ── Módulo Conteo ── */
+  .cap-card{background:white;border-radius:12px;border:2px solid var(--borde);padding:14px 16px;display:flex;align-items:center;gap:12px;transition:border-color .15s;margin-bottom:8px}
+  .cap-card.capturado{border-color:#86efac;background:#f0fdf4}
+  .cap-card.faltante{border-color:#fca5a5;background:#fff5f5}
+  .cap-card.sobrante{border-color:#fcd34d;background:#fffdf0}
+  .cap-cat{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:var(--azul);min-width:80px;flex-shrink:0}
+  .cap-desc{font-size:12px;line-height:1.4;color:var(--texto);min-width:0}
+  .cap-ubi{font-size:10px;color:var(--muted);margin-top:2px}
+  .cap-siatel{text-align:center;min-width:52px;flex-shrink:0}
+  .cap-siatel-n{font-size:18px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:var(--azul);line-height:1}
+  .cap-siatel-l{font-size:9px;color:var(--muted);text-transform:uppercase}
+  .cap-input-wrap{display:flex;flex-direction:column;align-items:center;gap:3px;flex-shrink:0}
+  .cap-input{width:76px;height:52px;font-size:24px;font-weight:700;font-family:'IBM Plex Mono',monospace;text-align:center;border:2px solid var(--borde);border-radius:10px;outline:none;color:var(--texto);background:white;-webkit-appearance:none}
+  .cap-input:focus{border-color:var(--azul);box-shadow:0 0 0 3px rgba(0,48,135,.15)}
+  .cap-input-l{font-size:9px;color:var(--muted);text-transform:uppercase}
+  .cap-dif{min-width:58px;text-align:center;flex-shrink:0}
+  .cap-dif-n{font-size:16px;font-weight:700;font-family:'IBM Plex Mono',monospace;line-height:1}
+  .cap-dif-l{font-size:9px;color:var(--muted);text-transform:uppercase}
+  .dif-ok{color:var(--verde,#16a34a)}
+  .dif-neg{color:var(--rojo,#dc2626)}
+  .dif-pos{color:var(--naranja,#ea580c)}
+  .dif-pending{color:#d1d5db}
+  .cap-stats{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+  .cap-stat{background:white;border:1px solid var(--borde);border-radius:10px;padding:10px 16px;text-align:center;min-width:70px}
+  .cap-stat-n{font-size:22px;font-weight:700;font-family:'IBM Plex Mono',monospace;line-height:1}
+  .cap-stat-l{font-size:9px;color:var(--muted);text-transform:uppercase;margin-top:2px}
 </style>
 </head>
 <body>
@@ -389,7 +788,7 @@ function abrirModulo(id){
   window.scrollTo(0,0);
   // OR usa todo el ancho; el resto respeta max-width
   document.querySelector("main").classList.toggle("fullwidth", id==="or");
-  ({inventario:modInventario, analisis:modAnalisis, directorio:modDirectorio, or:modOR, config:modConfig}[id])();
+  ({inventario:modInventario, analisis:modAnalisis, directorio:modDirectorio, or:modOR, conteo:modConteo, config:modConfig}[id])();
 }
 
 /* ============ HELPERS DE DATOS ============ */
@@ -419,11 +818,11 @@ function renderMenu(){
   const nDist = Object.values(DB.existencias).filter(e=>DIST() in e).length;
   const nRec = almList().filter(a=>a.recurrente).length;
   const cards=[
-    {id:"inventario", t:"Inventario", d:"Existencias del almacén distribuidor (D041) por área.", s:`${nfmt(nDist)} materiales en D041`},
+    {id:"inventario", t:"Existencias", d:"Existencias del almacén distribuidor (D041) por área.", s:`${nfmt(nDist)} materiales en D041`},
     {id:"analisis", t:"Análisis", d:"Existencias por almacén y por catálogo, todos los centros.", s:`${conEx.size} almacenes con existencia`},
     {id:"directorio", t:"Directorio", d:"Claves y nombres de centros y almacenes.", s:`${nRec} recurrentes · ${almList().length} totales`},
     {id:"or", t:"Orden de Reabasto", d:"Generar OR por almacén auxiliar con cálculo automático.", s:"", soon:true},
-    {id:"config", t:"Configuración", d:"Parámetros, datos del paquete y sesión.", s:""},
+    {id:"conteo", t:"Inventario", d:"Captura de conteo físico con diferencias en tiempo real.", s:"Conteo físico · D041"},{id:"config", t:"Configuración", d:"Parámetros, datos del paquete y sesión.", s:""},
   ];
   $("#menuView").innerHTML=`
     <div class="menu-h"><h1>Módulos</h1><p>Elige una herramienta para empezar.</p></div>
@@ -486,7 +885,7 @@ function renderAreasInv(){
     </div>`).join("");
   $("#moduleView").innerHTML=`
     <div class="menu-h" style="margin-bottom:14px">
-      <h1>Inventario · D041 PUEBLA</h1>
+      <h1>Existencias · D041 PUEBLA</h1>
       <p>Existencias del almacén distribuidor. Elige un área para consultar, contar o exportar.</p>
     </div>
     <div class="area-grid">
