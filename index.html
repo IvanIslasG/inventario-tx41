@@ -2335,14 +2335,16 @@ function guardarFisicoLoteC(input){
 }
 
 function _conteoFocoInput(el){
-  // Mantener teclado desplegado en móvil usando requestAnimationFrame
-  requestAnimationFrame(()=>{
-    el.focus();
-    try{ el.setSelectionRange(0, el.value.length); } catch(e){}
-    setTimeout(()=>{
-      el.scrollIntoView({behavior:"smooth", block:"center"});
-    }, 150);
-  });
+  el.focus();
+  try{ el.setSelectionRange(0, el.value.length); } catch(e){}
+  // Solo hacer scroll si el elemento está fuera del viewport visible
+  // Sin smooth para evitar loop en móvil con teclado abierto
+  const rect = el.getBoundingClientRect();
+  const vh = window.innerHeight;
+  const margen = 120; // espacio para el teclado
+  if(rect.top < 60 || rect.bottom > vh - margen){
+    el.scrollIntoView({block:"center"});
+  }
 }
 
 function navegarInputC(event, cat){
