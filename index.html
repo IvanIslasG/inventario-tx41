@@ -2125,8 +2125,8 @@ function iniciarConteo(area){
         <option value="ok">✓ Sin diferencia</option>
         <option value="faltante">🔴 Faltantes</option>
         <option value="sobrante">🟡 Sobrantes</option>
-        <option value="con-existencia">📦 Con existencia (Libre &gt; 0)</option>
       </select>
+      <label class="chk"><input type="checkbox" id="conteo-solo-ex" onchange="filtrarConteo()"> Solo con existencia</label>
     </div>
 
     <div id="conteo-lista"></div>
@@ -2139,24 +2139,25 @@ function iniciarConteo(area){
 
 function filtrarConteo(){
   const q   = ($("#conteo-q")?.value||"").toLowerCase();
-  const dif = $("#conteo-dif")?.value||"";
+  const dif    = $("#conteo-dif")?.value||"";
+  const soloEx = $("#conteo-solo-ex")?.checked;
   const esTodo = _conteoAreaActual === "Todo el inventario";
   const base = esTodo ? _conteoMats : _conteoMats.filter(m=>m.area===_conteoAreaActual);
 
   _conteoLista = base.filter(m=>{
     const mQ = !q || m.catalogo.includes(q) || m.descripcion.toLowerCase().includes(q);
+    if(soloEx && (m.existencia||0) <= 0) return false;
     let mD = true;
     if(dif){
       const fisico    = _conteoData[m.catalogo];
       const cap       = fisico !== undefined;
       const total     = (m.existencia||0) + (m.traslado||0);
       const diferencia = cap ? fisico - total : null;
-      if(dif==="pendiente")        mD = !cap;
-      else if(dif==="capturado")    mD = cap;
-      else if(dif==="ok")           mD = cap && diferencia===0;
-      else if(dif==="faltante")     mD = cap && diferencia<0;
-      else if(dif==="sobrante")     mD = cap && diferencia>0;
-      else if(dif==="con-existencia") mD = (m.existencia||0) > 0;
+      if(dif==="pendiente")     mD = !cap;
+      else if(dif==="capturado") mD = cap;
+      else if(dif==="ok")        mD = cap && diferencia===0;
+      else if(dif==="faltante")  mD = cap && diferencia<0;
+      else if(dif==="sobrante")  mD = cap && diferencia>0;
     }
     return mQ && mD;
   });
