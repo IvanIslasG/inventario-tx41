@@ -1967,9 +1967,29 @@ let _conteoData = {};   // cat (o cat__lote) → físico capturado
 let _conteoLista = [];  // lista filtrada actual
 let _conteoMats  = [];  // materiales del módulo actual (D041)
 
+// ── Clave localStorage por área ──────────────────────────────────────────────
+function _conteoKey(area){ return "conteo_tx41_" + (area||"todo").replace(/\s+/g,"_").toLowerCase(); }
+
+function _conteoCargarLS(area){
+  try{ return JSON.parse(localStorage.getItem(_conteoKey(area)) || "{}"); }
+  catch(e){ return {}; }
+}
+
+function _conteoGuardarLS(){
+  try{ localStorage.setItem(_conteoKey(_conteoAreaActual), JSON.stringify(_conteoData)); }
+  catch(e){}
+}
+
+function _conteoLimpiarLS(area){
+  try{ localStorage.removeItem(_conteoKey(area)); }
+  catch(e){}
+}
+
+// ── Menú de selección de área ─────────────────────────────────────────────────
+let _conteoAreaActual = "";
+
 function modConteo(){
-  // Construir lista de materiales de D041 con existencias y lotes
-  _conteoData = {};
+  // Construir lista completa de materiales de D041
   _conteoMats = [];
   const mats = DB.materiales || {};
   const exs  = DB.existencias || {};
@@ -1977,10 +1997,10 @@ function modConteo(){
   const lotes = DB.lotes || {};
 
   Object.keys(mats).forEach(cat => {
-    const m    = mats[cat];
-    const lib  = (exs[cat] && exs[cat]["D041"]) || 0;
-    const tra  = (tras[cat] && tras[cat]["D041"]) || 0;
-    const ls   = lotes[cat] || [];
+    const m   = mats[cat];
+    const lib = (exs[cat] && exs[cat]["D041"]) || 0;
+    const tra = (tras[cat] && tras[cat]["D041"]) || 0;
+    const ls  = lotes[cat] || [];
     if(lib > 0 || tra > 0 || ls.length > 0){
       _conteoMats.push({
         catalogo:    cat,
@@ -1996,11 +2016,84 @@ function modConteo(){
   });
   _conteoMats.sort((a,b) => a.catalogo.localeCompare(b.catalogo));
 
+  // Obtener áreas únicas
+  const areas = ["Todo el inventario",
+    ...[...new Set(_conteoMats.map(m=>m.area).filter(Boolean))].sort()
+  ];
+
+  // Detectar conteos en progreso en localStorage
+  const enProgreso = areas.filter(a => {
+    const key = _conteoKey(a);
+    try{ const d = JSON.parse(localStorage.getItem(key)||"{}"); return Object.keys(d).length > 0; }
+    catch(e){ return false; }
+  });
+
+  $("#moduleView").innerHTML=`
+    <div style="max-width:520px;margin:0 auto;padding-top:8px">
+      <div style="margin-bottom:24px">
+        <h2 style="margin:0 0 4px;font-size:20px">Inventario Físico</h2>
+        <p style="margin:0;color:var(--muted);font-size:13px">D041 · Almacén Distribuidor Puebla</p>
+      </div>
+
+      <p style="font-size:14px;font-weight:600;margin:0 0 12px">¿De qué área vas a hacer inventario?</p>
+
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${areas.map(a => {
+          const enProg = enProgreso.includes(a);
+          const nMats  = a === "Todo el inventario"
+            ? _conteoMats.length
+            : _conteoMats.filter(m=>m.area===a).length;
+          let capturados = 0;
+          if(enProg){
+            try{
+              const d = JSON.parse(localStorage.getItem(_conteoKey(a))||"{}");
+              capturados = Object.keys(d).length;
+            }catch(e){}
+          }
+          return `
+          <button onclick="iniciarConteo('${a.replace(/'/g,"\'")}') "
+            style="display:flex;align-items:center;gap:14px;padding:14px 16px;
+                   background:${enProg?"#f0fdf4":"white"};
+                   border:2px solid ${enProg?"#86efac":"var(--borde)"};
+                   border-radius:12px;cursor:pointer;text-align:left;width:100%;
+                   transition:border-color .15s">
+            <div style="flex:1">
+              <div style="font-size:14px;font-weight:600;color:var(--texto)">${a}</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px">${nMats} materiales</div>
+            </div>
+            ${enProg ? `<div style="text-align:right">
+              <div style="font-size:11px;font-weight:600;color:#16a34a">EN PROGRESO</div>
+              <div style="font-size:11px;color:var(--muted)">${capturados} capturados</div>
+            </div>` : ""}
+            <div style="font-size:18px;color:var(--muted)">›</div>
+          </button>`;
+        }).join("")}
+      </div>
+
+      ${enProgreso.length > 0 ? `
+      <div style="margin-top:20px;padding:12px 14px;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;font-size:12px;color:#9a3412">
+        💾 Los conteos en progreso están guardados en este dispositivo y continuarán donde los dejaste.
+      </div>` : ""}
+    </div>
+  `;
+}
+
+function iniciarConteo(area){
+  _conteoAreaActual = area;
+  // Cargar datos guardados de localStorage
+  _conteoData = _conteoCargarLS(area);
+  const hayDatos = Object.keys(_conteoData).length > 0;
+
+  // Filtrar materiales según área seleccionada
+  const esTodo = area === "Todo el inventario";
+  const matsArea = esTodo ? _conteoMats : _conteoMats.filter(m=>m.area===area);
+
   $("#moduleView").innerHTML=`
     <div style="margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-outline btn-sm" onclick="modConteo()" style="padding:4px 10px">‹ Áreas</button>
       <div style="flex:1">
-        <h2 style="margin:0;font-size:18px">Inventario Físico · D041 PUEBLA</h2>
-        <div id="conteo-subtitulo" style="font-size:12px;color:var(--muted);margin-top:2px">${_conteoMats.length} materiales con existencia</div>
+        <h2 style="margin:0;font-size:17px">Inventario · ${area}</h2>
+        <div id="conteo-subtitulo" style="font-size:12px;color:var(--muted);margin-top:2px">${matsArea.length} materiales</div>
       </div>
       <button class="btn btn-outline btn-sm" onclick="exportarConteo()">⬇ Exportar</button>
       <button class="btn btn-outline btn-sm" style="color:var(--rojo,#dc2626)" onclick="limpiarConteo()">🗑 Limpiar</button>
@@ -2008,21 +2101,20 @@ function modConteo(){
 
     <div class="cap-stats">
       <div class="cap-stat"><div class="cap-stat-n" id="cc-cap">0</div><div class="cap-stat-l">Capturados</div></div>
-      <div class="cap-stat"><div class="cap-stat-n dif-pending" id="cc-pen">${_conteoMats.length}</div><div class="cap-stat-l">Pendientes</div></div>
+      <div class="cap-stat"><div class="cap-stat-n dif-pending" id="cc-pen">${matsArea.length}</div><div class="cap-stat-l">Pendientes</div></div>
       <div class="cap-stat"><div class="cap-stat-n dif-ok" id="cc-ok">0</div><div class="cap-stat-l">Sin diferencia</div></div>
       <div class="cap-stat"><div class="cap-stat-n dif-neg" id="cc-falt">0</div><div class="cap-stat-l">Faltantes</div></div>
       <div class="cap-stat"><div class="cap-stat-n dif-pos" id="cc-sob">0</div><div class="cap-stat-l">Sobrantes</div></div>
     </div>
 
+    ${hayDatos ? `
+    <div style="padding:10px 14px;background:#f0fdf4;border:1px solid #86efac;border-radius:10px;font-size:12px;color:#15803d;margin-bottom:12px">
+      💾 Conteo en progreso recuperado — ${Object.keys(_conteoData).length} valores guardados en este dispositivo.
+    </div>` : ""}
+
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
       <input id="conteo-q" type="search" placeholder="Buscar catálogo o descripción..."
         style="flex:1;min-width:180px" oninput="filtrarConteo()">
-      <select id="conteo-area" onchange="filtrarConteo()"
-        style="min-width:140px">
-        <option value="">Todas las áreas</option>
-        ${[...new Set(_conteoMats.map(m=>m.area).filter(Boolean))].sort()
-          .map(a=>`<option value="${a}">${a}</option>`).join("")}
-      </select>
       <select id="conteo-dif" onchange="filtrarConteo()" style="min-width:140px">
         <option value="">Todos</option>
         <option value="pendiente">⏳ Pendientes</option>
@@ -2035,17 +2127,19 @@ function modConteo(){
     <div id="conteo-lista"></div>
   `;
 
+  // Filtrar materiales del área y renderizar
+  _conteoLista = matsArea;
   filtrarConteo();
 }
 
 function filtrarConteo(){
-  const q    = ($("#conteo-q")?.value||"").toLowerCase();
-  const area = $("#conteo-area")?.value||"";
-  const dif  = $("#conteo-dif")?.value||"";
+  const q   = ($("#conteo-q")?.value||"").toLowerCase();
+  const dif = $("#conteo-dif")?.value||"";
+  const esTodo = _conteoAreaActual === "Todo el inventario";
+  const base = esTodo ? _conteoMats : _conteoMats.filter(m=>m.area===_conteoAreaActual);
 
-  _conteoLista = _conteoMats.filter(m=>{
+  _conteoLista = base.filter(m=>{
     const mQ = !q || m.catalogo.includes(q) || m.descripcion.toLowerCase().includes(q);
-    const mA = !area || m.area === area;
     let mD = true;
     if(dif){
       const fisico    = _conteoData[m.catalogo];
@@ -2057,11 +2151,11 @@ function filtrarConteo(){
       else if(dif==="faltante") mD = cap && diferencia<0;
       else if(dif==="sobrante") mD = cap && diferencia>0;
     }
-    return mQ && mA && mD;
+    return mQ && mD;
   });
 
-  $("#conteo-subtitulo").textContent =
-    `${_conteoLista.length} visibles · ${Object.keys(_conteoData).length} capturados`;
+  const sub = $("#conteo-subtitulo");
+  if(sub) sub.textContent = `${_conteoLista.length} visibles · ${Object.keys(_conteoData).length} capturados`;
 
   renderConteo();
   actualizarTotalesConteo();
@@ -2182,6 +2276,7 @@ function guardarFisicoC(input){
       difEl.textContent = cap?(dif===0?"✓ 0":dif<0?dif:"+"+dif):"—";
     }
   }
+  _conteoGuardarLS();
   actualizarTotalesConteo();
   if($("#conteo-dif")?.value) filtrarConteo();
   else {
@@ -2210,6 +2305,7 @@ function guardarFisicoLoteC(input){
     difEl.className  = "cap-dif-n " + (cap?(dif===0?"dif-ok":dif<0?"dif-neg":"dif-pos"):"dif-pending");
     difEl.textContent = cap?(dif===0?"✓ 0":dif<0?dif:"+"+dif):"—";
   }
+  _conteoGuardarLS();
   actualizarTotalesConteo();
 }
 
@@ -2271,8 +2367,9 @@ function actualizarTotalesConteo(){
 }
 
 function limpiarConteo(){
-  if(!confirm("¿Limpiar todos los datos capturados?")) return;
+  if(!confirm("¿Limpiar todos los datos capturados? Esto no se puede deshacer.")) return;
   _conteoData = {};
+  _conteoLimpiarLS(_conteoAreaActual);
   filtrarConteo();
 }
 
