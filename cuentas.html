@@ -77,6 +77,12 @@ body{font-family:Calibri,system-ui,sans-serif;background:var(--azul-pale);color:
 .multi-sep{display:flex;justify-content:center}
 .multi-sep svg{width:14px;height:14px;stroke:var(--azul);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 
+/* ── Botón copiar ── */
+.btn-copy{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:7px;border:1.5px solid var(--border);background:var(--white);color:var(--muted);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;margin-top:6px}
+.btn-copy svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.btn-copy:hover{border-color:var(--azul);color:var(--azul)}
+.btn-copy.copied{border-color:var(--green);color:var(--green);background:#f0fdf4}
+
 /* ── Empty / not found ── */
 .empty{text-align:center;padding:44px 20px;color:#B0B8CC}
 .empty-icon{font-size:36px;margin-bottom:12px;opacity:.6}
@@ -174,6 +180,28 @@ function cambiarTab(t){
   document.getElementById('qInput').focus();
 }
 
+function copiar(num, btn){
+  navigator.clipboard.writeText(num).then(()=>{
+    btn.className='btn-copy copied';
+    btn.innerHTML='<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Copiado';
+    setTimeout(()=>{
+      btn.className='btn-copy';
+      btn.innerHTML='<svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>Copiar';
+    }, 2000);
+  }).catch(()=>{
+    // Fallback para navegadores sin clipboard API
+    const ta=document.createElement('textarea');
+    ta.value=num; ta.style.position='fixed'; ta.style.opacity='0';
+    document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+    btn.className='btn-copy copied';
+    btn.innerHTML='<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Copiado';
+    setTimeout(()=>{ btn.className='btn-copy'; btn.innerHTML='<svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>Copiar'; },2000);
+  });
+}
+
+const copyBtn=num=>'<button class="btn-copy" onclick="copiar(''+num+'',this)"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>Copiar</button>';
+
 const norm=s=>(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
 
 const arrowSVG='<svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>';
@@ -206,7 +234,7 @@ function renderCard(enR3, enHANA, enDesc, labelR3, labelHANA, MAX){
         '<div class="rc-num r3">'+enR3[0].r3+'</div><div class="rc-desc">'+enR3[0].r3d+'</div></div>'+
         '<div class="rc-col-sep">'+arrowSVG+'</div>'+
         '<div class="rc-col"><div class="rc-col-label hana">'+labelHANA+'</div>'+
-        '<div class="rc-num hana">'+h.hana+'</div><div class="rc-desc">'+h.hanad+'</div></div></div>';
+        '<div class="rc-num hana">'+h.hana+'</div><div class="rc-desc">'+h.hanad+'</div>'+copyBtn(h.hana)+'</div></div>';
     } else {
       html+='<div class="rc-body">'+
         '<div class="rc-col"><div class="rc-col-label r3">'+labelR3+'</div>'+
