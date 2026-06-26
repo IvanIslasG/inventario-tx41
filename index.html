@@ -2106,7 +2106,9 @@ function iniciarConteo(area){
         <div id="conteo-subtitulo" style="font-size:12px;color:var(--muted);margin-top:2px">${matsArea.length} materiales</div>
       </div>
       <button class="btn btn-outline btn-sm" onclick="exportarConteo()">⬇ Exportar</button>
+      <button class="btn btn-outline btn-sm" onclick="importarConteo()">⬆ Importar</button>
       <button class="btn btn-outline btn-sm" style="color:var(--rojo,#dc2626)" onclick="limpiarConteo()">🗑 Limpiar</button>
+      <input type="file" id="importarConteoInput" accept=".xlsx" style="display:none" onchange="procesarImportConteo(this)">
     </div>
 
     <div class="cap-stats">
@@ -2422,6 +2424,100 @@ function actualizarTotalesConteo(){
     const n=id==="cc-cap"?cap:id==="cc-pen"?pen:id==="cc-ok"?ok:id==="cc-falt"?falt:sob;
     el.textContent=n;
   });
+}
+
+function importarConteo(){
+  document.getElementById('importarConteoInput').click();
+}
+
+function procesarImportConteo(input){
+  const file = input.files[0];
+  if(!file){ return; }
+  input.value = ""; // reset para poder importar el mismo archivo otra vez
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, {type:'array'});
+      // Buscar hoja "Inventario" (la que genera exportarConteo)
+      const wsName = wb.SheetNames.find(s => s === "Inventario") || wb.SheetNames[0];
+      const ws = wb.Sheets[wsName];
+      const rows = XLSX.utils.sheet_to_json(ws, {header:1});
+
+      // Encontrar fila de encabezados (tiene "Catálogo")
+      let hdrIdx = -1;
+      for(let i=0; i<rows.length; i++){
+        if(rows[i] && rows[i].some(c => String(c||'').toLowerCase().includes('catálogo') || String(c||'').toLowerCase().includes('catalogo'))){
+          hdrIdx = i; break;
+        }
+      }
+      if(hdrIdx < 0){ alert("No encontré la columna de Catálogo en el archivo."); return; }
+
+      const hdrs = rows[hdrIdx].map(h => String(h||'').toLowerCase());
+      const iCat   = hdrs.findIndex(h => h.includes('catálogo') || h.includes('catalogo'));
+      const iFis   = hdrs.findIndex(h => h.includes('físico') || h.includes('fisico'));
+      const iLote  = hdrs.findIndex(h => h === 'lote');
+
+      if(iCat < 0 || iFis < 0){ alert("El archivo no tiene las columnas de Catálogo y Físico."); return; }
+
+      // Leer datos
+      const importados = {};
+      for(let i = hdrIdx+1; i < rows.length; i++){
+        const r = rows[i];
+        if(!r || !r[iCat]) continue;
+        const cat  = String(r[iCat]).trim();
+        const lote = iLote >= 0 ? String(r[iLote]||'').trim() : '';
+        const fis  = r[iFis];
+        if(fis === '' || fis === null || fis === undefined || isNaN(fis)) continue;
+        const key = lote ? cat+'__'+lote : cat;
+        importados[key] = parseInt(fis);
+      }
+
+      const nImport = Object.keys(importados).length;
+      if(nImport === 0){ alert("El archivo no tiene datos físicos capturados."); return; }
+
+      // Preguntar modo
+      const hayDatos = Object.keys(_conteoData).length > 0;
+      let modo = 'reemplazar';
+      if(hayDatos){
+        const resp = confirm(
+          `Se encontraron ${nImport} registros en el archivo.
+
+` +
+          `Ya tienes ${Object.keys(_conteoData).length} valores capturados en este dispositivo.
+
+` +
+          `¿Cómo quieres importar?
+` +
+          `• Aceptar → Fusionar (solo llena los vacíos, respeta lo que ya capturaste)
+` +
+          `• Cancelar → Reemplazar todo`
+        );
+        modo = resp ? 'fusionar' : 'reemplazar';
+      }
+
+      if(modo === 'reemplazar'){
+        _conteoData = importados;
+      } else {
+        // Fusionar: solo llenar los que no tienen valor
+        Object.entries(importados).forEach(([k,v])=>{
+          if(_conteoData[k] === undefined) _conteoData[k] = v;
+        });
+      }
+
+      _conteoGuardarLS();
+      filtrarConteo();
+      actualizarTotalesConteo();
+
+      const nFinal = Object.keys(_conteoData).length;
+      alert(`✓ Importación completada (${modo}).
+${nFinal} registros cargados en este dispositivo.`);
+
+    } catch(err){
+      alert("Error al leer el archivo: " + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
 }
 
 function limpiarConteo(){
