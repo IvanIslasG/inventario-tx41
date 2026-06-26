@@ -2208,7 +2208,7 @@ function renderConteo(){
           <span class="cap-cat" style="color:#9a3412">${m.catalogo}</span>
           <span style="font-size:10px;background:#fed7aa;color:#9a3412;padding:2px 6px;border-radius:8px">📦 ${m.lotes.length} lotes</span>
           <div style="flex:1;font-size:12px;color:var(--texto)">${m.descripcion}</div>
-          <div style="font-size:10px;color:var(--muted)">${m.ubicacion||"—"} · ${m.um||"—"}</div>
+          <div style="font-size:10px;color:var(--muted)">${m.ubicacion||"Sin ubicación"} · ${m.um||"—"}</div>
         </div>`;
 
       const tbody = document.createElement("div");
@@ -2268,7 +2268,7 @@ function renderConteo(){
         <div class="cap-cat">${m.catalogo}</div>
         <div style="flex:1">
           <div class="cap-desc">${m.descripcion}</div>
-          <div class="cap-ubi">${m.ubicacion||"—"} · ${m.um||"—"}</div>
+          <div class="cap-ubi">${m.ubicacion||"Sin ubicación"} · ${m.um||"—"}</div>
         </div>
         <div class="cap-siatel"><div class="cap-siatel-n">${lib.toLocaleString()}</div><div class="cap-siatel-l">Libre</div></div>
         <div class="cap-siatel"><div class="cap-siatel-n" style="color:var(--naranja,#ea580c)">${tra.toLocaleString()}</div><div class="cap-siatel-l">Traslado</div></div>
