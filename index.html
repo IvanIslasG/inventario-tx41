@@ -214,6 +214,16 @@
   #printArea .col-fis{background:#fffbe9}
   #printArea .pf{display:flex;justify-content:space-between;font-size:7.5pt;color:#666;margin-top:6px}
 
+  /* ── Botones flotantes conteo (móvil) ── */
+  .fab-group{position:fixed;right:14px;bottom:80px;display:flex;flex-direction:column;gap:8px;z-index:999;opacity:0;pointer-events:none;transition:opacity .2s}
+  .fab-group.visible{opacity:1;pointer-events:all}
+  .fab{width:40px;height:40px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.18);font-size:16px;transition:transform .12s,opacity .12s;background:var(--primary);color:#fff}
+  .fab:hover{transform:scale(1.1)}
+  .fab.secondary{background:white;color:var(--primary);border:1.5px solid var(--line)}
+  .fab-label{position:absolute;right:48px;background:rgba(30,30,30,.85);color:#fff;font-size:10px;padding:3px 8px;border-radius:6px;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .15s}
+  .fab:hover .fab-label{opacity:1}
+  @media(min-width:769px){.fab-group{display:none}}
+
   /* ── Módulo Conteo ── */
   .cap-card{background:white;border-radius:12px;border:2px solid var(--borde);padding:12px 14px;display:grid;grid-template-columns:auto 1fr auto auto auto;align-items:center;gap:10px;transition:border-color .15s;margin-bottom:8px}
   @media(max-width:480px){.cap-card{grid-template-columns:auto 1fr;row-gap:8px}.cap-siatel{min-width:44px}.cap-input{width:64px;height:44px;font-size:20px}.cap-dif{min-width:48px}}
@@ -2141,6 +2151,8 @@ function iniciarConteo(area){
 
     <div id="conteo-lista"></div>
   `;
+  // Botones flotantes para móvil
+  _conteoFabInit();
 
   // Poblar select de ubicaciones
   const ubics = [...new Set(matsArea.map(m=>m.ubicacion).filter(Boolean))].sort();
@@ -2421,6 +2433,87 @@ function actualizarTotalesConteo(){
     const n=id==="cc-cap"?cap:id==="cc-pen"?pen:id==="cc-ok"?ok:id==="cc-falt"?falt:sob;
     el.textContent=n;
   });
+}
+
+// ── Botones flotantes móvil ──────────────────────────────────────────────────
+function _conteoFabInit(){
+  // Quitar FAB anterior si existe
+  const old = document.getElementById('conteo-fab-group');
+  if(old) old.remove();
+
+  const g = document.createElement('div');
+  g.id = 'conteo-fab-group';
+  g.className = 'fab-group';
+  g.innerHTML = `
+    <button class="fab secondary" title="Ir arriba" onclick="_conteoFabArriba()" style="position:relative">
+      <span style="font-size:14px">↑</span>
+      <span class="fab-label">Ir arriba</span>
+    </button>
+    <button class="fab secondary" title="Último capturado" onclick="_conteoFabUltimo()" style="position:relative">
+      <span style="font-size:14px">✎</span>
+      <span class="fab-label">Último capturado</span>
+    </button>
+    <button class="fab secondary" title="Ir abajo" onclick="_conteoFabAbajo()" style="position:relative">
+      <span style="font-size:14px">↓</span>
+      <span class="fab-label">Ir abajo</span>
+    </button>
+    <button class="fab" title="Siguiente pendiente" onclick="_conteoFabPendiente()" style="position:relative">
+      <span style="font-size:14px">⏭</span>
+      <span class="fab-label">Siguiente pendiente</span>
+    </button>
+  `;
+  document.body.appendChild(g);
+
+  // Mostrar/ocultar según scroll
+  let scrollTimer;
+  window.addEventListener('scroll', ()=>{
+    g.classList.add('visible');
+    clearTimeout(scrollTimer);
+    scrollTimer = setTimeout(()=>{ g.classList.remove('visible'); }, 2500);
+  }, {passive:true});
+
+  // Mostrar siempre en móvil si se toca la pantalla
+  document.addEventListener('touchstart', ()=>{
+    g.classList.add('visible');
+    clearTimeout(scrollTimer);
+    scrollTimer = setTimeout(()=>{ g.classList.remove('visible'); }, 3000);
+  }, {passive:true, once:false});
+}
+
+function _conteoFabArriba(){
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function _conteoFabAbajo(){
+  window.scrollTo({top:document.body.scrollHeight, behavior:'smooth'});
+}
+
+function _conteoFabUltimo(){
+  // Ir al último input con valor capturado
+  const inputs = [...document.querySelectorAll('#conteo-lista input.cap-input')];
+  const capturados = inputs.filter(i => i.value !== '');
+  if(!capturados.length){ 
+    alert('No hay materiales capturados aún.'); 
+    return; 
+  }
+  const ultimo = capturados[capturados.length - 1];
+  ultimo.scrollIntoView({block:'center'});
+  ultimo.focus();
+  try{ ultimo.setSelectionRange(0, ultimo.value.length); }catch(e){}
+}
+
+function _conteoFabPendiente(){
+  // Ir al siguiente input sin valor
+  const inputs = [...document.querySelectorAll('#conteo-lista input.cap-input')];
+  // Buscar el primero visible sin capturar
+  const pendiente = inputs.find(i => i.value === '');
+  if(!pendiente){
+    alert('¡Todos los materiales visibles están capturados!');
+    return;
+  }
+  pendiente.scrollIntoView({block:'center'});
+  pendiente.focus();
+  try{ pendiente.setSelectionRange(0, pendiente.value.length); }catch(e){}
 }
 
 function importarConteo(){
