@@ -245,7 +245,7 @@ function renderCard(enR3, enHANA, enDesc, labelR3, labelHANA, MAX){
         '<div class="rc-col" style="display:flex;align-items:center"><div class="rc-desc" style="color:var(--amber);font-weight:700">Múltiples — ver abajo</div></div></div>'+
         '<div class="multi">'+hUnicos.map(h=>
           '<div class="multi-row"><div></div><div class="multi-sep">'+arrowSVG+'</div>'+
-          '<div><div class="rc-num hana sm">'+h.hana+'</div><div class="rc-desc">'+h.hanad+'</div></div></div>'
+          '<div><div class="rc-num hana sm">'+h.hana+'</div><div class="rc-desc">'+h.hanad+'</div>'+copyBtn(h.hana)+'</div></div>'
         ).join('')+'</div>';
     }
     html+='</div>';
