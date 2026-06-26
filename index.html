@@ -2394,8 +2394,10 @@ function navegarInputLoteC(event, cat, idx){
 }
 
 function actualizarTotalesConteo(){
+  // Usar _conteoLista para respetar filtros activos (área + ubicación + búsqueda)
+  const base = (_conteoLista && _conteoLista.length > 0) ? _conteoLista : _conteoMats;
   let cap=0,pen=0,ok=0,falt=0,sob=0;
-  _conteoMats.forEach(m=>{
+  base.forEach(m=>{
     if(m.lotes && m.lotes.length>0){
       m.lotes.forEach(lote=>{
         const key=`${m.catalogo}__${lote.lote}`;
@@ -2415,9 +2417,6 @@ function actualizarTotalesConteo(){
       if(dif===0)ok++;else if(dif<0)falt++;else sob++;
     }
   });
-  const s=id=>{ const el=document.getElementById(id); if(el) el.textContent=el.id==="cc-pen"?pen:el.id==="cc-ok"?ok:el.id==="cc-falt"?falt:el.id==="cc-sob"?sob:cap; };
-  ["cc-cap","cc-pen","cc-ok","cc-falt","cc-sob"].forEach(s);
-  const vals={cap,pen,ok,falt,sob};
   ["cc-cap","cc-pen","cc-ok","cc-falt","cc-sob"].forEach(id=>{
     const el=document.getElementById(id);
     if(!el) return;
@@ -2521,7 +2520,13 @@ ${nFinal} registros cargados en este dispositivo.`);
 }
 
 function limpiarConteo(){
-  if(!confirm("¿Limpiar todos los datos capturados? Esto no se puede deshacer.")) return;
+  const n = Object.keys(_conteoData).length;
+  if(n === 0){ alert("No hay datos capturados que limpiar."); return; }
+  if(!confirm(
+    `⚠️ ¿Estás seguro de que quieres limpiar el conteo?\n\n` +
+    `Se borrarán ${n} registros capturados en este dispositivo.\n` +
+    `Esta acción NO se puede deshacer.`
+  )) return;
   _conteoData = {};
   _conteoLimpiarLS(_conteoAreaActual);
   filtrarConteo();
