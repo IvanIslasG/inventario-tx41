@@ -214,7 +214,9 @@ function filaMulti(d){
     '<div class="multi-sep">'+arrowSVG+'</div>'+
     '<div><div class="rc-col-label hana">S/4HANA</div>'+
     '<div class="rc-num hana sm">'+d.hana+'</div>'+
-    '<div class="rc-desc">'+d.hanad+'</div></div></div>';
+    '<div class="rc-desc">'+d.hanad+'</div>'+
+    copyBtn(d.hana)+
+    '</div></div>';
 }
 
 function renderCard(enR3, enHANA, enDesc, labelR3, labelHANA, MAX){
