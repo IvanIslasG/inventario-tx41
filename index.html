@@ -2011,18 +2011,16 @@ function modConteo(){
     const lib = (exs[cat] && exs[cat]["D041"]) || 0;
     const tra = (tras[cat] && tras[cat]["D041"]) || 0;
     const ls  = lotes[cat] || [];
-    if(lib > 0 || tra > 0 || ls.length > 0){
-      _conteoMats.push({
-        catalogo:    cat,
-        descripcion: m.desc || m.descripcion || "",
-        um:          m.um || "",
-        area:        m.area || "",
-        ubicacion:   m.ubic || m.ubicacion || "",
-        existencia:  lib,
-        traslado:    tra,
-        lotes:       ls,
-      });
-    }
+    _conteoMats.push({
+      catalogo:    cat,
+      descripcion: m.desc || m.descripcion || "",
+      um:          m.um || "",
+      area:        m.area || "",
+      ubicacion:   m.ubic || m.ubicacion || "",
+      existencia:  lib,
+      traslado:    tra,
+      lotes:       ls,
+    });
   });
   _conteoMats.sort((a,b) => a.catalogo.localeCompare(b.catalogo));
 
