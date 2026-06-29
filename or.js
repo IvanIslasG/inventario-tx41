@@ -377,22 +377,19 @@ function _orReiniciar(){
   const n = Object.keys(_orManual).length;
   if(n === 0){ alert("No hay datos editados que reiniciar."); return; }
   if(!confirm(
-    `⚠️ ¿Reiniciar la OR de ${almName(orAlm)}?\n\n` +
-    `Se borrarán ${n} valores editados (X Surtir y Observaciones).\n` +
-    `Esta acción no se puede deshacer.`
+        `Reiniciar la OR de ${almName(orAlm)}?\n\nSe borraran ${n} valores editados.\nEsta accion no se puede deshacer.`
   )) return;
   _orManual = {};
   _orLimpiarLS();
   pintarOR();
 }
 
-// ── Sidebar de Nombres Genéricos ─────────────────────────────────────────────
-let _orNGSeleccionados = new Set(); // vacío = todos activos
+// Sidebar NG
+let _orNGSeleccionados = new Set();
 let _orNGIniciado = false;
 
 function _orNGRender(){
   const fArea = _orAreaSel || "";
-  // Obtener todos los NG del área actual
   const ngs = new Set();
   for(const cat of Object.keys(DB.materiales||{})){
     const info = mat(cat);
@@ -401,31 +398,18 @@ function _orNGRender(){
     ngs.add(ngDe(cat) || "SIN SUSTITUTO");
   }
   const lista = [...ngs].sort();
-
-  // Si es la primera vez, marcar todos
-  if(!_orNGIniciado){
-    _orNGSeleccionados = new Set(lista);
-    _orNGIniciado = true;
-  }
-
-  const renderItems = (containerId) => {
-    const el = document.getElementById(containerId);
+  if(!_orNGIniciado){ _orNGSeleccionados = new Set(lista); _orNGIniciado = true; }
+  const renderItems = (cid) => {
+    const el = document.getElementById(cid);
     if(!el) return;
     el.innerHTML = lista.map(ng => {
-      const checked = _orNGSeleccionados.has(ng) || _orNGSeleccionados.size === 0;
-      return `<label style="display:flex;align-items:center;gap:7px;padding:5px 10px;
-                cursor:pointer;border-radius:7px;transition:background .1s;font-size:12px;
-                color:var(--text);line-height:1.3"
-              onmouseover="this.style.background='var(--lite,#f4f6fb)'"
-              onmouseout="this.style.background='transparent'">
-        <input type="checkbox" ${checked?'checked':''} data-ng="${ng.replace(/"/g,'&quot;')}"
-          onchange="_orNGCambio(this)"
-          style="accent-color:var(--primary);flex-shrink:0;width:14px;height:14px">
-        <span style="word-break:break-word">${ng}</span>
-      </label>`;
+      const safe = ng.replace(/&/g,"&amp;").replace(/"/g,"&quot;");
+      const chk = _orNGSeleccionados.has(ng) ? "checked" : "";
+      return `<label style="display:flex;align-items:center;gap:6px;padding:5px 10px;cursor:pointer;border-radius:7px;font-size:12px">`+
+        `<input type="checkbox" ${chk} data-ng="${safe}" onchange="_orNGCambio(this)" style="accent-color:var(--primary);width:14px;height:14px">`+
+        `<span>${ng}</span></label>`;
     }).join("");
   };
-
   renderItems("orNGList");
   renderItems("orNGMobilePanel");
 }
@@ -594,7 +578,7 @@ function pintarOR(){
         <input type="number" class="or-xs" data-cat="${r.cat}" value="${r.xsurtir}" min="0"
           style="width:70px;text-align:right;padding:4px 6px;border:1px solid var(--line);border-radius:6px">
       </td>
-      <td style="text-align:center">${r.excedente?"⚠️":""}</td>
+      <td style="text-align:center">${r.excedente?"":""}</td>
       <td><input type="text" class="or-obs" data-cat="${r.cat}" value="${r.obs.replace(/"/g,"&quot;")}" placeholder="…"
           style="min-width:100px;padding:4px 6px;border:1px solid var(--line);border-radius:6px"></td>
     </tr>`;
