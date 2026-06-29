@@ -84,31 +84,31 @@ function _mostrarPaso1Alm(){
       </div>
 
       <div id="or-menu-alm" style="opacity:0;transform:translateY(16px);transition:all .5s ease;
-                                    margin-top:36px;width:100%;max-width:480px">
-        <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:14px;
+                                    margin-top:28px;width:100%;max-width:720px">
+        <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:12px;
                     text-transform:uppercase;letter-spacing:.5px">
           ¿Con qué almacén vas a trabajar?
         </div>
-        <div style="display:flex;flex-direction:column;gap:8px">
+        <input type="search" id="or-alm-search" placeholder="Buscar almacén…"
+          style="width:100%;margin-bottom:14px;padding:9px 14px;border:1.5px solid var(--line);
+                 border-radius:10px;font-size:13px;font-family:inherit;outline:none"
+          oninput="_filtrarAlmMenu(this.value)">
+        <div id="or-alm-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px">
           ${alms.map(alm => {
             const avance = _orTieneAvance(alm);
             const bg     = avance ? "#f0fdf4" : "white";
             const bc     = avance ? "#86efac" : "var(--line)";
-            const sub    = avance
-              ? `<span style="font-size:10px;color:#16a34a;font-weight:600">EN PROGRESO · ${avance} editados</span>`
-              : `<span style="font-size:10px;color:var(--muted)">${almName(alm)}</span>`;
-            return `<button onclick="_mostrarBienvenidaOR('${alm}')"
-              style="display:flex;align-items:center;justify-content:space-between;
-                     gap:12px;padding:12px 18px;background:${bg};border:1.5px solid ${bc};
+            return `<button data-alm="${alm}" onclick="_mostrarBienvenidaOR('${alm}')"
+              style="display:flex;flex-direction:column;align-items:flex-start;
+                     gap:3px;padding:12px 14px;background:${bg};border:1.5px solid ${bc};
                      border-radius:11px;cursor:pointer;text-align:left;width:100%;
-                     font-family:inherit;transition:all .15s"
+                     font-family:inherit;transition:border-color .15s"
               onmouseover="this.style.borderColor='var(--primary)'"
               onmouseout="this.style.borderColor='${bc}'">
-              <div style="display:flex;flex-direction:column;align-items:flex-start;gap:2px">
-                <span style="font-size:14px;font-weight:700;color:var(--text)">${alm}</span>
-                ${sub}
-              </div>
-              <span style="font-size:18px;color:var(--muted)">›</span>
+              <span style="font-size:14px;font-weight:700;color:var(--text)">${alm}</span>
+              <span style="font-size:10px;color:${avance?'#16a34a':'var(--muted)'}">
+                ${avance ? 'EN PROGRESO · '+avance+' editados' : almName(alm)}
+              </span>
             </button>`;
           }).join("")}
         </div>
@@ -125,6 +125,15 @@ function _mostrarPaso1Alm(){
       const m = document.getElementById("or-menu-alm");
       if(m){ m.style.opacity="1"; m.style.transform="translateY(0)"; }
     }, 450);
+  });
+}
+
+function _filtrarAlmMenu(q){
+  const q2 = q.toLowerCase();
+  document.querySelectorAll("#or-alm-grid button[data-alm]").forEach(btn => {
+    const alm  = btn.dataset.alm.toLowerCase();
+    const nom  = almName(btn.dataset.alm).toLowerCase();
+    btn.style.display = (!q2 || alm.includes(q2) || nom.includes(q2)) ? "" : "none";
   });
 }
 
@@ -228,16 +237,19 @@ function _modORPanel(){
   const areaOpts=areasOR.map(a=>`<option value="${a}">${a}</option>`).join("");
 
   $("#moduleView").innerHTML=`
-    <div class="controls" style="flex-wrap:wrap">
-      <label class="chk" style="font-weight:700;color:var(--ink)">Almacén
-        <select id="orAlm">${opts}</select></label>
+    <div class="controls" style="flex-wrap:wrap;align-items:center">
+      <button class="btn btn-outline btn-sm" onclick="_mostrarPaso1Alm()">‹ Almacenes</button>
+      <button class="btn btn-outline btn-sm" onclick="_mostrarBienvenidaOR()">‹ Áreas</button>
+      <span style="font-weight:700;color:var(--primary);font-size:13px">${orAlm} · ${almName(orAlm)}</span>
+      <button class="btn btn-outline btn-sm" style="color:var(--rojo,#dc2626)" onclick="_orReiniciar()">↺ Reiniciar</button>
+    </div>
+    <div class="controls" style="flex-wrap:wrap;margin-top:6px">
       <label class="chk">CPM (meses) <input type="number" id="orMCPM" value="${mCPM}" min="1" max="24" step="1" style="width:58px"></label>
       <label class="chk">Stock obj. <input type="number" id="orMS" value="${mStk}" min="0.5" max="12" step="0.5" style="width:58px"></label>
       <select id="orFArea"><option value="">Todas las áreas</option>${areaOpts}</select>
       <input type="search" id="orSearch" placeholder="Buscar catálogo / descripción…" style="min-width:180px">
     </div>
     <div class="controls" style="flex-wrap:wrap;margin-top:6px">
-      <!-- Nombre genérico con autocomplete -->
       <div class="an-cat-wrap" style="min-width:230px;flex:1;max-width:320px">
         <input id="orNGInput" class="an-cat-input" placeholder="Nombre genérico… (escribe para filtrar)" autocomplete="off">
         <div id="orNGSugs" class="an-cat-sugs"></div>
@@ -257,7 +269,6 @@ function _modORPanel(){
     <div class="panel"><div class="panel-head" style="gap:8px">
       <h2 id="orTitle"></h2><span class="pill" id="orCount"></span></div>
       <div style="overflow-x:auto"><table id="orTable" style="min-width:1200px"></table></div></div>`;
-  $("#orAlm").onchange=e=>{ orAlm=e.target.value; _actualizarNGOpts(); pintarOR(); };
   ["orMCPM","orMS"].forEach(id=>{ const el=$("#"+id); el.oninput=pintarOR; el.onchange=pintarOR; });
   ["orSearch","orFArea"].forEach(id=>{ const el=$("#"+id); if(el){ el.oninput=()=>{ _actualizarNGOpts(); pintarOR(); }; }});
   ["orSolo","orSoloX","orExced","orSoloD041"].forEach(id=>{ const el=$("#"+id); if(el) el.onchange=pintarOR; });
