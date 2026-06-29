@@ -230,7 +230,8 @@ function _modORPanel(){
       <p>Ve a <b>Configuración → Archivos de consumo</b>, sube el export de consumo (ej. <b>TX8A</b>) y publica.</p>
     </div></div>`; return;
   }
-  if(!orAlm || !alms.includes(orAlm)) orAlm=alms[0];
+  // Respetar orAlm elegido en el menú; solo usar fallback si no hay ninguno
+  if(!orAlm) orAlm = alms[0];
   const m=DB.meta, mCPM=m?.meses_cpm||6, mStk=m?.meses_stock||1.5;
   const opts=alms.map(a=>`<option value="${a}" ${a===orAlm?"selected":""}>${a} · ${almName(a)}</option>`).join("");
   const areasOR=AREAS.concat(["Sin clasificar"]);
@@ -243,10 +244,13 @@ function _modORPanel(){
       <span style="font-weight:700;color:var(--primary);font-size:13px">${orAlm} · ${almName(orAlm)}</span>
       <button class="btn btn-outline btn-sm" style="color:var(--rojo,#dc2626)" onclick="_orReiniciar()">↺ Reiniciar</button>
     </div>
-    <div class="controls" style="flex-wrap:wrap;margin-top:6px">
+    <div class="controls" style="flex-wrap:wrap;margin-top:6px;align-items:center">
       <label class="chk">CPM (meses) <input type="number" id="orMCPM" value="${mCPM}" min="1" max="24" step="1" style="width:58px"></label>
       <label class="chk">Stock obj. <input type="number" id="orMS" value="${mStk}" min="0.5" max="12" step="0.5" style="width:58px"></label>
-      <select id="orFArea"><option value="">Todas las áreas</option>${areaOpts}</select>
+      <span style="font-size:12px;font-weight:600;color:var(--primary);padding:4px 10px;
+                   background:var(--lite,#f0f4ff);border-radius:8px">
+        Área: ${_orAreaSel || "Todas"}
+      </span>
       <input type="search" id="orSearch" placeholder="Buscar catálogo / descripción…" style="min-width:180px">
     </div>
     <div class="controls" style="flex-wrap:wrap;margin-top:6px">
@@ -270,13 +274,13 @@ function _modORPanel(){
       <h2 id="orTitle"></h2><span class="pill" id="orCount"></span></div>
       <div style="overflow-x:auto"><table id="orTable" style="min-width:1200px"></table></div></div>`;
   ["orMCPM","orMS"].forEach(id=>{ const el=$("#"+id); el.oninput=pintarOR; el.onchange=pintarOR; });
-  ["orSearch","orFArea"].forEach(id=>{ const el=$("#"+id); if(el){ el.oninput=()=>{ _actualizarNGOpts(); pintarOR(); }; }});
+  const orSearchEl=$("#orSearch"); if(orSearchEl){ orSearchEl.oninput=()=>{ _actualizarNGOpts(); pintarOR(); }; }
   ["orSolo","orSoloX","orExced","orSoloD041"].forEach(id=>{ const el=$("#"+id); if(el) el.onchange=pintarOR; });
   $("#orExport").onclick=abrirModalOR;
 
   // Autocomplete nombre genérico — filtra por área activa y muestra "Sin sustituto" incluido
   function _actualizarNGOpts(){
-    const fArea=$("#orFArea")?.value||"";
+    const fArea=_orAreaSel||"";
     // calcular NGs activos desde consumos + críticos (igual que calcularOR)
     const cons=DB.consumos?.[orAlm]||{};
     const criticos=DB.criticos||[];
@@ -316,15 +320,9 @@ function _modORPanel(){
   });
   document.addEventListener("click",e=>{ if(!ngSugs.contains(e.target)&&e.target!==ngInp) ngSugs.style.display="none"; });
 
-  // Pre-seleccionar área elegida en el menú
-  if(_orAreaSel){
-    const sel = $("#orFArea");
-    if(sel) sel.value = _orAreaSel;
-    _actualizarNGOpts();
-    pintarOR();
-  } else {
-    pintarOR();
-  }
+  // Área ya está en _orAreaSel desde el menú
+  _actualizarNGOpts();
+  pintarOR();
 }
 
 function _orReiniciar(){
@@ -377,7 +375,7 @@ function calcularOR(){
 
 function filasOR(){
   const q=($("#orSearch")?.value||"").trim().toLowerCase();
-  const fArea=$("#orFArea")?.value||"";
+  const fArea=_orAreaSel||"";
   const ngHid=$("#orNGVal")?.value||"";
   const ngText=($("#orNGInput")?.value||"").trim().toLowerCase();
   const soloCal=$("#orSolo")?.checked;
