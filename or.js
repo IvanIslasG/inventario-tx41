@@ -60,10 +60,76 @@ let _orAreaSel = "";  // área seleccionada desde el menú inicial
 
 function modOR(){
   _orAreaSel = "";
-  _mostrarBienvenidaOR();
+  orAlm = "";
+  _mostrarPaso1Alm();
 }
 
-function _mostrarBienvenidaOR(){
+// ── PASO 1: Selección de almacén ─────────────────────────────────────────────
+function _mostrarPaso1Alm(){
+  const alms = consumosDisp();
+  const cfg  = _orCargarConfig();
+
+  $("#moduleView").innerHTML = `
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;
+                min-height:70vh;padding:32px 20px;text-align:center">
+
+      <div id="or-anim-wrap" style="opacity:0;transform:translateY(20px);transition:all .6s ease">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2px;
+                    color:var(--muted);margin-bottom:10px">Sistema de Inventario TX41</div>
+        <div style="font-size:22px;font-weight:800;color:var(--primary);margin-bottom:6px">
+          Orden de Reabasto
+        </div>
+        <div style="font-size:14px;color:var(--text);font-weight:500;margin-bottom:4px">Telmex RNUM</div>
+        <div style="font-size:12px;color:var(--muted)">Almacén Distribuidor Puebla · D041</div>
+      </div>
+
+      <div id="or-menu-alm" style="opacity:0;transform:translateY(16px);transition:all .5s ease;
+                                    margin-top:36px;width:100%;max-width:480px">
+        <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:14px;
+                    text-transform:uppercase;letter-spacing:.5px">
+          ¿Con qué almacén vas a trabajar?
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          ${alms.map(alm => {
+            const avance = _orTieneAvance(alm);
+            const bg     = avance ? "#f0fdf4" : "white";
+            const bc     = avance ? "#86efac" : "var(--line)";
+            const sub    = avance
+              ? `<span style="font-size:10px;color:#16a34a;font-weight:600">EN PROGRESO · ${avance} editados</span>`
+              : `<span style="font-size:10px;color:var(--muted)">${almName(alm)}</span>`;
+            return `<button onclick="_mostrarBienvenidaOR('${alm}')"
+              style="display:flex;align-items:center;justify-content:space-between;
+                     gap:12px;padding:12px 18px;background:${bg};border:1.5px solid ${bc};
+                     border-radius:11px;cursor:pointer;text-align:left;width:100%;
+                     font-family:inherit;transition:all .15s"
+              onmouseover="this.style.borderColor='var(--primary)'"
+              onmouseout="this.style.borderColor='${bc}'">
+              <div style="display:flex;flex-direction:column;align-items:flex-start;gap:2px">
+                <span style="font-size:14px;font-weight:700;color:var(--text)">${alm}</span>
+                ${sub}
+              </div>
+              <span style="font-size:18px;color:var(--muted)">›</span>
+            </button>`;
+          }).join("")}
+        </div>
+      </div>
+    </div>
+  `;
+
+  requestAnimationFrame(() => {
+    setTimeout(() => {
+      const a = document.getElementById("or-anim-wrap");
+      if(a){ a.style.opacity="1"; a.style.transform="translateY(0)"; }
+    }, 80);
+    setTimeout(() => {
+      const m = document.getElementById("or-menu-alm");
+      if(m){ m.style.opacity="1"; m.style.transform="translateY(0)"; }
+    }, 450);
+  });
+}
+
+// ── PASO 2: Selección de área ─────────────────────────────────────────────────
+function _mostrarBienvenidaOR(almSeleccionado){
   $("#moduleView").innerHTML = `
     <div id="or-bienvenida" style="
       display:flex;flex-direction:column;align-items:center;justify-content:center;
