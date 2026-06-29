@@ -376,9 +376,7 @@ function _modORPanel(){
 function _orReiniciar(){
   const n = Object.keys(_orManual).length;
   if(n === 0){ alert("No hay datos editados que reiniciar."); return; }
-  if(!confirm(
-        `Reiniciar la OR de ${almName(orAlm)}? Se borraran ${n} valores editados. Esta accion no se puede deshacer.`
-  )) return;
+  if(!confirm("Reiniciar la OR de " + almName(orAlm) + "? Se borraran " + n + " valores editados. Esta accion no se puede deshacer.")) return;
   _orManual = {};
   _orLimpiarLS();
   pintarOR();
