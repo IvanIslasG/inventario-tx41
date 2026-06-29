@@ -7,6 +7,52 @@
 
 /* ============ ORDEN DE REABASTO ============ */
 let orAlm="", orSort={col:"cat",dir:1}, _orManual={};
+
+// ── Persistencia OR en localStorage ──────────────────────────────────────────
+const _OR_LS_KEY = () => `or_tx41_${orAlm}`;
+const _OR_CFG_KEY = "or_tx41_config";
+
+function _orGuardar(){
+  try{
+    localStorage.setItem(_OR_LS_KEY(), JSON.stringify(_orManual));
+    // Guardar también almacén y parámetros
+    const cfg = {
+      alm:  orAlm,
+      mCPM: +$("#orMCPM")?.value || 6,
+      mStk: +$("#orMS")?.value   || 1.5,
+      area: _orAreaSel,
+    };
+    localStorage.setItem(_OR_CFG_KEY, JSON.stringify(cfg));
+  } catch(e){}
+}
+
+function _orCargar(){
+  try{
+    const raw = localStorage.getItem(_OR_LS_KEY());
+    if(raw) _orManual = JSON.parse(raw);
+    else _orManual = {};
+  } catch(e){ _orManual = {}; }
+}
+
+function _orLimpiarLS(){
+  try{
+    localStorage.removeItem(_OR_LS_KEY());
+    localStorage.removeItem(_OR_CFG_KEY);
+  } catch(e){}
+}
+
+function _orTieneAvance(alm){
+  try{
+    const raw = localStorage.getItem(`or_tx41_${alm}`);
+    if(!raw) return 0;
+    return Object.keys(JSON.parse(raw)).length;
+  } catch(e){ return 0; }
+}
+
+function _orCargarConfig(){
+  try{ return JSON.parse(localStorage.getItem(_OR_CFG_KEY)||"{}"); }
+  catch(e){ return {}; }
+}
 function consumosDisp(){ return DB.consumos ? Object.keys(DB.consumos).sort() : []; }
 
 // ── Pantalla bienvenida OR ───────────────────────────────────────────────────
@@ -98,6 +144,9 @@ function _iniciarOR(area){
 }
 
 function _modORPanel(){
+  // Cargar avance guardado del almacén actual
+  _orCargar();
+  const hayAvance = Object.keys(_orManual).length > 0;
   const alms=consumosDisp();
   if(!alms.length){
     $("#moduleView").innerHTML=`<div class="panel"><div class="soon">
@@ -199,6 +248,19 @@ function _modORPanel(){
   } else {
     pintarOR();
   }
+}
+
+function _orReiniciar(){
+  const n = Object.keys(_orManual).length;
+  if(n === 0){ alert("No hay datos editados que reiniciar."); return; }
+  if(!confirm(
+    `⚠️ ¿Reiniciar la OR de ${almName(orAlm)}?\n\n` +
+    `Se borrarán ${n} valores editados (X Surtir y Observaciones).\n` +
+    `Esta acción no se puede deshacer.`
+  )) return;
+  _orManual = {};
+  _orLimpiarLS();
+  pintarOR();
 }
 
 function calcularOR(){
@@ -358,6 +420,7 @@ function pintarOR(){
     // Guardar y repintar banda NG al cambiar
     inp.addEventListener("change",()=>{
       (_orManual[orAlm+"|"+inp.dataset.cat]||={xs:0,obs:""}).xs=+inp.value||0;
+      _orGuardar();
       _repintarBandaNG();
     });
     // Punto 3: navegar con ↑ ↓ entre celdas X surtir
@@ -375,7 +438,7 @@ function pintarOR(){
   // Punto 3: selectAll en obs al enfocar
   $("#orTable").querySelectorAll(".or-obs").forEach(inp=>{
     inp.addEventListener("focus",()=>inp.select());
-    inp.addEventListener("input",()=>{ (_orManual[orAlm+"|"+inp.dataset.cat]||={xs:0,obs:""}).obs=inp.value; });
+    inp.addEventListener("input",()=>{ (_orManual[orAlm+"|"+inp.dataset.cat]||={xs:0,obs:""}).obs=inp.value; _orGuardar(); });
   });
 }
 
