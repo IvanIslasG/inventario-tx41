@@ -766,8 +766,14 @@ async function _exportarORSimple(rows, numReabasto, generador, areasSeleccionada
   XLSX.writeFile(wb, filename);
 }
 
-function _ejecutarExportOR(){
-  abrirModalOR();
+function _ejecutarExportOR(numOR, generador){
+  const n = parseInt(numOR)||1;
+  const g = (generador||"").trim() || "—";
+  // Llamar directamente a exportar sin el modal
+  const rows = filasOR().filter(r=>r.xsurtir>0);
+  const areas = [...new Set(rows.map(r=>r.area))];
+  if(!rows.length){ alert("Sin materiales con X Surtir > 0."); return; }
+  _exportarORSimple(rows, n, g, areas);
 }
 
 /* ── Resumen antes de exportar ── */
@@ -828,12 +834,10 @@ function _mostrarResumenOR(){
       </div>
 
       <!-- Stats globales -->
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:20px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px">
         ${[
           [totalPzas.toLocaleString(), "Total piezas"],
           [totalCats, "Catálogos"],
-          [totalNGs, "Grupos (NG)"],
-          [nAreas, "Área" + (nAreas !== 1 ? "s" : "")],
         ].map(([n,l]) => `
           <div style="background:white;border:1px solid var(--line);border-radius:12px;
                       padding:14px 16px;text-align:center">
@@ -841,6 +845,34 @@ function _mostrarResumenOR(){
             <div style="font-size:11px;color:var(--muted);text-transform:uppercase;
                         letter-spacing:.4px;margin-top:2px">${l}</div>
           </div>`).join("")}
+      </div>
+
+      <!-- Campos No. OR y Generador -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px">
+        <div>
+          <label style="font-size:11px;font-weight:700;color:var(--muted);
+                        text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:6px">
+            No. de Reabasto
+          </label>
+          <input id="orNumResum" type="number" min="1" placeholder="Ej. 5"
+            style="width:100%;padding:10px 14px;border:1.5px solid var(--line);
+                   border-radius:10px;font-size:16px;font-weight:700;font-family:inherit;
+                   color:var(--primary);outline:none"
+            onfocus="this.style.borderColor='var(--primary)'"
+            onblur="this.style.borderColor='var(--line)'">
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:700;color:var(--muted);
+                        text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:6px">
+            Genera OR
+          </label>
+          <input id="orGenResum" type="text" placeholder="Nombre completo"
+            style="width:100%;padding:10px 14px;border:1.5px solid var(--line);
+                   border-radius:10px;font-size:14px;font-family:inherit;
+                   color:var(--text);outline:none"
+            onfocus="this.style.borderColor='var(--primary)'"
+            onblur="this.style.borderColor='var(--line)'">
+        </div>
       </div>
 
       <!-- Rama SAP -->
@@ -881,7 +913,7 @@ function _mostrarResumenOR(){
       </div>
 
       <!-- Botón exportar -->
-      <button onclick="_ejecutarExportOR()"
+      <button onclick="_ejecutarExportOR($('#orNumResum').value, $('#orGenResum').value)"
         style="width:100%;padding:14px;background:var(--primary);color:white;
                border:none;border-radius:12px;font-size:15px;font-weight:700;
                cursor:pointer;font-family:inherit;transition:background .15s"
