@@ -799,13 +799,16 @@ function _mostrarResumenOR(){
   const esRN58 = centroDestino === "RN58";
   const ramaLabel = esRN58 ? "MIGO 313 (mismo centro)" : "ME21N + MIGO 351";
 
-  const ngRows = Object.entries(porNG)
-    .sort((a,b) => b[1].xs - a[1].xs)
-    .map(([ng, d]) => `
-      <tr>
-        <td style="padding:6px 10px;font-size:12px;color:var(--text)">${ng}</td>
-        <td style="padding:6px 10px;font-size:12px;text-align:center;color:var(--muted)">${d.cats.length}</td>
-        <td style="padding:6px 10px;font-size:13px;font-weight:700;text-align:right;color:var(--primary)">${d.xs.toLocaleString()}</td>
+  const matRows = conXS
+    .sort((a,b) => a.cat.localeCompare(b.cat))
+    .map(r => `
+      <tr style="border-bottom:1px solid var(--lite,#f4f6fb)">
+        <td style="padding:7px 10px;font-size:12px;font-family:monospace;
+                   font-weight:700;color:var(--primary);white-space:nowrap">${r.cat}</td>
+        <td style="padding:7px 10px;font-size:12px;color:var(--text)">${r.desc}</td>
+        <td style="padding:7px 10px;font-size:13px;font-weight:700;text-align:center;
+                   color:var(--primary);white-space:nowrap">${r.xsurtir}</td>
+        <td style="padding:7px 10px;font-size:11px;color:var(--muted);font-style:italic">${r.obs||"—"}</td>
       </tr>`).join("");
 
   $("#moduleView").innerHTML = `
@@ -856,21 +859,25 @@ function _mostrarResumenOR(){
         <div style="padding:12px 16px;border-bottom:1px solid var(--line);
                     font-size:12px;font-weight:700;color:var(--muted);
                     text-transform:uppercase;letter-spacing:.4px">
-          Desglose por nombre genérico
+          Materiales a surtir · ordenados por catálogo
         </div>
-        <table style="width:100%;border-collapse:collapse">
-          <thead>
-            <tr style="background:var(--lite,#f4f6fb)">
-              <th style="padding:8px 10px;font-size:11px;color:var(--muted);
-                         text-align:left;font-weight:600">GRUPO</th>
-              <th style="padding:8px 10px;font-size:11px;color:var(--muted);
-                         text-align:center;font-weight:600">CATS.</th>
-              <th style="padding:8px 10px;font-size:11px;color:var(--muted);
-                         text-align:right;font-weight:600">X SURTIR</th>
-            </tr>
-          </thead>
-          <tbody>${ngRows}</tbody>
-        </table>
+        <div style="max-height:360px;overflow-y:auto">
+          <table style="width:100%;border-collapse:collapse">
+            <thead style="position:sticky;top:0;background:var(--lite,#f4f6fb);z-index:1">
+              <tr>
+                <th style="padding:8px 10px;font-size:11px;color:var(--muted);
+                           text-align:left;font-weight:600;white-space:nowrap">CATÁLOGO</th>
+                <th style="padding:8px 10px;font-size:11px;color:var(--muted);
+                           text-align:left;font-weight:600">DESCRIPCIÓN</th>
+                <th style="padding:8px 10px;font-size:11px;color:var(--muted);
+                           text-align:center;font-weight:600;white-space:nowrap">X SURTIR</th>
+                <th style="padding:8px 10px;font-size:11px;color:var(--muted);
+                           text-align:left;font-weight:600">OBSERVACIONES</th>
+              </tr>
+            </thead>
+            <tbody>${matRows}</tbody>
+          </table>
+        </div>
       </div>
 
       <!-- Botón exportar -->
