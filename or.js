@@ -307,11 +307,8 @@ function _modORPanel(){
   function _actualizarNGOpts(){
     const fArea=_orAreaSel||"";
     // calcular NGs activos desde consumos + críticos (igual que calcularOR)
-    const cons=DB.consumos?.[orAlm]||{};
-    const criticos=DB.criticos||[];
     const ngsActivos=new Set();
-    const todosOR=new Set([...Object.keys(cons), ...criticos]);
-    for(const cat of todosOR){
+    for(const cat of Object.keys(DB.materiales||{})){
       const info=mat(cat);
       const area=info.area||"Sin clasificar";
       if(fArea && area!==fArea) continue;
@@ -366,9 +363,10 @@ function _orReiniciar(){
 function calcularOR(){
   const D=DIST(), cons=DB.consumos?.[orAlm]||{};
   const mCPM=Math.max(1,+$("#orMCPM")?.value||6), mStk=Math.max(0.1,+$("#orMS")?.value||1.5);
-  const out=[], vistos=new Set();
+  const out=[];
 
-  const calcFila=(cat, consumo)=>{
+  const calcFila=(cat)=>{
+    const consumo = cons[cat] || 0;
     const info=mat(cat), ng=ngDe(cat)||"SIN SUSTITUTO";
     const cpm=consumo/mCPM;
     const exAux=(DB.existencias?.[cat]?.[orAlm])||0;
@@ -383,16 +381,9 @@ function calcularOR(){
     return {cat,desc:info.desc,um:info.um,area:info.area||"Sin clasificar",ng,consumo,cpm,exAux,exD,calcSurtir,xsurtir,mdInv,excedente,obs:man.obs||""};
   };
 
-  // 1. Materiales con consumo en el almacén
-  for(const [cat,consumo] of Object.entries(cons)){
-    out.push(calcFila(cat, consumo));
-    vistos.add(cat);
-  }
-
-  // 2. Críticos sin consumo — siempre deben aparecer
-  for(const cat of (DB.criticos||[])){
-    if(vistos.has(cat)) continue;
-    out.push(calcFila(cat, 0));
+  // Todos los materiales del maestro — el consumo se usa para calcular, no para filtrar
+  for(const cat of Object.keys(DB.materiales||{})){
+    out.push(calcFila(cat));
   }
 
   return out;
