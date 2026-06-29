@@ -301,7 +301,7 @@ function _modORPanel(){
   ["orMCPM","orMS"].forEach(id=>{ const el=$("#"+id); el.oninput=pintarOR; el.onchange=pintarOR; });
   const orSearchEl=$("#orSearch"); if(orSearchEl){ orSearchEl.oninput=()=>{ _actualizarNGOpts(); pintarOR(); }; }
   ["orSolo","orSoloX","orExced","orSoloD041"].forEach(id=>{ const el=$("#"+id); if(el) el.onchange=pintarOR; });
-  $("#orExport").onclick=abrirModalOR;
+  $("#orExport").onclick=_mostrarResumenOR;
 
   // Autocomplete nombre genérico — filtra por área activa y muestra "Sin sustituto" incluido
   function _actualizarNGOpts(){
