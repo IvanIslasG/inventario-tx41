@@ -139,45 +139,52 @@ function _filtrarAlmMenu(q){
 
 // ── PASO 2: Selección de área ─────────────────────────────────────────────────
 function _mostrarBienvenidaOR(almSeleccionado){
+  // CRÍTICO: asignar el almacén elegido antes de renderizar
+  if(almSeleccionado) orAlm = almSeleccionado;
+
+  const cons    = DB.consumos?.[orAlm] || {};
+  const criticos= DB.criticos || [];
+  const todos   = new Set([...Object.keys(cons), ...criticos]);
+
   $("#moduleView").innerHTML = `
     <div id="or-bienvenida" style="
-      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      display:flex;flex-direction:column;align-items:center;
       min-height:70vh;padding:32px 20px;text-align:center">
 
-      <!-- Animación de entrada -->
-      <div id="or-anim-wrap" style="opacity:0;transform:translateY(20px);transition:all .6s ease">
-        <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:2px;
-                    color:var(--muted);margin-bottom:12px">Sistema de Inventario TX41</div>
-        <div style="font-size:22px;font-weight:800;color:var(--primary);line-height:1.3;
-                    margin-bottom:8px">Orden de Reabasto</div>
-        <div style="font-size:15px;color:var(--text);font-weight:500;margin-bottom:6px">
-          Telmex RNUM
-        </div>
-        <div style="font-size:13px;color:var(--muted)">Almacén Distribuidor Puebla · D041</div>
+      <div style="align-self:flex-start;margin-bottom:16px">
+        <button onclick="_mostrarPaso1Alm()"
+          style="background:none;border:none;cursor:pointer;font-size:13px;
+                 color:var(--muted);font-family:inherit;padding:4px 0">
+          ‹ Cambiar almacén
+        </button>
       </div>
 
-      <!-- Menú de áreas -->
+      <div id="or-anim-wrap" style="opacity:0;transform:translateY(20px);transition:all .6s ease">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2px;
+                    color:var(--muted);margin-bottom:10px">Orden de Reabasto · ${orAlm}</div>
+        <div style="font-size:20px;font-weight:800;color:var(--primary);margin-bottom:4px">
+          ${almName(orAlm)}
+        </div>
+        <div style="font-size:12px;color:var(--muted)">Telmex RNUM · Almacén Distribuidor Puebla</div>
+      </div>
+
       <div id="or-menu-areas" style="
         opacity:0;transform:translateY(16px);transition:all .5s ease;
-        margin-top:40px;width:100%;max-width:480px">
+        margin-top:32px;width:100%;max-width:480px">
 
-        <div style="font-size:13px;font-weight:600;color:var(--muted);
-                    margin-bottom:16px;text-transform:uppercase;letter-spacing:.5px">
-          ¿Qué OR quieres trabajar?
+        <div style="font-size:12px;font-weight:700;color:var(--muted);
+                    margin-bottom:14px;text-transform:uppercase;letter-spacing:.5px">
+          ¿Qué área quieres trabajar?
         </div>
 
-        <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;flex-direction:column;gap:8px">
           ${AREAS.concat(["Sin clasificar"]).map(area => {
-            const nMats = (() => {
-              const cons = DB.consumos?.[orAlm] || {};
-              const criticos = DB.criticos || [];
-              const todos = new Set([...Object.keys(cons), ...criticos]);
-              return [...todos].filter(cat => (mat(cat).area || "Sin clasificar") === area).length;
-            })();
-            return `<button onclick="_iniciarOR('${area.replace(/'/g,"\'")}') "
+            const nMats = [...todos].filter(cat => (mat(cat).area||"Sin clasificar") === area).length;
+            const avance = _orTieneAvance(orAlm);
+            return `<button onclick="_iniciarOR('${area.replace(/'/g,"\'")}')"
               style="display:flex;align-items:center;justify-content:space-between;
-                     padding:14px 20px;background:white;border:1.5px solid var(--line);
-                     border-radius:12px;cursor:pointer;text-align:left;width:100%;
+                     gap:12px;padding:12px 18px;background:white;border:1.5px solid var(--line);
+                     border-radius:11px;cursor:pointer;text-align:left;width:100%;
                      font-family:inherit;transition:all .15s;font-size:14px;font-weight:600;
                      color:var(--text)"
               onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--primary)'"
@@ -189,8 +196,8 @@ function _mostrarBienvenidaOR(almSeleccionado){
 
           <button onclick="_iniciarOR('')"
             style="display:flex;align-items:center;justify-content:space-between;
-                   padding:14px 20px;background:var(--primary);border:none;
-                   border-radius:12px;cursor:pointer;text-align:left;width:100%;
+                   padding:12px 18px;background:var(--primary);border:none;
+                   border-radius:11px;cursor:pointer;text-align:left;width:100%;
                    font-family:inherit;font-size:14px;font-weight:700;color:white;margin-top:4px">
             <span>Todas las áreas</span>
             <span style="font-size:11px;font-weight:400;opacity:.8">Vista completa</span>
@@ -200,16 +207,15 @@ function _mostrarBienvenidaOR(almSeleccionado){
     </div>
   `;
 
-  // Animación secuencial
   requestAnimationFrame(() => {
     setTimeout(() => {
-      const anim = document.getElementById("or-anim-wrap");
-      if(anim){ anim.style.opacity="1"; anim.style.transform="translateY(0)"; }
+      const a = document.getElementById("or-anim-wrap");
+      if(a){ a.style.opacity="1"; a.style.transform="translateY(0)"; }
     }, 80);
     setTimeout(() => {
-      const menu = document.getElementById("or-menu-areas");
-      if(menu){ menu.style.opacity="1"; menu.style.transform="translateY(0)"; }
-    }, 500);
+      const m = document.getElementById("or-menu-areas");
+      if(m){ m.style.opacity="1"; m.style.transform="translateY(0)"; }
+    }, 450);
   });
 }
 
