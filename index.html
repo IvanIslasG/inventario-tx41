@@ -1211,10 +1211,12 @@ function modOR(){
   // Autocomplete nombre genérico — filtra por área activa y muestra "Sin sustituto" incluido
   function _actualizarNGOpts(){
     const fArea=$("#orFArea")?.value||"";
-    // calcular filas visibles (sin filtro de NG) para saber qué NGs están activos
+    // calcular NGs activos desde consumos + críticos (igual que calcularOR)
     const cons=DB.consumos?.[orAlm]||{};
+    const criticos=DB.criticos||[];
     const ngsActivos=new Set();
-    for(const [cat] of Object.entries(cons)){
+    const todosOR=new Set([...Object.keys(cons), ...criticos]);
+    for(const cat of todosOR){
       const info=mat(cat);
       const area=info.area||"Sin clasificar";
       if(fArea && area!==fArea) continue;
