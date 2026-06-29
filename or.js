@@ -128,6 +128,17 @@ function _mostrarPaso1Alm(){
   });
 }
 
+function _orAreaTieneAvance(area){
+  // Verifica si hay entradas en _orManual para materiales de esta área
+  return Object.keys(_orManual).some(key => {
+    const cat = key.split("|")[1];
+    if(!cat) return false;
+    const m = mat(cat);
+    const areaM = m?.area || "Sin clasificar";
+    return !area || areaM === area;
+  });
+}
+
 function _filtrarAlmMenu(q){
   const q2 = q.toLowerCase();
   document.querySelectorAll("#or-alm-grid button[data-alm]").forEach(btn => {
@@ -181,16 +192,22 @@ function _mostrarBienvenidaOR(almSeleccionado){
           ${AREAS.concat(["Sin clasificar"]).map(area => {
             const nMats = [...todos].filter(cat => (mat(cat).area||"Sin clasificar") === area).length;
             const avance = _orTieneAvance(orAlm);
+            const enProg = _orAreaTieneAvance(area);
+            const bg = enProg ? "#f0fdf4" : "white";
+            const bc = enProg ? "#86efac" : "var(--line)";
+            const bcOut = enProg ? "#86efac" : "var(--line)";
             return `<button onclick="_iniciarOR('${area.replace(/'/g,"\'")}')"
               style="display:flex;align-items:center;justify-content:space-between;
-                     gap:12px;padding:12px 18px;background:white;border:1.5px solid var(--line);
+                     gap:12px;padding:12px 18px;background:${bg};border:1.5px solid ${bc};
                      border-radius:11px;cursor:pointer;text-align:left;width:100%;
                      font-family:inherit;transition:all .15s;font-size:14px;font-weight:600;
                      color:var(--text)"
               onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--primary)'"
-              onmouseout="this.style.borderColor='var(--line)';this.style.color='var(--text)'">
+              onmouseout="this.style.borderColor='${bcOut}';this.style.color='var(--text)'">
               <span>${area}</span>
-              <span style="font-size:11px;font-weight:400;color:var(--muted)">${nMats} materiales</span>
+              <span style="font-size:11px;font-weight:400;color:${enProg?'#16a34a':'var(--muted)'}">
+                ${enProg ? 'EN PROGRESO' : nMats+' materiales'}
+              </span>
             </button>`;
           }).join("")}
 
