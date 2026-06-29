@@ -279,11 +279,7 @@ function _modORPanel(){
       <input type="search" id="orSearch" placeholder="Buscar catálogo / descripción…" style="min-width:180px">
     </div>
     <div class="controls" style="flex-wrap:wrap;margin-top:6px">
-      <div class="an-cat-wrap" style="min-width:230px;flex:1;max-width:320px">
-        <input id="orNGInput" class="an-cat-input" placeholder="Nombre genérico… (escribe para filtrar)" autocomplete="off">
-        <div id="orNGSugs" class="an-cat-sugs"></div>
-        <input type="hidden" id="orNGVal">
-      </div>
+
       <label class="chk"><input type="checkbox" id="orSolo"> Solo Cálc. surtir &gt; 0</label>
       <label class="chk"><input type="checkbox" id="orSoloX"> Solo X Surtir &gt; 0</label>
       <label class="chk"><input type="checkbox" id="orExced"> Solo excedentes</label>
@@ -294,10 +290,63 @@ function _modORPanel(){
       <span class="pill" id="orResumen"></span>
       <span style="color:var(--muted)">CPM = consumo ÷ meses · Cálc. surtir = (meses stock × CPM) − existencia aux · <b>X Surtir</b> editable</span>
     </div>
-    <div id="orBandaNG"></div>
-    <div class="panel"><div class="panel-head" style="gap:8px">
-      <h2 id="orTitle"></h2><span class="pill" id="orCount"></span></div>
-      <div style="overflow-x:auto"><table id="orTable" style="min-width:1200px"></table></div></div>`;
+    </div>
+    <div style="display:flex;gap:0;align-items:flex-start;margin-top:8px">
+      <!-- Sidebar NG (sticky) -->
+      <div id="orNGSidebar" style="
+        width:200px;flex-shrink:0;
+        position:sticky;top:8px;
+        max-height:calc(100vh - 120px);
+        overflow-y:auto;
+        background:white;
+        border:1px solid var(--line);
+        border-radius:12px;
+        margin-right:12px;
+        display:flex;flex-direction:column">
+        <div style="padding:10px 12px;border-bottom:1px solid var(--line);
+                    display:flex;align-items:center;justify-content:space-between;
+                    position:sticky;top:0;background:white;z-index:1;border-radius:12px 12px 0 0">
+          <span style="font-size:11px;font-weight:700;color:var(--muted);
+                       text-transform:uppercase;letter-spacing:.4px">Grupos</span>
+          <div style="display:flex;gap:6px">
+            <button onclick="_orNGTodos(true)" title="Marcar todos"
+              style="border:none;background:none;cursor:pointer;font-size:11px;
+                     color:var(--primary);font-family:inherit;padding:0">✓ Todos</button>
+            <span style="color:var(--line)">|</span>
+            <button onclick="_orNGTodos(false)" title="Desmarcar todos"
+              style="border:none;background:none;cursor:pointer;font-size:11px;
+                     color:var(--muted);font-family:inherit;padding:0">✗ Ninguno</button>
+          </div>
+        </div>
+        <div id="orNGList" style="padding:6px 4px;flex:1;overflow-y:auto"></div>
+      </div>
+      <!-- Toggle móvil -->
+      <div id="orNGToggleWrap" style="display:none;margin-bottom:8px;width:100%">
+        <button onclick="_orNGToggleMobile()"
+          style="width:100%;padding:8px 14px;background:white;border:1.5px solid var(--line);
+                 border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;
+                 font-family:inherit;color:var(--primary);text-align:left">
+          ▼ Filtrar por grupo (NG)
+        </button>
+        <div id="orNGMobilePanel" style="display:none;background:white;border:1px solid var(--line);
+             border-radius:0 0 10px 10px;padding:8px 4px;max-height:200px;overflow-y:auto"></div>
+      </div>
+      <!-- Tabla -->
+      <div style="flex:1;min-width:0">
+        <div id="orBandaNG"></div>
+        <div class="panel"><div class="panel-head" style="gap:8px">
+          <h2 id="orTitle"></h2><span class="pill" id="orCount"></span></div>
+          <div style="overflow-x:auto"><table id="orTable" style="min-width:1100px"></table></div>
+        </div>
+      </div>
+    </div>
+    <style>
+      @media(max-width:768px){
+        #orNGSidebar{display:none!important}
+        #orNGToggleWrap{display:block!important}
+      }
+    </style>
+  \`;
   ["orMCPM","orMS"].forEach(id=>{ const el=$("#"+id); el.oninput=pintarOR; el.onchange=pintarOR; });
   const orSearchEl=$("#orSearch"); if(orSearchEl){ orSearchEl.oninput=()=>{ _actualizarNGOpts(); pintarOR(); }; }
   ["orSolo","orSoloX","orExced","orSoloD041"].forEach(id=>{ const el=$("#"+id); if(el) el.onchange=pintarOR; });
@@ -315,35 +364,12 @@ function _modORPanel(){
       const ng=ngDe(cat);
       ngsActivos.add(ng||"SIN SUSTITUTO");
     }
-    // guardar lista para el autocomplete
-    $("#orNGInput")._ngs=[...ngsActivos].sort();
   }
   _actualizarNGOpts();
-
-  const ngInp=$("#orNGInput"), ngSugs=$("#orNGSugs"), ngVal=$("#orNGVal");
-  function _abrirNGSugs(q){
-    const lista=(ngInp._ngs||[]);
-    const qL=(q||"").toLowerCase();
-    const hits=qL ? lista.filter(n=>n.toLowerCase().includes(qL)) : lista;
-    ngSugs.innerHTML=[{v:"",label:"— Todos los nombres genéricos —"},...hits.map(n=>({v:n,label:n}))].map(
-      ({v,label})=>`<div class="an-cat-sug" data-v="${v}">${label}</div>`
-    ).join("");
-    ngSugs.style.display="block";
-  }
-  ngInp.oninput=()=>{ ngVal.value=""; _abrirNGSugs(ngInp.value); pintarOR(); };
-  // Punto 3: selectAll en el input de NG al enfocar
-  ngInp.addEventListener("focus",()=>{ ngInp.select(); _abrirNGSugs(ngInp.value); });
-  ngSugs.addEventListener("pointerdown",e=>{
-    const t=e.target.closest("[data-v]"); if(!t) return;
-    ngVal.value=t.dataset.v;
-    ngInp.value=t.dataset.v||"";
-    ngSugs.style.display="none";
-    pintarOR();
-  });
-  document.addEventListener("click",e=>{ if(!ngSugs.contains(e.target)&&e.target!==ngInp) ngSugs.style.display="none"; });
+  _orNGIniciado = false;
+  setTimeout(_orNGRender, 100);
 
   // Área ya está en _orAreaSel desde el menú
-  _actualizarNGOpts();
   pintarOR();
 }
 
@@ -358,6 +384,83 @@ function _orReiniciar(){
   _orManual = {};
   _orLimpiarLS();
   pintarOR();
+}
+
+// ── Sidebar de Nombres Genéricos ─────────────────────────────────────────────
+let _orNGSeleccionados = new Set(); // vacío = todos activos
+let _orNGIniciado = false;
+
+function _orNGRender(){
+  const fArea = _orAreaSel || "";
+  // Obtener todos los NG del área actual
+  const ngs = new Set();
+  for(const cat of Object.keys(DB.materiales||{})){
+    const info = mat(cat);
+    const area = info.area || "Sin clasificar";
+    if(fArea && area !== fArea) continue;
+    ngs.add(ngDe(cat) || "SIN SUSTITUTO");
+  }
+  const lista = [...ngs].sort();
+
+  // Si es la primera vez, marcar todos
+  if(!_orNGIniciado){
+    _orNGSeleccionados = new Set(lista);
+    _orNGIniciado = true;
+  }
+
+  const renderItems = (containerId) => {
+    const el = document.getElementById(containerId);
+    if(!el) return;
+    el.innerHTML = lista.map(ng => {
+      const checked = _orNGSeleccionados.has(ng) || _orNGSeleccionados.size === 0;
+      return `<label style="display:flex;align-items:center;gap:7px;padding:5px 10px;
+                cursor:pointer;border-radius:7px;transition:background .1s;font-size:12px;
+                color:var(--text);line-height:1.3"
+              onmouseover="this.style.background='var(--lite,#f4f6fb)'"
+              onmouseout="this.style.background='transparent'">
+        <input type="checkbox" ${checked?'checked':''} data-ng="${ng.replace(/"/g,'&quot;')}"
+          onchange="_orNGCambio(this)"
+          style="accent-color:var(--primary);flex-shrink:0;width:14px;height:14px">
+        <span style="word-break:break-word">${ng}</span>
+      </label>`;
+    }).join("");
+  };
+
+  renderItems("orNGList");
+  renderItems("orNGMobilePanel");
+}
+
+function _orNGCambio(chk){
+  const ng = chk.getAttribute("data-ng");
+  // Sincronizar entre sidebar y panel móvil
+  document.querySelectorAll(`input[data-ng="${ng}"]`).forEach(el => el.checked = chk.checked);
+  if(chk.checked) _orNGSeleccionados.add(ng);
+  else _orNGSeleccionados.delete(ng);
+  pintarOR();
+}
+
+function _orNGTodos(marcar){
+  const fArea = _orAreaSel || "";
+  const ngs = new Set();
+  for(const cat of Object.keys(DB.materiales||{})){
+    const info = mat(cat);
+    const area = info.area || "Sin clasificar";
+    if(fArea && area !== fArea) continue;
+    ngs.add(ngDe(cat) || "SIN SUSTITUTO");
+  }
+  if(marcar) _orNGSeleccionados = new Set([...ngs]);
+  else _orNGSeleccionados = new Set();
+  _orNGRender();
+  pintarOR();
+}
+
+function _orNGToggleMobile(){
+  const panel = document.getElementById("orNGMobilePanel");
+  const btn   = document.querySelector("#orNGToggleWrap button");
+  if(!panel) return;
+  const open = panel.style.display === "none";
+  panel.style.display = open ? "block" : "none";
+  if(btn) btn.textContent = (open ? "▲" : "▼") + " Filtrar por grupo (NG)";
 }
 
 function calcularOR(){
@@ -392,8 +495,7 @@ function calcularOR(){
 function filasOR(){
   const q=($("#orSearch")?.value||"").trim().toLowerCase();
   const fArea=_orAreaSel||"";
-  const ngHid=$("#orNGVal")?.value||"";
-  const ngText=($("#orNGInput")?.value||"").trim().toLowerCase();
+
   const soloCal=$("#orSolo")?.checked;
   const soloX=$("#orSoloX")?.checked;
   const soloExc=$("#orExced")?.checked;
@@ -401,8 +503,9 @@ function filasOR(){
   let rows=calcularOR().filter(r=>{
     if(q && !(r.cat.toLowerCase().includes(q)||(r.desc||"").toLowerCase().includes(q))) return false;
     if(fArea && r.area!==fArea) return false;
-    if(ngHid){ if(r.ng!==ngHid) return false; }
-    else if(ngText){ if(!r.ng.toLowerCase().includes(ngText)) return false; }
+    // Filtro sidebar NG — si hay selección parcial, filtrar
+    if(_orNGSeleccionados.size > 0 && !_orNGSeleccionados.has(r.ng)) return false;
+
     if(soloCal && r.calcSurtir<=0) return false;
     if(soloX && r.xsurtir<=0) return false;
     if(soloExc && !r.excedente) return false;
