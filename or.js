@@ -9,7 +9,95 @@
 let orAlm="", orSort={col:"cat",dir:1}, _orManual={};
 function consumosDisp(){ return DB.consumos ? Object.keys(DB.consumos).sort() : []; }
 
+// ── Pantalla bienvenida OR ───────────────────────────────────────────────────
+let _orAreaSel = "";  // área seleccionada desde el menú inicial
+
 function modOR(){
+  _orAreaSel = "";
+  _mostrarBienvenidaOR();
+}
+
+function _mostrarBienvenidaOR(){
+  $("#moduleView").innerHTML = `
+    <div id="or-bienvenida" style="
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      min-height:70vh;padding:32px 20px;text-align:center">
+
+      <!-- Animación de entrada -->
+      <div id="or-anim-wrap" style="opacity:0;transform:translateY(20px);transition:all .6s ease">
+        <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:2px;
+                    color:var(--muted);margin-bottom:12px">Sistema de Inventario TX41</div>
+        <div style="font-size:22px;font-weight:800;color:var(--primary);line-height:1.3;
+                    margin-bottom:8px">Orden de Reabasto</div>
+        <div style="font-size:15px;color:var(--text);font-weight:500;margin-bottom:6px">
+          Telmex RNUM
+        </div>
+        <div style="font-size:13px;color:var(--muted)">Almacén Distribuidor Puebla · D041</div>
+      </div>
+
+      <!-- Menú de áreas -->
+      <div id="or-menu-areas" style="
+        opacity:0;transform:translateY(16px);transition:all .5s ease;
+        margin-top:40px;width:100%;max-width:480px">
+
+        <div style="font-size:13px;font-weight:600;color:var(--muted);
+                    margin-bottom:16px;text-transform:uppercase;letter-spacing:.5px">
+          ¿Qué OR quieres trabajar?
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:10px">
+          ${AREAS.concat(["Sin clasificar"]).map(area => {
+            const nMats = (() => {
+              const cons = DB.consumos?.[orAlm] || {};
+              const criticos = DB.criticos || [];
+              const todos = new Set([...Object.keys(cons), ...criticos]);
+              return [...todos].filter(cat => (mat(cat).area || "Sin clasificar") === area).length;
+            })();
+            return `<button onclick="_iniciarOR('${area.replace(/'/g,"\'")}') "
+              style="display:flex;align-items:center;justify-content:space-between;
+                     padding:14px 20px;background:white;border:1.5px solid var(--line);
+                     border-radius:12px;cursor:pointer;text-align:left;width:100%;
+                     font-family:inherit;transition:all .15s;font-size:14px;font-weight:600;
+                     color:var(--text)"
+              onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--primary)'"
+              onmouseout="this.style.borderColor='var(--line)';this.style.color='var(--text)'">
+              <span>${area}</span>
+              <span style="font-size:11px;font-weight:400;color:var(--muted)">${nMats} materiales</span>
+            </button>`;
+          }).join("")}
+
+          <button onclick="_iniciarOR('')"
+            style="display:flex;align-items:center;justify-content:space-between;
+                   padding:14px 20px;background:var(--primary);border:none;
+                   border-radius:12px;cursor:pointer;text-align:left;width:100%;
+                   font-family:inherit;font-size:14px;font-weight:700;color:white;margin-top:4px">
+            <span>Todas las áreas</span>
+            <span style="font-size:11px;font-weight:400;opacity:.8">Vista completa</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Animación secuencial
+  requestAnimationFrame(() => {
+    setTimeout(() => {
+      const anim = document.getElementById("or-anim-wrap");
+      if(anim){ anim.style.opacity="1"; anim.style.transform="translateY(0)"; }
+    }, 80);
+    setTimeout(() => {
+      const menu = document.getElementById("or-menu-areas");
+      if(menu){ menu.style.opacity="1"; menu.style.transform="translateY(0)"; }
+    }, 500);
+  });
+}
+
+function _iniciarOR(area){
+  _orAreaSel = area;
+  _modORPanel();
+}
+
+function _modORPanel(){
   const alms=consumosDisp();
   if(!alms.length){
     $("#moduleView").innerHTML=`<div class="panel"><div class="soon">
@@ -43,6 +131,7 @@ function modOR(){
       <label class="chk"><input type="checkbox" id="orSolo"> Solo Cálc. surtir &gt; 0</label>
       <label class="chk"><input type="checkbox" id="orSoloX"> Solo X Surtir &gt; 0</label>
       <label class="chk"><input type="checkbox" id="orExced"> Solo excedentes</label>
+      <label class="chk"><input type="checkbox" id="orSoloD041"> Solo con existencia D041</label>
       <button class="btn-prim" id="orExport">⬇ Exportar OR</button>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0;font-size:12px">
@@ -56,7 +145,7 @@ function modOR(){
   $("#orAlm").onchange=e=>{ orAlm=e.target.value; _actualizarNGOpts(); pintarOR(); };
   ["orMCPM","orMS"].forEach(id=>{ const el=$("#"+id); el.oninput=pintarOR; el.onchange=pintarOR; });
   ["orSearch","orFArea"].forEach(id=>{ const el=$("#"+id); if(el){ el.oninput=()=>{ _actualizarNGOpts(); pintarOR(); }; }});
-  ["orSolo","orSoloX","orExced"].forEach(id=>{ const el=$("#"+id); if(el) el.onchange=pintarOR; });
+  ["orSolo","orSoloX","orExced","orSoloD041"].forEach(id=>{ const el=$("#"+id); if(el) el.onchange=pintarOR; });
   $("#orExport").onclick=abrirModalOR;
 
   // Autocomplete nombre genérico — filtra por área activa y muestra "Sin sustituto" incluido
@@ -101,7 +190,15 @@ function modOR(){
   });
   document.addEventListener("click",e=>{ if(!ngSugs.contains(e.target)&&e.target!==ngInp) ngSugs.style.display="none"; });
 
-  pintarOR();
+  // Pre-seleccionar área elegida en el menú
+  if(_orAreaSel){
+    const sel = $("#orFArea");
+    if(sel) sel.value = _orAreaSel;
+    _actualizarNGOpts();
+    pintarOR();
+  } else {
+    pintarOR();
+  }
 }
 
 function calcularOR(){
@@ -156,6 +253,7 @@ function filasOR(){
     if(soloCal && r.calcSurtir<=0) return false;
     if(soloX && r.xsurtir<=0) return false;
     if(soloExc && !r.excedente) return false;
+    if($("#orSoloD041")?.checked && (r.exD||0) <= 0) return false;
     return true;
   });
 
