@@ -152,6 +152,8 @@ function _filtrarAlmMenu(q){
 function _mostrarBienvenidaOR(almSeleccionado){
   // CRÍTICO: asignar el almacén elegido antes de renderizar
   if(almSeleccionado) orAlm = almSeleccionado;
+  // Cargar avance guardado ANTES de renderizar para que _orAreaTieneAvance funcione
+  _orCargar();
 
   const cons    = DB.consumos?.[orAlm] || {};
   const criticos= DB.criticos || [];
@@ -762,6 +764,126 @@ async function _exportarORSimple(rows, numReabasto, generador, areasSeleccionada
 
   if(!wb.SheetNames.length){ alert("Sin datos para exportar."); return; }
   XLSX.writeFile(wb, filename);
+}
+
+function _ejecutarExportOR(){
+  abrirModalOR();
+}
+
+/* ── Resumen antes de exportar ── */
+function _mostrarResumenOR(){
+  const rows = filasOR();
+  const conXS = rows.filter(r => r.xsurtir > 0);
+  if(!conXS.length){ alert("No hay materiales con X Surtir > 0. Agrega cantidades antes de exportar."); return; }
+
+  // Agrupar por nombre genérico
+  const porNG = {};
+  conXS.forEach(r => {
+    const ng = r.ng || "SIN SUSTITUTO";
+    if(!porNG[ng]) porNG[ng] = { cats:[], xs:0, exD:0, calcS:0 };
+    porNG[ng].cats.push(r.cat);
+    porNG[ng].xs   += r.xsurtir;
+    porNG[ng].exD  += r.exD || 0;
+    porNG[ng].calcS+= r.calcSurtir || 0;
+  });
+
+  // Stats globales
+  const totalCats = conXS.length;
+  const totalPzas = conXS.reduce((s,r) => s + r.xsurtir, 0);
+  const totalNGs  = Object.keys(porNG).length;
+  const nAreas    = [...new Set(conXS.map(r => r.area))].length;
+
+  // Grupos SAP (rama)
+  const siglaDestino = orAlm;
+  const centroDestino = (DB.directorio?.almacenes?.[siglaDestino]?.centro) || "";
+  const esRN58 = centroDestino === "RN58";
+  const ramaLabel = esRN58 ? "MIGO 313 (mismo centro)" : "ME21N + MIGO 351";
+
+  const ngRows = Object.entries(porNG)
+    .sort((a,b) => b[1].xs - a[1].xs)
+    .map(([ng, d]) => `
+      <tr>
+        <td style="padding:6px 10px;font-size:12px;color:var(--text)">${ng}</td>
+        <td style="padding:6px 10px;font-size:12px;text-align:center;color:var(--muted)">${d.cats.length}</td>
+        <td style="padding:6px 10px;font-size:13px;font-weight:700;text-align:right;color:var(--primary)">${d.xs.toLocaleString()}</td>
+      </tr>`).join("");
+
+  $("#moduleView").innerHTML = `
+    <div style="max-width:680px;margin:0 auto;padding:24px 16px">
+
+      <!-- Header -->
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">
+        <button onclick="_modORPanel()"
+          style="background:none;border:1.5px solid var(--line);border-radius:8px;
+                 padding:6px 14px;cursor:pointer;font-size:13px;font-family:inherit;color:var(--muted)">
+          ‹ Regresar
+        </button>
+        <div>
+          <div style="font-size:18px;font-weight:800;color:var(--primary)">Resumen de la OR</div>
+          <div style="font-size:12px;color:var(--muted)">${orAlm} · ${almName(orAlm)}</div>
+        </div>
+      </div>
+
+      <!-- Stats globales -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:20px">
+        ${[
+          [totalPzas.toLocaleString(), "Total piezas"],
+          [totalCats, "Catálogos"],
+          [totalNGs, "Grupos (NG)"],
+          [nAreas, "Área" + (nAreas !== 1 ? "s" : "")],
+        ].map(([n,l]) => `
+          <div style="background:white;border:1px solid var(--line);border-radius:12px;
+                      padding:14px 16px;text-align:center">
+            <div style="font-size:24px;font-weight:800;color:var(--primary)">${n}</div>
+            <div style="font-size:11px;color:var(--muted);text-transform:uppercase;
+                        letter-spacing:.4px;margin-top:2px">${l}</div>
+          </div>`).join("")}
+      </div>
+
+      <!-- Rama SAP -->
+      <div style="background:#f0f4ff;border:1.5px solid #c7d7f0;border-radius:10px;
+                  padding:12px 16px;margin-bottom:20px;display:flex;align-items:center;gap:10px">
+        <span style="font-size:18px">📋</span>
+        <div>
+          <div style="font-size:12px;font-weight:700;color:var(--primary)">Ruta SAP</div>
+          <div style="font-size:12px;color:var(--text)">${ramaLabel}</div>
+        </div>
+      </div>
+
+      <!-- Tabla por NG -->
+      <div style="background:white;border:1px solid var(--line);border-radius:12px;
+                  overflow:hidden;margin-bottom:24px">
+        <div style="padding:12px 16px;border-bottom:1px solid var(--line);
+                    font-size:12px;font-weight:700;color:var(--muted);
+                    text-transform:uppercase;letter-spacing:.4px">
+          Desglose por nombre genérico
+        </div>
+        <table style="width:100%;border-collapse:collapse">
+          <thead>
+            <tr style="background:var(--lite,#f4f6fb)">
+              <th style="padding:8px 10px;font-size:11px;color:var(--muted);
+                         text-align:left;font-weight:600">GRUPO</th>
+              <th style="padding:8px 10px;font-size:11px;color:var(--muted);
+                         text-align:center;font-weight:600">CATS.</th>
+              <th style="padding:8px 10px;font-size:11px;color:var(--muted);
+                         text-align:right;font-weight:600">X SURTIR</th>
+            </tr>
+          </thead>
+          <tbody>${ngRows}</tbody>
+        </table>
+      </div>
+
+      <!-- Botón exportar -->
+      <button onclick="_ejecutarExportOR()"
+        style="width:100%;padding:14px;background:var(--primary);color:white;
+               border:none;border-radius:12px;font-size:15px;font-weight:700;
+               cursor:pointer;font-family:inherit;transition:background .15s"
+        onmouseover="this.style.background='#0033AA'"
+        onmouseout="this.style.background='var(--primary)'">
+        ⬇ Confirmar y Exportar OR
+      </button>
+    </div>
+  `;
 }
 
 /* ---- Fallback: xlsx plano sin formato ---- */
