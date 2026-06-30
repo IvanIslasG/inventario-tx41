@@ -309,6 +309,12 @@ function _modORPanel(){
                      color:var(--muted);font-family:inherit;padding:0">✗ Ninguno</button>
           </div>
         </div>
+        <div style="padding:6px 8px;border-bottom:1px solid var(--line)">
+          <input type="search" id="orNGSearch" placeholder="Buscar grupo..."
+            oninput="_orNGFiltrar(this.value)"
+            style="width:100%;padding:5px 8px;border:1px solid var(--line);
+                   border-radius:7px;font-size:11px;font-family:inherit;outline:none">
+        </div>
         <div id="orNGList" style="padding:6px 4px;flex:1;overflow-y:auto"></div>
       </div>
       <!-- Toggle móvil -->
@@ -455,6 +461,18 @@ function _orNGTodos(marcar){
   else _orNGSeleccionados = new Set();
   _orNGRender();
   pintarOR();
+}
+
+function _orNGFiltrar(q){
+  var qn = (q || "").toLowerCase();
+  var labels = document.querySelectorAll("#orNGList label, #orNGMobilePanel label");
+  for(var i=0; i<labels.length; i++){
+    var lbl = labels[i];
+    var input = lbl.querySelector("input[data-ng]");
+    var ng = input ? (input.getAttribute("data-ng") || "") : "";
+    var match = !qn || ng.toLowerCase().includes(qn);
+    lbl.style.display = match ? "flex" : "none";
+  }
 }
 
 function _orNGToggleMobile(){
