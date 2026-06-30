@@ -1,0 +1,62 @@
+name: Validar sintaxis JS
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - '**.html'
+      - '**.js'
+
+jobs:
+  validar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Validar or.js
+        run: |
+          if [ -f "or.js" ]; then
+            node --check or.js
+            echo "✓ or.js sin errores de sintaxis"
+          fi
+
+      - name: Extraer y validar JS de index.html
+        run: |
+          if [ -f "index.html" ]; then
+            python3 -c "
+          import re
+          with open('index.html', encoding='utf-8') as f:
+              html = f.read()
+          # Extraer todos los bloques <script> sin src=
+          scripts = re.findall(r'<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>', html, re.DOTALL)
+          with open('_inline.js', 'w', encoding='utf-8') as f:
+              f.write('\n'.join(scripts))
+          "
+            if [ -s "_inline.js" ]; then
+              node --check _inline.js
+              echo "✓ Script inline de index.html sin errores de sintaxis"
+            fi
+          fi
+
+      - name: Validar cuentas.html
+        run: |
+          if [ -f "cuentas.html" ]; then
+            python3 -c "
+          import re
+          with open('cuentas.html', encoding='utf-8') as f:
+              html = f.read()
+          scripts = re.findall(r'<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>', html, re.DOTALL)
+          with open('_inline2.js', 'w', encoding='utf-8') as f:
+              f.write('\n'.join(scripts))
+          "
+            if [ -s "_inline2.js" ]; then
+              node --check _inline2.js
+              echo "✓ Script inline de cuentas.html sin errores de sintaxis"
+            fi
+          fi
