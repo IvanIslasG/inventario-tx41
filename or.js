@@ -65,56 +65,58 @@ function modOR(){
 }
 
 // ── PASO 1: Selección de almacén ─────────────────────────────────────────────
+function _tplPaso1Alm(alms){
+  var tarjetas = "";
+  for(var i=0; i<alms.length; i++){
+    var alm = alms[i];
+    var avance = _orTieneAvance(alm);
+    var bg = avance ? "#f0fdf4" : "white";
+    var bc = avance ? "#86efac" : "var(--line)";
+    var subTexto = avance ? ("EN PROGRESO &middot; " + avance + " editados") : almName(alm);
+    var subColor = avance ? "#16a34a" : "var(--muted)";
+
+    tarjetas +=
+      "<button data-alm=\"" + alm + "\" onclick=\"_mostrarBienvenidaOR('" + alm + "')\"" +
+      " style=\"display:flex;flex-direction:column;align-items:flex-start;" +
+      "gap:3px;padding:12px 14px;background:" + bg + ";border:1.5px solid " + bc + ";" +
+      "border-radius:11px;cursor:pointer;text-align:left;width:100%;" +
+      "font-family:inherit;transition:border-color .15s\"" +
+      " onmouseover=\"this.style.borderColor='var(--primary)'\"" +
+      " onmouseout=\"this.style.borderColor='" + bc + "'\">" +
+      "<span style=\"font-size:14px;font-weight:700;color:var(--text)\">" + alm + "</span>" +
+      "<span style=\"font-size:10px;color:" + subColor + "\">" + subTexto + "</span>" +
+      "</button>";
+  }
+
+  return (
+    "<div style=\"display:flex;flex-direction:column;align-items:center;justify-content:center;" +
+    "min-height:70vh;padding:32px 20px;text-align:center\">" +
+    "<div id=\"or-anim-wrap\" style=\"opacity:0;transform:translateY(20px);transition:all .6s ease\">" +
+    "<div style=\"font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2px;" +
+    "color:var(--muted);margin-bottom:10px\">Sistema de Inventario TX41</div>" +
+    "<div style=\"font-size:22px;font-weight:800;color:var(--primary);margin-bottom:6px\">Orden de Reabasto</div>" +
+    "<div style=\"font-size:14px;color:var(--text);font-weight:500;margin-bottom:4px\">Telmex RNUM</div>" +
+    "<div style=\"font-size:12px;color:var(--muted)\">Almacen Distribuidor Puebla &middot; D041</div>" +
+    "</div>" +
+    "<div id=\"or-menu-alm\" style=\"opacity:0;transform:translateY(16px);transition:all .5s ease;" +
+    "margin-top:28px;width:100%;max-width:720px\">" +
+    "<div style=\"font-size:12px;font-weight:700;color:var(--muted);margin-bottom:12px;" +
+    "text-transform:uppercase;letter-spacing:.5px\">&iquest;Con que almacen vas a trabajar?</div>" +
+    "<input type=\"search\" id=\"or-alm-search\" placeholder=\"Buscar almacen...\"" +
+    " style=\"width:100%;margin-bottom:14px;padding:9px 14px;border:1.5px solid var(--line);" +
+    "border-radius:10px;font-size:13px;font-family:inherit;outline:none\"" +
+    " oninput=\"_filtrarAlmMenu(this.value)\">" +
+    "<div id=\"or-alm-grid\" style=\"display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px\">" +
+    tarjetas +
+    "</div></div></div>"
+  );
+}
+
 function _mostrarPaso1Alm(){
   const alms = consumosDisp();
   const cfg  = _orCargarConfig();
 
-  $("#moduleView").innerHTML = `
-    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;
-                min-height:70vh;padding:32px 20px;text-align:center">
-
-      <div id="or-anim-wrap" style="opacity:0;transform:translateY(20px);transition:all .6s ease">
-        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2px;
-                    color:var(--muted);margin-bottom:10px">Sistema de Inventario TX41</div>
-        <div style="font-size:22px;font-weight:800;color:var(--primary);margin-bottom:6px">
-          Orden de Reabasto
-        </div>
-        <div style="font-size:14px;color:var(--text);font-weight:500;margin-bottom:4px">Telmex RNUM</div>
-        <div style="font-size:12px;color:var(--muted)">Almacén Distribuidor Puebla · D041</div>
-      </div>
-
-      <div id="or-menu-alm" style="opacity:0;transform:translateY(16px);transition:all .5s ease;
-                                    margin-top:28px;width:100%;max-width:720px">
-        <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:12px;
-                    text-transform:uppercase;letter-spacing:.5px">
-          ¿Con qué almacén vas a trabajar?
-        </div>
-        <input type="search" id="or-alm-search" placeholder="Buscar almacén…"
-          style="width:100%;margin-bottom:14px;padding:9px 14px;border:1.5px solid var(--line);
-                 border-radius:10px;font-size:13px;font-family:inherit;outline:none"
-          oninput="_filtrarAlmMenu(this.value)">
-        <div id="or-alm-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px">
-          ${alms.map(alm => {
-            const avance = _orTieneAvance(alm);
-            const bg     = avance ? "#f0fdf4" : "white";
-            const bc     = avance ? "#86efac" : "var(--line)";
-            return `<button data-alm="${alm}" onclick="_mostrarBienvenidaOR('${alm}')"
-              style="display:flex;flex-direction:column;align-items:flex-start;
-                     gap:3px;padding:12px 14px;background:${bg};border:1.5px solid ${bc};
-                     border-radius:11px;cursor:pointer;text-align:left;width:100%;
-                     font-family:inherit;transition:border-color .15s"
-              onmouseover="this.style.borderColor='var(--primary)'"
-              onmouseout="this.style.borderColor='${bc}'">
-              <span style="font-size:14px;font-weight:700;color:var(--text)">${alm}</span>
-              <span style="font-size:10px;color:${avance?'#16a34a':'var(--muted)'}">
-                ${avance ? 'EN PROGRESO · '+avance+' editados' : almName(alm)}
-              </span>
-            </button>`;
-          }).join("")}
-        </div>
-      </div>
-    </div>
-  `;
+  $("#moduleView").innerHTML = _tplPaso1Alm(alms);
 
   requestAnimationFrame(() => {
     setTimeout(() => {
@@ -234,125 +236,99 @@ function _iniciarOR(area){
   _modORPanel();
 }
 
+function _tplPanelOR(orAlm, mCPM, mStk, areaSel){
+  return (
+    "<div class=\"controls\" style=\"flex-wrap:wrap;align-items:center\">" +
+    "<button class=\"btn btn-outline btn-sm\" onclick=\"_mostrarPaso1Alm()\">&lsaquo; Almacenes</button>" +
+    "<button class=\"btn btn-outline btn-sm\" onclick=\"_mostrarBienvenidaOR()\">&lsaquo; Areas</button>" +
+    "<span style=\"font-weight:700;color:var(--primary);font-size:13px\">" + orAlm + " &middot; " + almName(orAlm) + "</span>" +
+    "<button class=\"btn btn-outline btn-sm\" style=\"color:var(--rojo,#dc2626)\" onclick=\"_orReiniciar()\">&#8634; Reiniciar</button>" +
+    "</div>" +
+    "<div class=\"controls\" style=\"flex-wrap:wrap;margin-top:6px;align-items:center\">" +
+    "<label class=\"chk\">CPM (meses) <input type=\"number\" id=\"orMCPM\" value=\"" + mCPM + "\" min=\"1\" max=\"24\" step=\"1\" style=\"width:58px\"></label>" +
+    "<label class=\"chk\">Stock obj. <input type=\"number\" id=\"orMS\" value=\"" + mStk + "\" min=\"0.5\" max=\"12\" step=\"0.5\" style=\"width:58px\"></label>" +
+    "<span style=\"font-size:12px;font-weight:600;color:var(--primary);padding:4px 10px;" +
+    "background:var(--lite,#f0f4ff);border-radius:8px\">Area: " + (areaSel || "Todas") + "</span>" +
+    "<input type=\"search\" id=\"orSearch\" placeholder=\"Buscar catalogo / descripcion...\" style=\"min-width:180px\">" +
+    "</div>" +
+    "<div class=\"controls\" style=\"flex-wrap:wrap;margin-top:6px\">" +
+    "<label class=\"chk\"><input type=\"checkbox\" id=\"orSolo\"> Solo Calc. surtir &gt; 0</label>" +
+    "<label class=\"chk\"><input type=\"checkbox\" id=\"orSoloX\"> Solo X Surtir &gt; 0</label>" +
+    "<label class=\"chk\"><input type=\"checkbox\" id=\"orExced\"> Solo excedentes</label>" +
+    "<label class=\"chk\"><input type=\"checkbox\" id=\"orSoloD041\"> Solo con existencia D041</label>" +
+    "<button class=\"btn-prim\" id=\"orExport\">&#8681; Exportar OR</button>" +
+    "</div>" +
+    "<div style=\"display:flex;gap:8px;flex-wrap:wrap;margin:8px 0;font-size:12px\">" +
+    "<span class=\"pill\" id=\"orResumen\"></span>" +
+    "<span style=\"color:var(--muted)\">CPM = consumo &divide; meses &middot; Calc. surtir = (meses stock &times; CPM) &minus; existencia aux &middot; <b>X Surtir</b> editable</span>" +
+    "</div>" +
+    "<div style=\"display:flex;gap:0;align-items:flex-start;margin-top:8px\">" +
+    "<div id=\"orNGSidebar\" style=\"width:200px;flex-shrink:0;position:sticky;top:8px;" +
+    "max-height:calc(100vh - 120px);overflow-y:auto;background:white;border:1px solid var(--line);" +
+    "border-radius:12px;margin-right:12px;display:flex;flex-direction:column\">" +
+    "<div style=\"padding:10px 12px;border-bottom:1px solid var(--line);display:flex;" +
+    "align-items:center;justify-content:space-between;position:sticky;top:0;background:white;" +
+    "z-index:1;border-radius:12px 12px 0 0\">" +
+    "<span style=\"font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;" +
+    "letter-spacing:.4px\">Grupos</span>" +
+    "<div style=\"display:flex;gap:6px\">" +
+    "<button onclick=\"_orNGTodos(true)\" title=\"Marcar todos\" style=\"border:none;background:none;" +
+    "cursor:pointer;font-size:11px;color:var(--primary);font-family:inherit;padding:0\">&check; Todos</button>" +
+    "<span style=\"color:var(--line)\">|</span>" +
+    "<button onclick=\"_orNGTodos(false)\" title=\"Desmarcar todos\" style=\"border:none;background:none;" +
+    "cursor:pointer;font-size:11px;color:var(--muted);font-family:inherit;padding:0\">&times; Ninguno</button>" +
+    "</div></div>" +
+    "<div style=\"padding:6px 8px;border-bottom:1px solid var(--line)\">" +
+    "<input type=\"search\" id=\"orNGSearch\" placeholder=\"Buscar grupo...\" oninput=\"_orNGFiltrar(this.value)\"" +
+    " style=\"width:100%;padding:5px 8px;border:1px solid var(--line);border-radius:7px;" +
+    "font-size:11px;font-family:inherit;outline:none\">" +
+    "</div>" +
+    "<div id=\"orNGList\" style=\"padding:6px 4px;flex:1;overflow-y:auto\"></div>" +
+    "</div>" +
+    "<div id=\"orNGToggleWrap\" style=\"display:none;margin-bottom:8px;width:100%\">" +
+    "<button onclick=\"_orNGToggleMobile()\" style=\"width:100%;padding:8px 14px;background:white;" +
+    "border:1.5px solid var(--line);border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;" +
+    "font-family:inherit;color:var(--primary);text-align:left\">&#9660; Filtrar por grupo (NG)</button>" +
+    "<div id=\"orNGMobilePanel\" style=\"display:none;background:white;border:1px solid var(--line);" +
+    "border-radius:0 0 10px 10px;padding:8px 4px;max-height:200px;overflow-y:auto\"></div>" +
+    "</div>" +
+    "<div style=\"flex:1;min-width:0\">" +
+    "<div id=\"orBandaNG\"></div>" +
+    "<div class=\"panel\"><div class=\"panel-head\" style=\"gap:8px\">" +
+    "<h2 id=\"orTitle\"></h2><span class=\"pill\" id=\"orCount\"></span></div>" +
+    "<div style=\"overflow-x:auto\"><table id=\"orTable\" style=\"min-width:1100px\"></table></div>" +
+    "</div></div></div>" +
+    "<style>@media(max-width:768px){#orNGSidebar{display:none!important}#orNGToggleWrap{display:block!important}}</style>"
+  );
+}
+
 function _modORPanel(){
   // Cargar avance guardado del almacén actual
   _orCargar();
   const hayAvance = Object.keys(_orManual).length > 0;
   const alms=consumosDisp();
   if(!alms.length){
-    $("#moduleView").innerHTML=`<div class="panel"><div class="soon">
-      <h2>Orden de Reabasto</h2>
-      <p>Aún no hay archivos de consumo cargados.</p>
-      <p>Ve a <b>Configuración → Archivos de consumo</b>, sube el export de consumo (ej. <b>TX8A</b>) y publica.</p>
-    </div></div>`; return;
+    $("#moduleView").innerHTML="<div class=\"panel\"><div class=\"soon\">" +
+      "<h2>Orden de Reabasto</h2>" +
+      "<p>Aun no hay archivos de consumo cargados.</p>" +
+      "<p>Ve a <b>Configuracion &rarr; Archivos de consumo</b>, sube el export de consumo (ej. <b>TX8A</b>) y publica.</p>" +
+      "</div></div>";
+    return;
   }
   // Respetar orAlm elegido en el menú; solo usar fallback si no hay ninguno
   if(!orAlm) orAlm = alms[0];
   const m=DB.meta, mCPM=m?.meses_cpm||6, mStk=m?.meses_stock||1.5;
-  const opts=alms.map(a=>`<option value="${a}" ${a===orAlm?"selected":""}>${a} · ${almName(a)}</option>`).join("");
-  const areasOR=AREAS.concat(["Sin clasificar"]);
-  const areaOpts=areasOR.map(a=>`<option value="${a}">${a}</option>`).join("");
 
-  $("#moduleView").innerHTML=`
-    <div class="controls" style="flex-wrap:wrap;align-items:center">
-      <button class="btn btn-outline btn-sm" onclick="_mostrarPaso1Alm()">‹ Almacenes</button>
-      <button class="btn btn-outline btn-sm" onclick="_mostrarBienvenidaOR()">‹ Áreas</button>
-      <span style="font-weight:700;color:var(--primary);font-size:13px">${orAlm} · ${almName(orAlm)}</span>
-      <button class="btn btn-outline btn-sm" style="color:var(--rojo,#dc2626)" onclick="_orReiniciar()">↺ Reiniciar</button>
-    </div>
-    <div class="controls" style="flex-wrap:wrap;margin-top:6px;align-items:center">
-      <label class="chk">CPM (meses) <input type="number" id="orMCPM" value="${mCPM}" min="1" max="24" step="1" style="width:58px"></label>
-      <label class="chk">Stock obj. <input type="number" id="orMS" value="${mStk}" min="0.5" max="12" step="0.5" style="width:58px"></label>
-      <span style="font-size:12px;font-weight:600;color:var(--primary);padding:4px 10px;
-                   background:var(--lite,#f0f4ff);border-radius:8px">
-        Área: ${_orAreaSel || "Todas"}
-      </span>
-      <input type="search" id="orSearch" placeholder="Buscar catálogo / descripción…" style="min-width:180px">
-    </div>
-    <div class="controls" style="flex-wrap:wrap;margin-top:6px">
+  $("#moduleView").innerHTML = _tplPanelOR(orAlm, mCPM, mStk, _orAreaSel);
 
-      <label class="chk"><input type="checkbox" id="orSolo"> Solo Cálc. surtir &gt; 0</label>
-      <label class="chk"><input type="checkbox" id="orSoloX"> Solo X Surtir &gt; 0</label>
-      <label class="chk"><input type="checkbox" id="orExced"> Solo excedentes</label>
-      <label class="chk"><input type="checkbox" id="orSoloD041"> Solo con existencia D041</label>
-      <button class="btn-prim" id="orExport">⬇ Exportar OR</button>
-    </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0;font-size:12px">
-      <span class="pill" id="orResumen"></span>
-      <span style="color:var(--muted)">CPM = consumo ÷ meses · Cálc. surtir = (meses stock × CPM) − existencia aux · <b>X Surtir</b> editable</span>
-    </div>
-    </div>
-    <div style="display:flex;gap:0;align-items:flex-start;margin-top:8px">
-      <!-- Sidebar NG (sticky) -->
-      <div id="orNGSidebar" style="
-        width:200px;flex-shrink:0;
-        position:sticky;top:8px;
-        max-height:calc(100vh - 120px);
-        overflow-y:auto;
-        background:white;
-        border:1px solid var(--line);
-        border-radius:12px;
-        margin-right:12px;
-        display:flex;flex-direction:column">
-        <div style="padding:10px 12px;border-bottom:1px solid var(--line);
-                    display:flex;align-items:center;justify-content:space-between;
-                    position:sticky;top:0;background:white;z-index:1;border-radius:12px 12px 0 0">
-          <span style="font-size:11px;font-weight:700;color:var(--muted);
-                       text-transform:uppercase;letter-spacing:.4px">Grupos</span>
-          <div style="display:flex;gap:6px">
-            <button onclick="_orNGTodos(true)" title="Marcar todos"
-              style="border:none;background:none;cursor:pointer;font-size:11px;
-                     color:var(--primary);font-family:inherit;padding:0">✓ Todos</button>
-            <span style="color:var(--line)">|</span>
-            <button onclick="_orNGTodos(false)" title="Desmarcar todos"
-              style="border:none;background:none;cursor:pointer;font-size:11px;
-                     color:var(--muted);font-family:inherit;padding:0">✗ Ninguno</button>
-          </div>
-        </div>
-        <div style="padding:6px 8px;border-bottom:1px solid var(--line)">
-          <input type="search" id="orNGSearch" placeholder="Buscar grupo..."
-            oninput="_orNGFiltrar(this.value)"
-            style="width:100%;padding:5px 8px;border:1px solid var(--line);
-                   border-radius:7px;font-size:11px;font-family:inherit;outline:none">
-        </div>
-        <div id="orNGList" style="padding:6px 4px;flex:1;overflow-y:auto"></div>
-      </div>
-      <!-- Toggle móvil -->
-      <div id="orNGToggleWrap" style="display:none;margin-bottom:8px;width:100%">
-        <button onclick="_orNGToggleMobile()"
-          style="width:100%;padding:8px 14px;background:white;border:1.5px solid var(--line);
-                 border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;
-                 font-family:inherit;color:var(--primary);text-align:left">
-          ▼ Filtrar por grupo (NG)
-        </button>
-        <div id="orNGMobilePanel" style="display:none;background:white;border:1px solid var(--line);
-             border-radius:0 0 10px 10px;padding:8px 4px;max-height:200px;overflow-y:auto"></div>
-      </div>
-      <!-- Tabla -->
-      <div style="flex:1;min-width:0">
-        <div id="orBandaNG"></div>
-        <div class="panel"><div class="panel-head" style="gap:8px">
-          <h2 id="orTitle"></h2><span class="pill" id="orCount"></span></div>
-          <div style="overflow-x:auto"><table id="orTable" style="min-width:1100px"></table></div>
-        </div>
-      </div>
-    </div>
-    <style>
-      @media(max-width:768px){
-        #orNGSidebar{display:none!important}
-        #orNGToggleWrap{display:block!important}
-      }
-    </style>
-  `;
   ["orMCPM","orMS"].forEach(id=>{ const el=$("#"+id); el.oninput=pintarOR; el.onchange=pintarOR; });
   const orSearchEl=$("#orSearch"); if(orSearchEl){ orSearchEl.oninput=()=>{ _actualizarNGOpts(); pintarOR(); }; }
   ["orSolo","orSoloX","orExced","orSoloD041"].forEach(id=>{ const el=$("#"+id); if(el) el.onchange=pintarOR; });
   $("#orExport").onclick=_mostrarResumenOR;
 
-  // Autocomplete nombre genérico — filtra por área activa y muestra "Sin sustituto" incluido
+  // Autocomplete nombre genérico — filtra por área activa
   function _actualizarNGOpts(){
     const fArea=_orAreaSel||"";
-    // calcular NGs activos desde consumos + críticos (igual que calcularOR)
     const ngsActivos=new Set();
     for(const cat of Object.keys(DB.materiales||{})){
       const info=mat(cat);
@@ -366,7 +342,6 @@ function _modORPanel(){
   _orNGIniciado = false;
   setTimeout(_orNGRender, 100);
 
-  // Área ya está en _orAreaSel desde el menú
   pintarOR();
 }
 
@@ -660,28 +635,46 @@ function pintarOR(){
 function _htmlBandaNG(sumNG, open=true){
   const entries=Object.entries(sumNG).sort((a,b)=>b[1].calc-a[1].calc);
   const n=entries.length;
-  // Resumen compacto para mostrar en el summary (siempre visible)
-  const resumen=entries.slice(0,4).map(([ng,v])=>
-    `<span style="font-weight:700;color:#5a3e00">${ng}</span> <span style="color:#c0392b;margin-left:3px">Cálc: <b>${fmt1(v.calc)}</b></span>`
-  ).join(' · ')+(n>4?` <span style="color:var(--muted)">+${n-4} más</span>`:"");
-  // Chips completos dentro del body del details
-  const chips=entries.map(([ng,v])=>`
-    <div title="${v.cats.join(', ')}" style="background:#fff;border:1px solid #e8d080;border-radius:8px;padding:4px 10px;font-size:12px;cursor:default;white-space:nowrap">
-      <span style="font-weight:700;color:#5a3e00">${ng}</span>
-      <span style="color:#7a5c00;margin-left:5px">Cálc: <b>${fmt1(v.calc)}</b></span>
-      <span style="color:#0a4ea3;margin-left:5px">X: <b>${nfmt(v.xs)}</b></span>
-      <span style="color:var(--muted);font-size:10.5px;margin-left:4px">${v.cats.length} cat.</span>
-    </div>`).join("");
-  return `<details ${open?"open":""} style="background:#fffbe8;border:1px solid #f0d060;border-radius:10px;margin-bottom:8px">
-    <summary style="list-style:none;padding:7px 12px;cursor:pointer;display:flex;align-items:center;gap:10px;user-select:none">
-      <span style="font-size:12px;font-weight:800;color:#7a5c00;white-space:nowrap">∑ Sustitutos</span>
-      <span style="font-size:11px;color:#b8960a;white-space:nowrap">${n} grupo${n!==1?"s":""}</span>
-      <span style="flex:1"></span>
-      <span class="ng-resumen" style="font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right">${resumen}</span>
-      <span class="ng-arrow" style="font-size:13px;color:#b8960a;flex-shrink:0;margin-left:8px">▾</span>
-    </summary>
-    <div style="padding:6px 10px 10px;display:flex;flex-wrap:wrap;gap:5px">${chips}</div>
-  </details>`;
+
+  var resumenParts = [];
+  for(var i=0; i<Math.min(4,entries.length); i++){
+    var ng = entries[i][0], v = entries[i][1];
+    resumenParts.push(
+      "<span style=\"font-weight:700;color:#5a3e00\">" + ng + "</span> " +
+      "<span style=\"color:#c0392b;margin-left:3px\">Calc: <b>" + fmt1(v.calc) + "</b></span>"
+    );
+  }
+  var resumen = resumenParts.join(" &middot; ");
+  if(n>4) resumen += " <span style=\"color:var(--muted)\">+" + (n-4) + " mas</span>";
+
+  var chipsHtml = "";
+  for(var j=0; j<entries.length; j++){
+    var ngc = entries[j][0], vc = entries[j][1];
+    chipsHtml +=
+      "<div title=\"" + vc.cats.join(", ") + "\" style=\"background:#fff;border:1px solid #e8d080;" +
+      "border-radius:8px;padding:4px 10px;font-size:12px;cursor:default;white-space:nowrap\">" +
+      "<span style=\"font-weight:700;color:#5a3e00\">" + ngc + "</span>" +
+      "<span style=\"color:#7a5c00;margin-left:5px\">Calc: <b>" + fmt1(vc.calc) + "</b></span>" +
+      "<span style=\"color:#0a4ea3;margin-left:5px\">X: <b>" + nfmt(vc.xs) + "</b></span>" +
+      "<span style=\"color:var(--muted);font-size:10.5px;margin-left:4px\">" + vc.cats.length + " cat.</span>" +
+      "</div>";
+  }
+
+  return (
+    "<details " + (open?"open":"") + " style=\"background:#fffbe8;border:1px solid #f0d060;" +
+    "border-radius:10px;margin-bottom:8px\">" +
+    "<summary style=\"list-style:none;padding:7px 12px;cursor:pointer;display:flex;" +
+    "align-items:center;gap:10px;user-select:none\">" +
+    "<span style=\"font-size:12px;font-weight:800;color:#7a5c00;white-space:nowrap\">&Sigma; Sustitutos</span>" +
+    "<span style=\"font-size:11px;color:#b8960a;white-space:nowrap\">" + n + " grupo" + (n!==1?"s":"") + "</span>" +
+    "<span style=\"flex:1\"></span>" +
+    "<span class=\"ng-resumen\" style=\"font-size:13px;overflow:hidden;text-overflow:ellipsis;" +
+    "white-space:nowrap;text-align:right\">" + resumen + "</span>" +
+    "<span class=\"ng-arrow\" style=\"font-size:13px;color:#b8960a;flex-shrink:0;margin-left:8px\">&#9662;</span>" +
+    "</summary>" +
+    "<div style=\"padding:6px 10px 10px;display:flex;flex-wrap:wrap;gap:5px\">" + chipsHtml + "</div>" +
+    "</details>"
+  );
 }
 function _repintarBandaNG(){
   const rows=filasOR();
@@ -711,32 +704,36 @@ function abrirModalOR(){
   if(!rows.length){ alert("No hay catálogos para exportar (todos con X Surtir = 0)."); return; }
   const areasPresentes=[...new Set(rows.map(r=>r.area))].sort();
   const mCPM=+$("#orMCPM")?.value||6, mStk=+$("#orMS")?.value||1.5;
+
+  var areasChecksHtml = "";
+  for(var i=0; i<areasPresentes.length; i++){
+    var a = areasPresentes[i];
+    areasChecksHtml +=
+      "<label class=\"chk\" style=\"background:#f7f9fc;padding:5px 9px;border:1px solid var(--line);" +
+      "border-radius:8px\"><input type=\"checkbox\" class=\"or-area-chk\" data-a=\"" + a + "\" checked> " + a + "</label>";
+  }
+
   const modal=document.createElement("div"); modal.className="modal on"; modal.id="orModal";
-  modal.innerHTML=`<div class="modal-box" style="max-width:400px">
-    <h3>⬇ Exportar Orden de Reabasto</h3>
-    <div class="modal-body" style="gap:14px">
-      <div>
-        <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:5px">Número de Reabasto</label>
-        <input type="number" id="orNumReabasto" min="1" placeholder="Ej. 5" style="width:100%">
-      </div>
-      <div>
-        <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:5px">¿Quién genera la OR?</label>
-        <input type="text" id="orGenerador" placeholder="Nombre del responsable" style="width:100%">
-      </div>
-      <div>
-        <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:5px">Áreas a exportar</label>
-        <div style="display:flex;flex-wrap:wrap;gap:6px">
-          ${areasPresentes.map(a=>`<label class="chk" style="background:#f7f9fc;padding:5px 9px;border:1px solid var(--line);border-radius:8px">
-            <input type="checkbox" class="or-area-chk" data-a="${a}" checked> ${a}</label>`).join("")}
-        </div>
-      </div>
-      <p style="font-size:12px;color:var(--muted);margin:0">${nfmt(rows.length)} catálogos · CPM ${mCPM}m · Stock obj. ${mStk}m</p>
-    </div>
-    <div class="modal-foot" style="gap:8px">
-      <button class="btn" id="orModalCancel">Cancelar</button>
-      <button class="btn-prim" id="orModalOk">⬇ Exportar Excel</button>
-    </div>
-  </div>`;
+  modal.innerHTML =
+    "<div class=\"modal-box\" style=\"max-width:400px\">" +
+    "<h3>&#8681; Exportar Orden de Reabasto</h3>" +
+    "<div class=\"modal-body\" style=\"gap:14px\">" +
+    "<div><label style=\"display:block;font-size:12px;font-weight:700;color:var(--muted);" +
+    "margin-bottom:5px\">Numero de Reabasto</label>" +
+    "<input type=\"number\" id=\"orNumReabasto\" min=\"1\" placeholder=\"Ej. 5\" style=\"width:100%\"></div>" +
+    "<div><label style=\"display:block;font-size:12px;font-weight:700;color:var(--muted);" +
+    "margin-bottom:5px\">&iquest;Quien genera la OR?</label>" +
+    "<input type=\"text\" id=\"orGenerador\" placeholder=\"Nombre del responsable\" style=\"width:100%\"></div>" +
+    "<div><label style=\"display:block;font-size:12px;font-weight:700;color:var(--muted);" +
+    "margin-bottom:5px\">Areas a exportar</label>" +
+    "<div style=\"display:flex;flex-wrap:wrap;gap:6px\">" + areasChecksHtml + "</div></div>" +
+    "<p style=\"font-size:12px;color:var(--muted);margin:0\">" + nfmt(rows.length) + " catalogos &middot; CPM " + mCPM + "m &middot; Stock obj. " + mStk + "m</p>" +
+    "</div>" +
+    "<div class=\"modal-foot\" style=\"gap:8px\">" +
+    "<button class=\"btn\" id=\"orModalCancel\">Cancelar</button>" +
+    "<button class=\"btn-prim\" id=\"orModalOk\">&#8681; Exportar Excel</button>" +
+    "</div></div>";
+
   document.body.appendChild(modal);
   $("#orModalCancel").onclick=()=>modal.remove();
 
@@ -747,12 +744,11 @@ function abrirModalOR(){
     return {num, gen, selAreas};
   };
 
-  // Excel con formato completo
   $("#orModalOk").onclick=()=>{
-    const {num,gen,selAreas}=getParams(); // capturar ANTES de remove
+    const {num,gen,selAreas}=getParams();
     if(!selAreas.length){ alert("Selecciona al menos un área."); return; }
     const rowsFilt=rows.filter(r=>selAreas.includes(r.area));
-    modal.remove(); // ahora sí remover
+    modal.remove();
     try{
       _exportarORSimple(rowsFilt, num, gen, selAreas);
     }catch(e){
@@ -892,152 +888,112 @@ function _ejecutarExportOR(numOR, generador){
 }
 
 /* ── Resumen antes de exportar ── */
+function _tplFilaMatResumen(r){
+  var obs = r.obs || "&mdash;";
+  return (
+    "<tr style=\"border-bottom:1px solid var(--lite,#f4f6fb)\">" +
+    "<td style=\"padding:7px 10px;font-size:12px;font-family:monospace;" +
+    "font-weight:700;color:var(--primary);white-space:nowrap\">" + r.cat + "</td>" +
+    "<td style=\"padding:7px 10px;font-size:12px;color:var(--text)\">" + r.desc + "</td>" +
+    "<td style=\"padding:7px 10px;font-size:13px;font-weight:700;text-align:center;" +
+    "color:var(--primary);white-space:nowrap\">" + r.xsurtir + "</td>" +
+    "<td style=\"padding:7px 10px;font-size:11px;color:var(--muted);font-style:italic\">" + obs + "</td>" +
+    "</tr>"
+  );
+}
+
+function _tplStatCard(n, l){
+  return (
+    "<div style=\"background:white;border:1px solid var(--line);border-radius:12px;" +
+    "padding:14px 16px;text-align:center\">" +
+    "<div style=\"font-size:24px;font-weight:800;color:var(--primary)\">" + n + "</div>" +
+    "<div style=\"font-size:11px;color:var(--muted);text-transform:uppercase;" +
+    "letter-spacing:.4px;margin-top:2px\">" + l + "</div>" +
+    "</div>"
+  );
+}
+
+function _tplResumenOR(orAlm, totalPzas, totalCats, ramaLabel, matRowsHtml){
+  return (
+    "<div style=\"max-width:680px;margin:0 auto;padding:24px 16px\">" +
+    "<div style=\"display:flex;align-items:center;gap:12px;margin-bottom:24px\">" +
+    "<button onclick=\"_modORPanel()\" style=\"background:none;border:1.5px solid var(--line);" +
+    "border-radius:8px;padding:6px 14px;cursor:pointer;font-size:13px;font-family:inherit;" +
+    "color:var(--muted)\">&lsaquo; Regresar</button>" +
+    "<div><div style=\"font-size:18px;font-weight:800;color:var(--primary)\">Resumen de la OR</div>" +
+    "<div style=\"font-size:12px;color:var(--muted)\">" + orAlm + " &middot; " + almName(orAlm) + "</div></div>" +
+    "</div>" +
+    "<div style=\"display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px\">" +
+    _tplStatCard(totalPzas.toLocaleString(), "Total piezas") +
+    _tplStatCard(totalCats, "Catalogos") +
+    "</div>" +
+    "<div style=\"display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px\">" +
+    "<div><label style=\"font-size:11px;font-weight:700;color:var(--muted);" +
+    "text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:6px\">No. de Reabasto</label>" +
+    "<input id=\"orNumResum\" type=\"number\" min=\"1\" placeholder=\"Ej. 5\" style=\"width:100%;" +
+    "padding:10px 14px;border:1.5px solid var(--line);border-radius:10px;font-size:16px;" +
+    "font-weight:700;font-family:inherit;color:var(--primary);outline:none\"" +
+    " onfocus=\"this.style.borderColor='var(--primary)'\" onblur=\"this.style.borderColor='var(--line)'\">" +
+    "</div>" +
+    "<div><label style=\"font-size:11px;font-weight:700;color:var(--muted);" +
+    "text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:6px\">Genera OR</label>" +
+    "<input id=\"orGenResum\" type=\"text\" placeholder=\"Nombre completo\" style=\"width:100%;" +
+    "padding:10px 14px;border:1.5px solid var(--line);border-radius:10px;font-size:14px;" +
+    "font-family:inherit;color:var(--text);outline:none\"" +
+    " onfocus=\"this.style.borderColor='var(--primary)'\" onblur=\"this.style.borderColor='var(--line)'\">" +
+    "</div></div>" +
+    "<div style=\"background:#f0f4ff;border:1.5px solid #c7d7f0;border-radius:10px;" +
+    "padding:12px 16px;margin-bottom:20px;display:flex;align-items:center;gap:10px\">" +
+    "<span style=\"font-size:18px\">&#128203;</span>" +
+    "<div><div style=\"font-size:12px;font-weight:700;color:var(--primary)\">Ruta SAP</div>" +
+    "<div style=\"font-size:12px;color:var(--text)\">" + ramaLabel + "</div></div>" +
+    "</div>" +
+    "<div style=\"background:white;border:1px solid var(--line);border-radius:12px;" +
+    "overflow:hidden;margin-bottom:24px\">" +
+    "<div style=\"padding:12px 16px;border-bottom:1px solid var(--line);font-size:12px;" +
+    "font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px\">" +
+    "Materiales a surtir &middot; ordenados por catalogo</div>" +
+    "<div style=\"max-height:360px;overflow-y:auto\">" +
+    "<table style=\"width:100%;border-collapse:collapse\">" +
+    "<thead style=\"position:sticky;top:0;background:var(--lite,#f4f6fb);z-index:1\"><tr>" +
+    "<th style=\"padding:8px 10px;font-size:11px;color:var(--muted);text-align:left;" +
+    "font-weight:600;white-space:nowrap\">CATALOGO</th>" +
+    "<th style=\"padding:8px 10px;font-size:11px;color:var(--muted);text-align:left;" +
+    "font-weight:600\">DESCRIPCION</th>" +
+    "<th style=\"padding:8px 10px;font-size:11px;color:var(--muted);text-align:center;" +
+    "font-weight:600;white-space:nowrap\">X SURTIR</th>" +
+    "<th style=\"padding:8px 10px;font-size:11px;color:var(--muted);text-align:left;" +
+    "font-weight:600\">OBSERVACIONES</th>" +
+    "</tr></thead><tbody>" + matRowsHtml + "</tbody></table></div></div>" +
+    "<button onclick=\"_ejecutarExportOR($('#orNumResum').value, $('#orGenResum').value)\"" +
+    " style=\"width:100%;padding:14px;background:var(--primary);color:white;border:none;" +
+    "border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;" +
+    "transition:background .15s\"" +
+    " onmouseover=\"this.style.background='#0033AA'\" onmouseout=\"this.style.background='var(--primary)'\">" +
+    "&#8681; Confirmar y Exportar OR</button>" +
+    "</div>"
+  );
+}
+
 function _mostrarResumenOR(){
   const rows = filasOR();
   const conXS = rows.filter(r => r.xsurtir > 0);
   if(!conXS.length){ alert("No hay materiales con X Surtir > 0. Agrega cantidades antes de exportar."); return; }
 
-  // Agrupar por nombre genérico
-  const porNG = {};
-  conXS.forEach(r => {
-    const ng = r.ng || "SIN SUSTITUTO";
-    if(!porNG[ng]) porNG[ng] = { cats:[], xs:0, exD:0, calcS:0 };
-    porNG[ng].cats.push(r.cat);
-    porNG[ng].xs   += r.xsurtir;
-    porNG[ng].exD  += r.exD || 0;
-    porNG[ng].calcS+= r.calcSurtir || 0;
-  });
-
-  // Stats globales
   const totalCats = conXS.length;
   const totalPzas = conXS.reduce((s,r) => s + r.xsurtir, 0);
-  const totalNGs  = Object.keys(porNG).length;
-  const nAreas    = [...new Set(conXS.map(r => r.area))].length;
 
-  // Grupos SAP (rama)
   const siglaDestino = orAlm;
   const centroDestino = (DB.directorio?.almacenes?.[siglaDestino]?.centro) || "";
   const esRN58 = centroDestino === "RN58";
   const ramaLabel = esRN58 ? "MIGO 313 (mismo centro)" : "ME21N + MIGO 351";
 
-  const matRows = conXS
-    .sort((a,b) => a.cat.localeCompare(b.cat))
-    .map(r => `
-      <tr style="border-bottom:1px solid var(--lite,#f4f6fb)">
-        <td style="padding:7px 10px;font-size:12px;font-family:monospace;
-                   font-weight:700;color:var(--primary);white-space:nowrap">${r.cat}</td>
-        <td style="padding:7px 10px;font-size:12px;color:var(--text)">${r.desc}</td>
-        <td style="padding:7px 10px;font-size:13px;font-weight:700;text-align:center;
-                   color:var(--primary);white-space:nowrap">${r.xsurtir}</td>
-        <td style="padding:7px 10px;font-size:11px;color:var(--muted);font-style:italic">${r.obs||"—"}</td>
-      </tr>`).join("");
+  var matRowsHtml = "";
+  conXS.sort((a,b) => a.cat.localeCompare(b.cat)).forEach(function(r){
+    matRowsHtml += _tplFilaMatResumen(r);
+  });
 
-  $("#moduleView").innerHTML = `
-    <div style="max-width:680px;margin:0 auto;padding:24px 16px">
-
-      <!-- Header -->
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">
-        <button onclick="_modORPanel()"
-          style="background:none;border:1.5px solid var(--line);border-radius:8px;
-                 padding:6px 14px;cursor:pointer;font-size:13px;font-family:inherit;color:var(--muted)">
-          ‹ Regresar
-        </button>
-        <div>
-          <div style="font-size:18px;font-weight:800;color:var(--primary)">Resumen de la OR</div>
-          <div style="font-size:12px;color:var(--muted)">${orAlm} · ${almName(orAlm)}</div>
-        </div>
-      </div>
-
-      <!-- Stats globales -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px">
-        ${[
-          [totalPzas.toLocaleString(), "Total piezas"],
-          [totalCats, "Catálogos"],
-        ].map(([n,l]) => `
-          <div style="background:white;border:1px solid var(--line);border-radius:12px;
-                      padding:14px 16px;text-align:center">
-            <div style="font-size:24px;font-weight:800;color:var(--primary)">${n}</div>
-            <div style="font-size:11px;color:var(--muted);text-transform:uppercase;
-                        letter-spacing:.4px;margin-top:2px">${l}</div>
-          </div>`).join("")}
-      </div>
-
-      <!-- Campos No. OR y Generador -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px">
-        <div>
-          <label style="font-size:11px;font-weight:700;color:var(--muted);
-                        text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:6px">
-            No. de Reabasto
-          </label>
-          <input id="orNumResum" type="number" min="1" placeholder="Ej. 5"
-            style="width:100%;padding:10px 14px;border:1.5px solid var(--line);
-                   border-radius:10px;font-size:16px;font-weight:700;font-family:inherit;
-                   color:var(--primary);outline:none"
-            onfocus="this.style.borderColor='var(--primary)'"
-            onblur="this.style.borderColor='var(--line)'">
-        </div>
-        <div>
-          <label style="font-size:11px;font-weight:700;color:var(--muted);
-                        text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:6px">
-            Genera OR
-          </label>
-          <input id="orGenResum" type="text" placeholder="Nombre completo"
-            style="width:100%;padding:10px 14px;border:1.5px solid var(--line);
-                   border-radius:10px;font-size:14px;font-family:inherit;
-                   color:var(--text);outline:none"
-            onfocus="this.style.borderColor='var(--primary)'"
-            onblur="this.style.borderColor='var(--line)'">
-        </div>
-      </div>
-
-      <!-- Rama SAP -->
-      <div style="background:#f0f4ff;border:1.5px solid #c7d7f0;border-radius:10px;
-                  padding:12px 16px;margin-bottom:20px;display:flex;align-items:center;gap:10px">
-        <span style="font-size:18px">📋</span>
-        <div>
-          <div style="font-size:12px;font-weight:700;color:var(--primary)">Ruta SAP</div>
-          <div style="font-size:12px;color:var(--text)">${ramaLabel}</div>
-        </div>
-      </div>
-
-      <!-- Tabla por NG -->
-      <div style="background:white;border:1px solid var(--line);border-radius:12px;
-                  overflow:hidden;margin-bottom:24px">
-        <div style="padding:12px 16px;border-bottom:1px solid var(--line);
-                    font-size:12px;font-weight:700;color:var(--muted);
-                    text-transform:uppercase;letter-spacing:.4px">
-          Materiales a surtir · ordenados por catálogo
-        </div>
-        <div style="max-height:360px;overflow-y:auto">
-          <table style="width:100%;border-collapse:collapse">
-            <thead style="position:sticky;top:0;background:var(--lite,#f4f6fb);z-index:1">
-              <tr>
-                <th style="padding:8px 10px;font-size:11px;color:var(--muted);
-                           text-align:left;font-weight:600;white-space:nowrap">CATÁLOGO</th>
-                <th style="padding:8px 10px;font-size:11px;color:var(--muted);
-                           text-align:left;font-weight:600">DESCRIPCIÓN</th>
-                <th style="padding:8px 10px;font-size:11px;color:var(--muted);
-                           text-align:center;font-weight:600;white-space:nowrap">X SURTIR</th>
-                <th style="padding:8px 10px;font-size:11px;color:var(--muted);
-                           text-align:left;font-weight:600">OBSERVACIONES</th>
-              </tr>
-            </thead>
-            <tbody>${matRows}</tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- Botón exportar -->
-      <button onclick="_ejecutarExportOR($('#orNumResum').value, $('#orGenResum').value)"
-        style="width:100%;padding:14px;background:var(--primary);color:white;
-               border:none;border-radius:12px;font-size:15px;font-weight:700;
-               cursor:pointer;font-family:inherit;transition:background .15s"
-        onmouseover="this.style.background='#0033AA'"
-        onmouseout="this.style.background='var(--primary)'">
-        ⬇ Confirmar y Exportar OR
-      </button>
-    </div>
-  `;
+  $("#moduleView").innerHTML = _tplResumenOR(orAlm, totalPzas, totalCats, ramaLabel, matRowsHtml);
 }
 
 /* ---- Fallback: xlsx plano sin formato ---- */
