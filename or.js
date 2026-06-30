@@ -150,89 +150,80 @@ function _filtrarAlmMenu(q){
 
 // ── PASO 2: Selección de área ─────────────────────────────────────────────────
 function _mostrarBienvenidaOR(almSeleccionado){
-  // CRÍTICO: asignar el almacén elegido antes de renderizar
   if(almSeleccionado) orAlm = almSeleccionado;
-  // Cargar avance guardado ANTES de renderizar para que _orAreaTieneAvance funcione
   _orCargar();
 
   const cons    = DB.consumos?.[orAlm] || {};
   const criticos= DB.criticos || [];
   const todos   = new Set([...Object.keys(cons), ...criticos]);
 
-  $("#moduleView").innerHTML = `
-    <div id="or-bienvenida" style="
-      display:flex;flex-direction:column;align-items:center;
-      min-height:70vh;padding:32px 20px;text-align:center">
+  var areasList = AREAS.concat(["Sin clasificar"]);
+  var areasHtml = "";
+  for(var ai=0; ai<areasList.length; ai++){
+    var area = areasList[ai];
+    var nMats = 0;
+    todos.forEach(function(cat){
+      var info = mat(cat);
+      var a = info.area || "Sin clasificar";
+      if(a === area) nMats++;
+    });
+    var enProg = _orAreaTieneAvance(area);
+    var bg = enProg ? "#f0fdf4" : "white";
+    var bc = enProg ? "#86efac" : "var(--line)";
+    var areaEsc = area.replace(/'/g, "&#39;");
+    var rightLabel = enProg ? "EN PROGRESO" : (nMats + " materiales");
+    var rightColor = enProg ? "#16a34a" : "var(--muted)";
 
-      <div style="align-self:flex-start;margin-bottom:16px">
-        <button onclick="_mostrarPaso1Alm()"
-          style="background:none;border:none;cursor:pointer;font-size:13px;
-                 color:var(--muted);font-family:inherit;padding:4px 0">
-          ‹ Cambiar almacén
-        </button>
-      </div>
+    areasHtml += "<button onclick=\"_iniciarOR('" + areaEsc + "')\"" +
+      " style=\"display:flex;align-items:center;justify-content:space-between;" +
+      "gap:12px;padding:12px 18px;background:" + bg + ";border:1.5px solid " + bc + ";" +
+      "border-radius:11px;cursor:pointer;text-align:left;width:100%;" +
+      "font-family:inherit;transition:all .15s;font-size:14px;font-weight:600;color:var(--text)\"" +
+      " onmouseover=\"this.style.borderColor='var(--primary)';this.style.color='var(--primary)'\"" +
+      " onmouseout=\"this.style.borderColor='" + bc + "';this.style.color='var(--text)'\">" +
+      "<span>" + area + "</span>" +
+      "<span style=\"font-size:11px;font-weight:400;color:" + rightColor + "\">" + rightLabel + "</span>" +
+      "</button>";
+  }
 
-      <div id="or-anim-wrap" style="opacity:0;transform:translateY(20px);transition:all .6s ease">
-        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2px;
-                    color:var(--muted);margin-bottom:10px">Orden de Reabasto · ${orAlm}</div>
-        <div style="font-size:20px;font-weight:800;color:var(--primary);margin-bottom:4px">
-          ${almName(orAlm)}
-        </div>
-        <div style="font-size:12px;color:var(--muted)">Telmex RNUM · Almacén Distribuidor Puebla</div>
-      </div>
+  var headerHtml =
+    "<div id=\"or-bienvenida\" style=\"display:flex;flex-direction:column;align-items:center;" +
+    "min-height:70vh;padding:32px 20px;text-align:center\">" +
+    "<div style=\"align-self:flex-start;margin-bottom:16px\">" +
+    "<button onclick=\"_mostrarPaso1Alm()\" style=\"background:none;border:none;cursor:pointer;" +
+    "font-size:13px;color:var(--muted);font-family:inherit;padding:4px 0\">&lsaquo; Cambiar almacen</button>" +
+    "</div>" +
+    "<div id=\"or-anim-wrap\" style=\"opacity:0;transform:translateY(20px);transition:all .6s ease\">" +
+    "<div style=\"font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2px;" +
+    "color:var(--muted);margin-bottom:10px\">Orden de Reabasto &middot; " + orAlm + "</div>" +
+    "<div style=\"font-size:20px;font-weight:800;color:var(--primary);margin-bottom:4px\">" +
+    almName(orAlm) + "</div>" +
+    "<div style=\"font-size:12px;color:var(--muted)\">Telmex RNUM &middot; Almacen Distribuidor Puebla</div>" +
+    "</div>" +
+    "<div id=\"or-menu-areas\" style=\"opacity:0;transform:translateY(16px);transition:all .5s ease;" +
+    "margin-top:32px;width:100%;max-width:480px\">" +
+    "<div style=\"font-size:12px;font-weight:700;color:var(--muted);margin-bottom:14px;" +
+    "text-transform:uppercase;letter-spacing:.5px\">&iquest;Que area quieres trabajar?</div>" +
+    "<div style=\"display:flex;flex-direction:column;gap:8px\">" +
+    areasHtml +
+    "<button onclick=\"_iniciarOR('')\" style=\"display:flex;align-items:center;" +
+    "justify-content:space-between;padding:12px 18px;background:var(--primary);border:none;" +
+    "border-radius:11px;cursor:pointer;text-align:left;width:100%;font-family:inherit;" +
+    "font-size:14px;font-weight:700;color:white;margin-top:4px\">" +
+    "<span>Todas las areas</span>" +
+    "<span style=\"font-size:11px;font-weight:400;opacity:.8\">Vista completa</span>" +
+    "</button>" +
+    "</div></div></div>";
 
-      <div id="or-menu-areas" style="
-        opacity:0;transform:translateY(16px);transition:all .5s ease;
-        margin-top:32px;width:100%;max-width:480px">
+  $("#moduleView").innerHTML = headerHtml;
 
-        <div style="font-size:12px;font-weight:700;color:var(--muted);
-                    margin-bottom:14px;text-transform:uppercase;letter-spacing:.5px">
-          ¿Qué área quieres trabajar?
-        </div>
-
-        <div style="display:flex;flex-direction:column;gap:8px">
-          ${AREAS.concat(["Sin clasificar"]).map(area => {
-            const nMats = [...todos].filter(cat => (mat(cat).area||"Sin clasificar") === area).length;
-            const avance = _orTieneAvance(orAlm);
-            const enProg = _orAreaTieneAvance(area);
-            const bg = enProg ? "#f0fdf4" : "white";
-            const bc = enProg ? "#86efac" : "var(--line)";
-            const bcOut = enProg ? "#86efac" : "var(--line)";
-            return `<button onclick="_iniciarOR('${area.replace(/'/g,"\'")}')"
-              style="display:flex;align-items:center;justify-content:space-between;
-                     gap:12px;padding:12px 18px;background:${bg};border:1.5px solid ${bc};
-                     border-radius:11px;cursor:pointer;text-align:left;width:100%;
-                     font-family:inherit;transition:all .15s;font-size:14px;font-weight:600;
-                     color:var(--text)"
-              onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--primary)'"
-              onmouseout="this.style.borderColor='${bcOut}';this.style.color='var(--text)'">
-              <span>${area}</span>
-              <span style="font-size:11px;font-weight:400;color:${enProg?'#16a34a':'var(--muted)'}">
-                ${enProg ? 'EN PROGRESO' : nMats+' materiales'}
-              </span>
-            </button>`;
-          }).join("")}
-
-          <button onclick="_iniciarOR('')"
-            style="display:flex;align-items:center;justify-content:space-between;
-                   padding:12px 18px;background:var(--primary);border:none;
-                   border-radius:11px;cursor:pointer;text-align:left;width:100%;
-                   font-family:inherit;font-size:14px;font-weight:700;color:white;margin-top:4px">
-            <span>Todas las áreas</span>
-            <span style="font-size:11px;font-weight:400;opacity:.8">Vista completa</span>
-          </button>
-        </div>
-      </div>
-    </div>
-  `;
-
-  requestAnimationFrame(() => {
-    setTimeout(() => {
-      const a = document.getElementById("or-anim-wrap");
+  requestAnimationFrame(function(){
+    setTimeout(function(){
+      var a = document.getElementById("or-anim-wrap");
       if(a){ a.style.opacity="1"; a.style.transform="translateY(0)"; }
     }, 80);
-    setTimeout(() => {
-      const m = document.getElementById("or-menu-areas");
+    setTimeout(function(){
+      var m = document.getElementById("or-menu-areas");
       if(m){ m.style.opacity="1"; m.style.transform="translateY(0)"; }
     }, 450);
   });
@@ -346,7 +337,7 @@ function _modORPanel(){
         #orNGToggleWrap{display:block!important}
       }
     </style>
-  \`;
+  `;
   ["orMCPM","orMS"].forEach(id=>{ const el=$("#"+id); el.oninput=pintarOR; el.onchange=pintarOR; });
   const orSearchEl=$("#orSearch"); if(orSearchEl){ orSearchEl.oninput=()=>{ _actualizarNGOpts(); pintarOR(); }; }
   ["orSolo","orSoloX","orExced","orSoloD041"].forEach(id=>{ const el=$("#"+id); if(el) el.onchange=pintarOR; });
@@ -387,62 +378,90 @@ let _orNGSeleccionados = new Set();
 let _orNGIniciado = false;
 
 function _orNGRender(){
-  const fArea = _orAreaSel || "";
-  const ngs = new Set();
-  for(const cat of Object.keys(DB.materiales||{})){
-    const info = mat(cat);
-    const area = info.area || "Sin clasificar";
+  var fArea = _orAreaSel || "";
+  var ngs = new Set();
+  var cats = Object.keys(DB.materiales || {});
+  for(var i=0; i<cats.length; i++){
+    var cat = cats[i];
+    var info = mat(cat);
+    var area = info.area || "Sin clasificar";
     if(fArea && area !== fArea) continue;
     ngs.add(ngDe(cat) || "SIN SUSTITUTO");
   }
-  const lista = [...ngs].sort();
-  if(!_orNGIniciado){ _orNGSeleccionados = new Set(lista); _orNGIniciado = true; }
-  const renderItems = (cid) => {
-    const el = document.getElementById(cid);
+  var lista = Array.from(ngs).sort();
+  if(!_orNGIniciado){
+    _orNGSeleccionados = new Set(lista);
+    _orNGIniciado = true;
+  }
+
+  function pintar(containerId){
+    var el = document.getElementById(containerId);
     if(!el) return;
-    let html = "";
-    lista.forEach(ng => {
-      const safe = ng.replace(/&/g,"&amp;").replace(/"/g,"&quot;");
-      const chk = _orNGSeleccionados.has(ng) ? " checked" : "";
-      html += "<label style=\"display:flex;align-items:center;gap:6px;padding:5px 10px;cursor:pointer;border-radius:7px;font-size:12px\">" +
-        "<input type=\"checkbox\"" + chk + " data-ng=\"" + safe + "\" onchange=\"_orNGCambio(this)\" style=\"accent-color:var(--primary);width:14px;height:14px\">" +
-        "<span>" + ng + "</span></label>";
-    });
-    el.innerHTML = html;
-  };
-  renderItems("orNGList");
-  renderItems("orNGMobilePanel");
+    el.innerHTML = "";
+    for(var j=0; j<lista.length; j++){
+      var ng = lista[j];
+      var label = document.createElement("label");
+      label.style.display = "flex";
+      label.style.alignItems = "center";
+      label.style.gap = "6px";
+      label.style.padding = "5px 10px";
+      label.style.cursor = "pointer";
+      label.style.borderRadius = "7px";
+      label.style.fontSize = "12px";
+
+      var input = document.createElement("input");
+      input.type = "checkbox";
+      input.checked = _orNGSeleccionados.has(ng);
+      input.setAttribute("data-ng", ng);
+      input.style.accentColor = "var(--primary)";
+      input.style.width = "14px";
+      input.style.height = "14px";
+      input.addEventListener("change", function(){ _orNGCambio(this); });
+
+      var span = document.createElement("span");
+      span.textContent = ng;
+
+      label.appendChild(input);
+      label.appendChild(span);
+      el.appendChild(label);
+    }
+  }
+
+  pintar("orNGList");
+  pintar("orNGMobilePanel");
 }
 
 function _orNGCambio(chk){
-  const ng = chk.getAttribute("data-ng");
-  // Sincronizar entre sidebar y panel móvil
-  document.querySelectorAll(`input[data-ng="${ng}"]`).forEach(el => el.checked = chk.checked);
+  var ng = chk.getAttribute("data-ng");
+  var all = document.querySelectorAll('input[data-ng="' + ng.replace(/"/g, '\\"') + '"]');
+  for(var i=0; i<all.length; i++){ all[i].checked = chk.checked; }
   if(chk.checked) _orNGSeleccionados.add(ng);
   else _orNGSeleccionados.delete(ng);
   pintarOR();
 }
 
 function _orNGTodos(marcar){
-  const fArea = _orAreaSel || "";
-  const ngs = new Set();
-  for(const cat of Object.keys(DB.materiales||{})){
-    const info = mat(cat);
-    const area = info.area || "Sin clasificar";
+  var fArea = _orAreaSel || "";
+  var ngs = new Set();
+  var cats = Object.keys(DB.materiales || {});
+  for(var i=0; i<cats.length; i++){
+    var cat = cats[i];
+    var info = mat(cat);
+    var area = info.area || "Sin clasificar";
     if(fArea && area !== fArea) continue;
     ngs.add(ngDe(cat) || "SIN SUSTITUTO");
   }
-  if(marcar) _orNGSeleccionados = new Set([...ngs]);
+  if(marcar) _orNGSeleccionados = new Set(Array.from(ngs));
   else _orNGSeleccionados = new Set();
   _orNGRender();
   pintarOR();
 }
 
 function _orNGToggleMobile(){
-  const panel = document.getElementById("orNGMobilePanel");
-  const btn   = document.querySelector("#orNGToggleWrap button");
+  var panel = document.getElementById("orNGMobilePanel");
+  var btn = document.querySelector("#orNGToggleWrap button");
   if(!panel) return;
-  const open = panel.style.display === "none";
+  var open = panel.style.display === "none";
   panel.style.display = open ? "block" : "none";
   if(btn) btn.textContent = (open ? "▲" : "▼") + " Filtrar por grupo (NG)";
 }
