@@ -400,13 +400,15 @@ function _orNGRender(){
   const renderItems = (cid) => {
     const el = document.getElementById(cid);
     if(!el) return;
-    el.innerHTML = lista.map(ng => {
+    let html = "";
+    lista.forEach(ng => {
       const safe = ng.replace(/&/g,"&amp;").replace(/"/g,"&quot;");
-      const chk = _orNGSeleccionados.has(ng) ? "checked" : "";
-      return `<label style="display:flex;align-items:center;gap:6px;padding:5px 10px;cursor:pointer;border-radius:7px;font-size:12px">`+
-        `<input type="checkbox" ${chk} data-ng="${safe}" onchange="_orNGCambio(this)" style="accent-color:var(--primary);width:14px;height:14px">`+
-        `<span>${ng}</span></label>`;
-    }).join("");
+      const chk = _orNGSeleccionados.has(ng) ? " checked" : "";
+      html += "<label style=\"display:flex;align-items:center;gap:6px;padding:5px 10px;cursor:pointer;border-radius:7px;font-size:12px\">" +
+        "<input type=\"checkbox\"" + chk + " data-ng=\"" + safe + "\" onchange=\"_orNGCambio(this)\" style=\"accent-color:var(--primary);width:14px;height:14px\">" +
+        "<span>" + ng + "</span></label>";
+    });
+    el.innerHTML = html;
   };
   renderItems("orNGList");
   renderItems("orNGMobilePanel");
