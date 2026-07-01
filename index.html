@@ -423,8 +423,9 @@ function mostrarMenu(){
 function abrirModulo(id){
   // Tarjetas con URL externa — abrir en nueva pestaña
   const card = [{id:"inventario"},{id:"analisis"},{id:"directorio"},{id:"or"},{id:"conteo"},{id:"config"},
-    {id:"cuentas", url:"cuentas.html"}].find(c=>c.id===id);
+    {id:"cuentas", url:"cuentas.html"},{id:"guias", soon:true}].find(c=>c.id===id);
   if(card && card.url){ window.open(card.url, "_blank"); return; }
+  if(card && card.soon){ return; } // Próximamente — no hacer nada
   $("#backBtn").style.display="inline-flex";
   $("#backBtn").onclick=mostrarMenu;
   $("#menuView").hidden=true; $("#moduleView").hidden=false;
