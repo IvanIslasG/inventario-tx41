@@ -423,16 +423,16 @@ function mostrarMenu(){
 function abrirModulo(id){
   // Tarjetas con URL externa — abrir en nueva pestaña
   const card = [{id:"inventario"},{id:"analisis"},{id:"directorio"},{id:"or"},{id:"conteo"},{id:"config"},
-    {id:"cuentas", url:"cuentas.html"},{id:"guias", soon:true}].find(c=>c.id===id);
+    {id:"cuentas", url:"cuentas.html"},{id:"guias"}].find(c=>c.id===id);
   if(card && card.url){ window.open(card.url, "_blank"); return; }
-  if(card && card.soon){ return; } // Próximamente — no hacer nada
+  if(card && card.soon && id !== 'guias'){ return; } // Próximamente — no hacer nada
   $("#backBtn").style.display="inline-flex";
   $("#backBtn").onclick=mostrarMenu;
   $("#menuView").hidden=true; $("#moduleView").hidden=false;
   window.scrollTo(0,0);
   // OR usa todo el ancho; el resto respeta max-width
   document.querySelector("main").classList.toggle("fullwidth", id==="or");
-  ({inventario:modInventario, analisis:modAnalisis, directorio:modDirectorio, or:modOR, conteo:modConteo, config:modConfig}[id])();
+  ({inventario:modInventario, analisis:modAnalisis, directorio:modDirectorio, or:modOR, conteo:modConteo, config:modConfig, guias:modGuias}[id])();
 }
 
 /* ============ HELPERS DE DATOS ============ */
@@ -469,7 +469,7 @@ function renderMenu(){
     {id:"analisis", t:"Análisis", d:"Existencias por almacén y por catálogo, todos los centros.", s:`${conEx.size} almacenes con existencia`},
     {id:"directorio", t:"Directorio", d:"Claves y nombres de centros y almacenes.", s:`${nRec} recurrentes · ${almList().length} totales`},
     {id:"or", t:"Orden de Reabasto", d:"Generar OR por almacén auxiliar con cálculo automático.", s:""},
-    {id:"conteo", t:"Inventario", d:"Captura de conteo físico con diferencias en tiempo real.", s:"Conteo físico · D041"},{id:"cuentas", t:"Convertidor de Cuentas", d:"Consulta equivalencias de cuentas contables R3 → S/4HANA.", s:"1,572 cuentas · Nacional", url:"cuentas.html"},{id:"guias", t:"Guías de Embarque", d:"Genera guías de embarque con QR para trazabilidad.", s:"", soon:true},{id:"config", t:"Configuración", d:"Parámetros, datos del paquete y sesión.", s:""},
+    {id:"conteo", t:"Inventario", d:"Captura de conteo físico con diferencias en tiempo real.", s:"Conteo físico · D041"},{id:"cuentas", t:"Convertidor de Cuentas", d:"Consulta equivalencias de cuentas contables R3 → S/4HANA.", s:"1,572 cuentas · Nacional", url:"cuentas.html"},{id:"guias", t:"Guías de Embarque", d:"Genera guías de embarque con QR para trazabilidad.", s:"BD de empaques · D041"},{id:"config", t:"Configuración", d:"Parámetros, datos del paquete y sesión.", s:""},
   ];
   $("#menuView").innerHTML=`
     <div class="menu-h"><h1>Módulos</h1><p>Elige una herramienta para empezar.</p></div>
@@ -2163,5 +2163,6 @@ function exportarConteo(){
 }
 </script>
 <script src="or.js"></script>
+<script src="guias.js"></script>
 </body>
 </html>

@@ -1,0 +1,787 @@
+/* ============================================================
+   guias.js  -  Módulo Guías de Embarque · Sistema TX41 Puebla
+   Depende de: DB, mat(), almName(), $(), XLSX (SheetJS)
+   ============================================================ */
+
+// ── BD de empaques (seed inicial — crece orgánicamente en localStorage) ──────
+const _GUIAS_BD_SEED = [{"cat": "1000320", "um": "PZ", "tipo": "Caja", "cont": 192, "freq": 3, "patio": false}, {"cat": "1000372", "um": "PZ", "tipo": "Caja", "cont": 15, "freq": 1, "patio": false}, {"cat": "1000416", "um": "PZ", "tipo": "Caja", "cont": 150, "freq": 1, "patio": false}, {"cat": "1000430", "um": "PZ", "tipo": "Caja", "cont": 100, "freq": 1, "patio": false}, {"cat": "1000430", "um": "PZ", "tipo": "Caja", "cont": 200, "freq": 1, "patio": false}, {"cat": "1000381", "um": "PZ", "tipo": "Costal", "cont": 50, "freq": 1, "patio": false}, {"cat": "1000418", "um": "PZ", "tipo": "Caja", "cont": 100, "freq": 1, "patio": false}, {"cat": "1000600", "um": "PZ", "tipo": "Caja", "cont": 1, "freq": 1, "patio": false}, {"cat": "1000713", "um": "PZ", "tipo": "Caja", "cont": 5000, "freq": 1, "patio": false}, {"cat": "1000715", "um": "PZ", "tipo": "Caja", "cont": 3000, "freq": 1, "patio": false}, {"cat": "1000902", "um": "PZ", "tipo": "Caja", "cont": 5000, "freq": 1, "patio": false}, {"cat": "1000903", "um": "PZ", "tipo": "Caja", "cont": 5000, "freq": 1, "patio": false}, {"cat": "1001224", "um": "M", "tipo": "Caja", "cont": 250, "freq": 1, "patio": false}, {"cat": "1026180", "um": "PZ", "tipo": "Pieza", "cont": 1, "freq": 1, "patio": true}, {"cat": "1028665", "um": "PZ", "tipo": "Caja", "cont": 1, "freq": 1, "patio": false}, {"cat": "1028954", "um": "PZ", "tipo": "Caja", "cont": 20000, "freq": 1, "patio": false}, {"cat": "1034256", "um": "PZ", "tipo": "Caja", "cont": 500, "freq": 1, "patio": false}, {"cat": "1034325", "um": "PZ", "tipo": "Caja", "cont": 1, "freq": 1, "patio": false}, {"cat": "1035461", "um": "PZ", "tipo": "Caja", "cont": 12, "freq": 1, "patio": false}, {"cat": "1036183", "um": "PZ", "tipo": "Caja", "cont": 140, "freq": 1, "patio": false}, {"cat": "1036183", "um": "PZ", "tipo": "Caja", "cont": 100, "freq": 1, "patio": false}, {"cat": "1036713", "um": "PZ", "tipo": "Caja", "cont": 6000, "freq": 1, "patio": false}, {"cat": "1038272", "um": "PZ", "tipo": "Caja", "cont": 150, "freq": 1, "patio": false}, {"cat": "1038272", "um": "PZ", "tipo": "Caja", "cont": 500, "freq": 1, "patio": false}, {"cat": "1045853", "um": "PZ", "tipo": "Caja", "cont": 1, "freq": 1, "patio": false}, {"cat": "1046965", "um": "PZ", "tipo": "Caja", "cont": 30, "freq": 1, "patio": false}, {"cat": "1052980", "um": "PZ", "tipo": "Caja", "cont": 500, "freq": 1, "patio": false}, {"cat": "1054083", "um": "PZ", "tipo": "Caja", "cont": 1, "freq": 1, "patio": false}, {"cat": "1054594", "um": "PZ", "tipo": "Caja", "cont": 100, "freq": 2, "patio": false}, {"cat": "1054594", "um": "PZ", "tipo": "Caja", "cont": 1000, "freq": 1, "patio": false}, {"cat": "1000291", "um": "PZ", "tipo": "Caja", "cont": 20, "freq": 1, "patio": false}, {"cat": "1000295", "um": "PZ", "tipo": "Caja", "cont": 24, "freq": 1, "patio": false}, {"cat": "1000296", "um": "PZ", "tipo": "Caja", "cont": 24, "freq": 1, "patio": false}, {"cat": "1000337", "um": "PZ", "tipo": "Caja", "cont": 10000, "freq": 1, "patio": false}, {"cat": "1000371", "um": "PZ", "tipo": "Caja", "cont": 20, "freq": 1, "patio": false}, {"cat": "1000674", "um": "PZ", "tipo": "Caja", "cont": 100, "freq": 1, "patio": false}, {"cat": "1002447", "um": "PZ", "tipo": "Pieza", "cont": 1, "freq": 1, "patio": true}, {"cat": "1002449", "um": "PZ", "tipo": "Pieza", "cont": 1, "freq": 1, "patio": false}, {"cat": "1002470", "um": "PZ", "tipo": "Pieza", "cont": 1, "freq": 1, "patio": false}, {"cat": "1002502", "um": "PZ", "tipo": "Pieza", "cont": 1, "freq": 1, "patio": false}, {"cat": "1002447", "um": "PZ", "tipo": "Pieza", "cont": 1, "freq": 1, "patio": false}, {"cat": "1002535", "um": "PZ", "tipo": "Pieza", "cont": 1, "freq": 1, "patio": false}, {"cat": "1034445", "um": "PZ", "tipo": "Pieza", "cont": 120, "freq": 3, "patio": false}, {"cat": "1002433", "um": "PZ", "tipo": "Caja", "cont": 6, "freq": 1, "patio": false}, {"cat": "1002521", "um": "PZ", "tipo": "Caja", "cont": 20, "freq": 1, "patio": false}, {"cat": "1002522", "um": "PZ", "tipo": "Caja", "cont": 20, "freq": 1, "patio": false}, {"cat": "1002554", "um": "PZ", "tipo": "Caja", "cont": 6, "freq": 1, "patio": false}, {"cat": "1002556", "um": "PZ", "tipo": "Caja", "cont": 6, "freq": 1, "patio": false}, {"cat": "1034253", "um": "PZ", "tipo": "Caja", "cont": 200, "freq": 1, "patio": false}, {"cat": "1034254", "um": "PZ", "tipo": "Caja", "cont": 200, "freq": 1, "patio": false}, {"cat": "1034445", "um": "PZ", "tipo": "Caja", "cont": 12, "freq": 2, "patio": false}, {"cat": "1034445", "um": "PZ", "tipo": "Caja", "cont": 50, "freq": 1, "patio": false}, {"cat": "1000508", "um": "M", "tipo": "Tubo", "cont": 6, "freq": 1, "patio": true}, {"cat": "1002353", "um": "PZ", "tipo": "Caja", "cont": 20, "freq": 1, "patio": false}, {"cat": "1002413", "um": "PZ", "tipo": "Caja", "cont": 20, "freq": 1, "patio": false}, {"cat": "1002551", "um": "PZ", "tipo": "Caja", "cont": 6, "freq": 1, "patio": false}, {"cat": "1002734", "um": "PZ", "tipo": "Caja", "cont": 10, "freq": 1, "patio": false}, {"cat": "1010457", "um": "PZ", "tipo": "Caja", "cont": 20, "freq": 1, "patio": false}, {"cat": "1025372", "um": "PZ", "tipo": "Caja", "cont": 40, "freq": 1, "patio": false}, {"cat": "1026092", "um": "PZ", "tipo": "Caja", "cont": 6, "freq": 1, "patio": false}, {"cat": "1038152", "um": "PZ", "tipo": "Caja", "cont": 10, "freq": 1, "patio": false}];
+const _GUIAS_ALM_SEED = {"TX41": {"nombre": "ALMACEN DISTRIBUIDOR PUEBLA", "atiende": "GERMAN PEREZ PORRAS", "domicilio": "Esquina Tepeyac, Calz. Ignacio Zaragoza, Los Pinos", "ciudad": "PUEBLA, PUE.", "cp": "72103", "tel": "2577390"}, "TX8A": {"nombre": "ALMACEN AUXILIAR SAN PEDRO", "atiende": "ASSENETH ALVARADO HERRERA, RAFAEL PACHECO FERNANDEZ", "domicilio": "25 NORTE No. 3617  COL NUEVA AURORA", "ciudad": "PUEBLA, PUE.", "cp": "72070", "tel": "01 222 2463193"}, "TX8B": {"nombre": "ALMACEN AUXILIAR ZARAGOZA", "atiende": "ROBERTO COYOTZI MONTES", "domicilio": "CALZ IGNACIO ZARAGOZA No 247 COL TEPEYAC", "ciudad": "PUEBLA, PUE.", "cp": "", "tel": "12222352031"}, "TX8C": {"nombre": "ALMACEN AUXILIAR ORIZABA", "atiende": "Lic.VANIA HERNANDEZ JUAREZ,", "domicilio": "31 ORIENTE No 308 CIRCUNVALACION", "ciudad": "ORIZABA, VERACRUZ", "cp": "", "tel": ""}, "TX8D": {"nombre": "ALMACEN AUXILIAR TLAXCALA", "atiende": "CARLOS VERGARA JIMENEZ", "domicilio": "AV INSTITUTO POLITECNICO NACIONAL S/N", "ciudad": "TLAXCALA, TLAXCALA", "cp": "", "tel": ""}, "TX8E": {"nombre": "ALMACEN AUXILIAR TEHUACAN", "atiende": "OMAR MARTINEZ EURESTI", "domicilio": "16 NORTE No 413 COL SERDAN", "ciudad": "TEHUACAN, PUEBLA", "cp": "75750", "tel": "12383821393"}, "TX8F": {"nombre": "ALMACEN AUXILIAR SAN BRUNO", "atiende": "GONZALO SILVA POZOS", "domicilio": "MARTIREZ 28 DE AGOSTO", "ciudad": "XALAPA, VERACRUZ", "cp": "91020", "tel": "12288153631"}, "TX8G": {"nombre": "ALMACEN AUXILIAR CRISTAL", "atiende": "LAURA MANZO SILVESTRE, OMAR BAIZABAL", "domicilio": "ANTONIO CHEDRAHUI CARAM No 250", "ciudad": "XALAPA, VERACRUZ", "cp": "91180", "tel": "12288150444"}, "TX8H": {"nombre": "ALMACEN AUXILIAR MOCAMBO", "atiende": "HIRAM SALAMANCA, JUAN CARLOS ENGEL, DAMARIS DEL R", "domicilio": "AV PALMERAS No 305 COL JARDINES DE VIRGINIA", "ciudad": "BOCA DEL RIO, VERACRUZ", "cp": "", "tel": "12299214122"}, "TX8I": {"nombre": "ALMACEN AUXILIAR DOS CAMINOS", "atiende": "DIEGO GARCÍA, EDEL", "domicilio": "AV 11 No 2627", "ciudad": "CORDOBA, VERACRUZ", "cp": "", "tel": "12717165433"}, "TX8J": {"nombre": "ALMACEN AUXILIAR AQUILES SERDAN", "atiende": "JOSÉ ANTONIO LÓPEZ C", "domicilio": "35 PONIENTE No 723", "ciudad": "PUEBLA, PUE.", "cp": "", "tel": "12222433928"}, "TX8K": {"nombre": "ALMACEN AUXILIAR ALTAMIRANO", "atiende": "LILIA CONTRERAS", "domicilio": "ALTAMIRANO No 1226", "ciudad": "VERACRUZ, VERACRUZ", "cp": "91700", "tel": "12299204842"}, "TX8L": {"nombre": "ALMACEN AUXILIAR LERDO", "atiende": "JULIO CÉSAR GONZÁLEZ", "domicilio": "MARIANO ARISTA No 4424", "ciudad": "VERACRUZ, VERACRUZ", "cp": "91726", "tel": "12299204842"}, "TX8M": {"nombre": "ALMACEN AUXILIAR PEÑUELA", "atiende": "JESSICA VELAZQUEZ MARAÑON", "domicilio": "KM 343 BOULEVARD S/N", "ciudad": "CORDOBA, VERACRUZ", "cp": "94501", "tel": "12717166707"}, "TX8T": {"nombre": "ALMACEN AUXILIAR TULANCINGO", "atiende": "PEDRO MORALES LIRA", "domicilio": "RIVA PALACIOS 203 COL LOS ALAMOS", "ciudad": "TULANCINGO, HIDALGO", "cp": "43640", "tel": "17757536701"}, "TX8V": {"nombre": "ALMACEN AUXILIAR PACHUCA", "atiende": "HIRAM ROSALES", "domicilio": "SAN MARTIN DE PORRES No 407 CFE", "ciudad": "PACHUCA DE SOTO, HIDALGO", "cp": "42090", "tel": "17717143677"}, "TX8X": {"nombre": "ALMACEN AUXILIAR ATLIXCO", "atiende": "SERGIO NOE MILIAN PINTLE", "domicilio": "CALZ. OAXACA No 2710", "ciudad": "ATLIXCO, PUEBLA", "cp": "74294", "tel": "12444451868"}, "TX8Y": {"nombre": "ALMACEN AUXILIAR MAYORAZGO", "atiende": "GLORIA MARCELA SILVA T", "domicilio": "CALLE BENITO JUAREZ No 12311", "ciudad": "PUEBLA, PUE.", "cp": "", "tel": "12222192800"}, "TX8Z": {"nombre": "ALMACEN AUXILIAR POZA RICA", "atiende": "ENRIQUE LEANDRO BLANCO", "domicilio": "POZO 2 No 48 COL DIVISION NORTE", "ciudad": "POZA RICA, VERACRUZ", "cp": "93350", "tel": "17828233004"}, "TX9C": {"nombre": "ALMACEN AUXILIAR COATZACOALCOS", "atiende": "JUANA MARIA RAMOS", "domicilio": "AV. JACINTO LEMARROY S/N FRACC. RANCHO ALEGRE 2", "ciudad": "COATZACOALCOS, VERACRUZ", "cp": "96558", "tel": "19212186550"}, "TX9S": {"nombre": "ALMACEN AUXILIAR MINATITLAN", "atiende": "SERGIO VAZQUEZ", "domicilio": "EMILIANO ZAPATA No. 25 COL. INSURGENTES SUR", "ciudad": "MINATITLAN, VERACRUZ", "cp": "96710", "tel": "19222211979"}, "TX9T": {"nombre": "ALMACEN AUXILIAR CHOLULA", "atiende": "ILIANA DE ITA, CARLOS GUTIERREZ", "domicilio": "22 ORIENTE No 606", "ciudad": "CHOLULA, PUEBLA", "cp": "", "tel": "12222474746"}, "TX9U": {"nombre": "ALMACEN AUXILIAR AMALUCAN", "atiende": "JOSEFINA ONOFRE M", "domicilio": "BLVRD ATEOPAN ESQ 17A", "ciudad": "PUEBLA, PUE.", "cp": "", "tel": "12222868207"}, "TX9V": {"nombre": "ALMACEN AUXILIAR TULA", "atiende": "TALIA", "domicilio": "AV SUR ESQUINA OTE No 25 COL CENTRO", "ciudad": "TULA DE ALLENDE, HIDALGO", "cp": "42800", "tel": "17737322888"}, "TXX4": {"nombre": "ALMACEN TELECO", "atiende": "", "domicilio": "", "ciudad": "", "cp": "", "tel": ""}, "TXY4": {"nombre": "ALMACEN CYCSA PUEBLA", "atiende": "ERNESTO CENTENO", "domicilio": "CALLE C No. 7 PARQUE INDUSTRIAL 2000", "ciudad": "PUEBLA, PUE.", "cp": "", "tel": ""}, "TX82": {"nombre": "ALMACEN AUXILIAR TUXPAN", "atiende": "LAURA CECILIA", "domicilio": "DEMETRIO RUIZ MALERVA S/N COL CENTRO", "ciudad": "TUXPAN VERACRUZ", "cp": "", "tel": "17838340234"}, "TX81": {"nombre": "ALMACEN AUXILIAR PACHOACAN", "atiende": "FELIPE OLANDES MORA", "domicilio": "AV FRNACISCO SARABIA No 100 COL CARLOS ROVIROSA", "ciudad": "PACHUCA DE SOTO, HIDALGO", "cp": "42082", "tel": "1771148651"}, "TX83": {"nombre": "ALMACEN AUXILIAR SAN MARTIN", "atiende": "AGUSTIN BALBUENA SCHIAFINI (RETIRADO)", "domicilio": "AV. JUVENTUD S/N COL. LOS DICIOS", "ciudad": "SAN MARTIN TEXMELUCAN, PUEBLA", "cp": "", "tel": ""}, "TX32": {"nombre": "ALMACEN DISTRIBUIDOR CELAYA", "atiende": "JOSE TORADO", "domicilio": "AV LAS FUENTES 10904 COL LAS FUENTES", "ciudad": "CELAYA, GTO", "cp": "", "tel": ""}, "TX22": {"nombre": "ALMACEN DISTRIBUIDOR HERMOSILLO", "atiende": "BRUNO GENDA FERNANDEZ", "domicilio": "BLVRD JESUS GARCIA MORALES KM 5 No 145 COL EL LLANO", "ciudad": "HERMOSILLO, SONORA", "cp": "83210", "tel": "16622188701"}, "TX9P": {"nombre": "ALMACEN AUXILIAR PINOTEPA", "atiende": "VLADIMIR", "domicilio": "AV AGUIRRE PALANCARES Y BAÑOS AGUIRRE", "ciudad": "PINOTEPA NACIONAL", "cp": "71600", "tel": "19545433906"}, "TX9O": {"nombre": "ALMACEN AUXILIAR OAXACA 1", "atiende": "REYNA GARCIA MARTINEZ", "domicilio": "HEROICO COLEGIO MILITAR No 1013 COL REFORMA", "ciudad": "OAXACA, OAX", "cp": "68050", "tel": "19515127100"}, "TX91": {"nombre": "ALMACEN AUXILIAR APIZACO", "atiende": "MA LOURDES", "domicilio": "VENUSTIANO CARRANZA ESQ JOSE A", "ciudad": "APIZACO, TLAXCALA", "cp": "90350", "tel": "12414174555"}, "TX84": {"nombre": "ALMACEN AUXILIAR TEZIUTLAN", "atiende": "RAMON GALINDO BECERRA", "domicilio": "AV ENCINO Y AVELLANO SN", "ciudad": "TEZIUTLAN, PUEBLA", "cp": "73890", "tel": "12313130715"}, "TX9Q": {"nombre": "ALMACEN AUXILIAR OAXACA II", "atiende": "LEON RUIZ MATADAMAS", "domicilio": "ESMERALDA No 201 COL BUGAMBILIAS", "ciudad": "OAXACA, OAX", "cp": "68010", "tel": "19515127100"}, "TX9R": {"nombre": "ALMACEN AUXILIAR HUAJUAPAN", "atiende": "FROYLAN HERNANDEZ", "domicilio": "PROLONGACION DE MINA No 120", "ciudad": "H. CIUDAD DE HUAJUAPAN DE LEON, OAX", "cp": "69007", "tel": "19535324388"}, "TX11": {"nombre": "ALMACEN DISTRIBUIDOR MONTERREY", "atiende": "ANTONIO AGUILAR", "domicilio": "CORDILLERA DE LOS ANDES No 701 JARDIN DE LAS PTES S/N0", "ciudad": "SN NICOLAS DE LOS GARZA, NUEVO LEON", "cp": "66460", "tel": "18183505572"}, "TXLG": {"nombre": "ALMACEN AUXILIAR LEGARIA", "atiende": "HERNESTO HERNANDEZ", "domicilio": "FELIPE CARRILLO PUERTO No. 750 TORRE BLANCA  MIGUEL HIDALGO", "ciudad": "MEXICO, DF", "cp": "", "tel": ""}, "TX43": {"nombre": "ALMACEN DISTRIBUIDOR VILLAHERMOSA", "atiende": "EDUARDO TABOADA", "domicilio": "AV. ACERO S/N ESQUINA COBRE CD.INDUSTRIAL", "ciudad": "VILLAHERMOSA. TABASCO", "cp": "", "tel": ""}, "TX9X": {"nombre": "ALMACEN AUXILIAR CHETUMAL", "atiende": "ARTURO ALONSO RAMIREZ", "domicilio": "AVENIDA 4 DE MARZO NO.30 COL.FIDEL VELAZQUEZ", "ciudad": "CHETUMAL QUINTANA ROO", "cp": "77080", "tel": "19838372365"}, "TX21": {"nombre": "ALMACEN DISTRIBUIDOR GUADALAJARA", "atiende": "ENRIQUE MEDINA LOPEZ", "domicilio": "TRATADO DE TLALTELOCO No. 4114 COL. PARQUE AUDITORIO", "ciudad": "ZAPOPAN, JALISCO", "cp": "", "tel": "3336601554"}, "TX13": {"nombre": "ALMACEN DISTRIBUIDOR CHIHUAHUA", "atiende": "CARLOS DURAN", "domicilio": "MIGUEL BARRAGAN No. 6903 COL. EL PARRAL", "ciudad": "CHIHUAHUA, CHIHUAHUA", "cp": "", "tel": ""}, "TX07": {"nombre": "ALMACEN GENERAL LA PERLA", "atiende": "ROGER CANO", "domicilio": "CALLE NUEVA ESQUINA NEGRA MODELO COL. INDUSTRIAL", "ciudad": "NAUCALPAN EDO DE MEXICO", "cp": "", "tel": ""}, "MTZ": {"nombre": "ALMACEN AUXILIAR MARTINEZ DE LA TORRE", "atiende": "ROLANDO RAZGADO DE JESUS", "domicilio": "BOULEVARD ALFINO FLORES S/N COL. ADOLFO RUIZ CORTINA", "ciudad": "MARTINEZ DE LA TORRE, VER.", "cp": "", "tel": ""}, "CI9A": {"nombre": "CARSO TLAXCALA", "atiende": "", "domicilio": "CALLE AV.OCOTLAN S/N CONTRA ESQ. CALLE CONSTRUCTORES", "ciudad": "SANTA ANA CHIAUTEMPAN", "cp": "", "tel": ",012464620646"}, "ACTOPAN": {"nombre": "NUEVO ACTOPAN", "atiende": "PAREDES TENORIO FRANCISCA", "domicilio": "PEDRO MORENO No 49", "ciudad": "NUEVO ACTOPAN, HGO", "cp": "42500", "tel": "17727273187"}, "TX9I": {"nombre": "MERIDA BUENAVISTA", "atiende": "", "domicilio": "CONOCIDO", "ciudad": "MERIDA", "cp": "-", "tel": "-"}, "SAHAGUN": {"nombre": "CT SAHAGUN", "atiende": "", "domicilio": "CONOCIDO", "ciudad": "CD SAHAGÚN", "cp": "-", "tel": "-"}, "TECA": {"nombre": "CT TECAMACHALCO", "atiende": "", "domicilio": "CONOCIDO", "ciudad": "TECAMACHALCO", "cp": "-", "tel": "-"}, "TXAS": {"nombre": "ALMACEN ABASTOS", "atiende": "", "domicilio": "CONOCIDO", "ciudad": "&", "cp": "&", "tel": "&"}, "TXCD": {"nombre": "ALMACEN AUXILIAR  DIANA", "atiende": "LUIS FELIPE ESTROP", "domicilio": "", "ciudad": "", "cp": "", "tel": ""}, "TXPI": {"nombre": "ALMACEN AUXILIAR PINO", "atiende": "", "domicilio": "", "ciudad": "", "cp": "", "tel": ""}, "TX85": {"nombre": "ALMACEN AUXILIAR PUERTO ESCONDIDO", "atiende": "", "domicilio": "", "ciudad": "", "cp": "", "tel": ""}, "TX93": {"nombre": "ALMACEN AUXILIAR HUATULCO", "atiende": "GLORIA", "domicilio": "", "ciudad": "", "cp": "", "tel": ""}};
+
+const _GUIAS_LS_BD    = "guias_bd_empaques_v1";
+const _GUIAS_LS_HIST  = "guias_historial_v1";
+
+// ── Cargar/guardar BD de empaques ────────────────────────────────────────────
+function _guiasBDCargar(){
+  try{
+    const raw = localStorage.getItem(_GUIAS_LS_BD);
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  // Primera vez — usar seed
+  localStorage.setItem(_GUIAS_LS_BD, JSON.stringify(_GUIAS_BD_SEED));
+  return JSON.parse(JSON.stringify(_GUIAS_BD_SEED));
+}
+
+function _guiasBDGuardar(bd){
+  try{ localStorage.setItem(_GUIAS_LS_BD, JSON.stringify(bd)); }catch(e){}
+}
+
+function _guiasBDActualizarEmpaque(cat, tipo, cont, um){
+  var bd = _guiasBDCargar();
+  // Buscar si ya existe este catálogo+contenido
+  var idx = bd.findIndex(function(e){ return e.cat === cat && e.cont === cont; });
+  if(idx >= 0){
+    bd[idx].freq = (bd[idx].freq || 1) + 1;
+    bd[idx].tipo = tipo;
+  } else {
+    bd.push({cat: cat, um: um || '', tipo: tipo, cont: cont, freq: 1, patio: false});
+  }
+  _guiasBDGuardar(bd);
+}
+
+function _guiasBDOpciones(cat){
+  var bd = _guiasBDCargar();
+  return bd.filter(function(e){ return e.cat === cat; })
+           .sort(function(a,b){ return (b.freq||0)-(a.freq||0); });
+}
+
+// ── Historial de guías ────────────────────────────────────────────────────────
+function _guiasHistCargar(){
+  try{ return JSON.parse(localStorage.getItem(_GUIAS_LS_HIST)||"[]"); }catch(e){ return []; }
+}
+function _guiasHistGuardar(hist){ try{ localStorage.setItem(_GUIAS_LS_HIST, JSON.stringify(hist)); }catch(e){} }
+function _guiasHistAgregar(guia){
+  var hist = _guiasHistCargar();
+  // Reemplazar si ya existe el mismo folio+area
+  var idx = hist.findIndex(function(g){ return g.folio===guia.folio && g.area===guia.area; });
+  if(idx >= 0) hist[idx] = guia;
+  else hist.unshift(guia);
+  if(hist.length > 50) hist = hist.slice(0,50);
+  _guiasHistGuardar(hist);
+}
+
+// ── Info de almacén (BD propia + directorio DB) ───────────────────────────────
+function _guiasAlmInfo(sigla){
+  // Preferir BD_ALMACENES propia (tiene más datos: domicilio, atiende, tel)
+  if(_GUIAS_ALM_SEED[sigla]) return _GUIAS_ALM_SEED[sigla];
+  // Fallback al directorio de DB
+  var d = DB.directorio?.almacenes?.[sigla];
+  if(d) return {nombre: d.desc||sigla, atiende:'', domicilio:'', ciudad:'', cp:'', tel:''};
+  return {nombre: sigla, atiende:'', domicilio:'', ciudad:'', cp:'', tel:''};
+}
+
+// ── Estado de la guía en progreso ─────────────────────────────────────────────
+var _guiaActual = null; // { destino, area, folio, fecha, lineas:[], transporte:'' }
+
+// ── PANTALLA 1: Menú principal ────────────────────────────────────────────────
+function modGuias(){
+  var hist = _guiasHistCargar();
+
+  var histHtml = "";
+  if(hist.length === 0){
+    histHtml = "<div style=\"color:var(--muted);font-size:13px;padding:16px 0\">No hay guías generadas aún.</div>";
+  } else {
+    for(var i=0; i<Math.min(hist.length,10); i++){
+      var g = hist[i];
+      histHtml +=
+        "<div style=\"display:flex;align-items:center;gap:12px;padding:12px 16px;" +
+        "background:white;border:1px solid var(--line);border-radius:10px;cursor:pointer\"" +
+        " onclick=\"_guiasAbrirHistorial(" + i + ")\">" +
+        "<div style=\"flex:1\">" +
+        "<div style=\"font-size:13px;font-weight:700\">Guía " + g.area + " No. " + g.folio + "</div>" +
+        "<div style=\"font-size:11px;color:var(--muted)\">" + (g.destino||'') + " &middot; " + (g.fecha||'') + "</div>" +
+        "</div>" +
+        "<span style=\"font-size:18px;color:var(--muted)\">&rsaquo;</span>" +
+        "</div>";
+    }
+  }
+
+  $("#moduleView").innerHTML =
+    "<div style=\"max-width:600px;margin:0 auto;padding:24px 16px\">" +
+    "<div style=\"margin-bottom:24px\">" +
+    "<h2 style=\"margin:0 0 4px;font-size:20px\">Guías de Embarque</h2>" +
+    "<p style=\"margin:0;color:var(--muted);font-size:13px\">D041 &middot; Almacén Distribuidor Puebla</p>" +
+    "</div>" +
+    "<button onclick=\"_guiasNueva()\"" +
+    " style=\"width:100%;padding:14px;background:var(--primary);color:white;border:none;" +
+    "border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;" +
+    "margin-bottom:20px\">+ Nueva guía de embarque</button>" +
+    "<div style=\"font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;" +
+    "letter-spacing:.4px;margin-bottom:10px\">Guías recientes</div>" +
+    "<div style=\"display:flex;flex-direction:column;gap:8px\">" + histHtml + "</div>" +
+    "</div>";
+}
+
+// ── PANTALLA 2: Nueva guía — datos de cabecera ────────────────────────────────
+function _guiasNueva(){
+  // Calcular próximo folio por área (el usuario puede cambiarlo)
+  var hist = _guiasHistCargar();
+
+  // Obtener áreas disponibles
+  var areas = ["Herramientas","Misceláneos","Papelería","Cables","Ropa y Calzado","General"];
+
+  var areasHtml = areas.map(function(a){
+    return "<option value=\"" + a + "\">" + a + "</option>";
+  }).join("");
+
+  // Almacenes para el select de destino (del directorio DB)
+  var almsDb = Object.keys(DB.directorio?.almacenes||{}).sort();
+  var almsHtml = almsDb.map(function(k){
+    var info = _guiasAlmInfo(k);
+    return "<option value=\"" + k + "\">" + k + " &mdash; " + info.nombre + "</option>";
+  }).join("");
+
+  $("#moduleView").innerHTML =
+    "<div style=\"max-width:560px;margin:0 auto;padding:24px 16px\">" +
+    "<div style=\"display:flex;align-items:center;gap:12px;margin-bottom:24px\">" +
+    "<button onclick=\"modGuias()\" style=\"background:none;border:1.5px solid var(--line);" +
+    "border-radius:8px;padding:6px 14px;cursor:pointer;font-size:13px;font-family:inherit;" +
+    "color:var(--muted)\">&lsaquo; Cancelar</button>" +
+    "<h2 style=\"margin:0;font-size:18px\">Nueva guía</h2>" +
+    "</div>" +
+
+    // Área
+    "<div style=\"margin-bottom:16px\">" +
+    "<label style=\"font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;" +
+    "letter-spacing:.4px;display:block;margin-bottom:6px\">Área</label>" +
+    "<select id=\"gArea\" style=\"width:100%;padding:10px 14px;border:1.5px solid var(--line);" +
+    "border-radius:10px;font-size:14px;font-family:inherit\">" + areasHtml + "</select>" +
+    "</div>" +
+
+    // Folio
+    "<div style=\"margin-bottom:16px\">" +
+    "<label style=\"font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;" +
+    "letter-spacing:.4px;display:block;margin-bottom:6px\">No. de Guía (folio)</label>" +
+    "<input id=\"gFolio\" type=\"number\" min=\"1\" placeholder=\"Ej. 47\"" +
+    " style=\"width:100%;padding:10px 14px;border:1.5px solid var(--line);border-radius:10px;" +
+    "font-size:16px;font-weight:700;font-family:inherit;color:var(--primary)\">" +
+    "</div>" +
+
+    // Destino
+    "<div style=\"margin-bottom:16px\">" +
+    "<label style=\"font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;" +
+    "letter-spacing:.4px;display:block;margin-bottom:6px\">Destino</label>" +
+    "<select id=\"gDestino\" onchange=\"_guiasActualizarDestinatario()\"" +
+    " style=\"width:100%;padding:10px 14px;border:1.5px solid var(--line);" +
+    "border-radius:10px;font-size:14px;font-family:inherit\">" +
+    "<option value=\"\">-- Selecciona almacén --</option>" + almsHtml + "</select>" +
+    "</div>" +
+
+    // Info destinatario (se llena automático)
+    "<div id=\"gDestinatarioInfo\" style=\"background:var(--lite,#f0f4ff);border-radius:10px;" +
+    "padding:12px 16px;margin-bottom:16px;font-size:12px;color:var(--muted);display:none\">" +
+    "</div>" +
+
+    // Fecha
+    "<div style=\"margin-bottom:16px\">" +
+    "<label style=\"font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;" +
+    "letter-spacing:.4px;display:block;margin-bottom:6px\">Fecha</label>" +
+    "<input id=\"gFecha\" type=\"date\"" +
+    " style=\"width:100%;padding:10px 14px;border:1.5px solid var(--line);border-radius:10px;" +
+    "font-size:14px;font-family:inherit\">" +
+    "</div>" +
+
+    // Transporte
+    "<div style=\"margin-bottom:24px\">" +
+    "<label style=\"font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;" +
+    "letter-spacing:.4px;display:block;margin-bottom:6px\">Línea de transporte (opcional)</label>" +
+    "<input id=\"gTransporte\" type=\"text\" placeholder=\"Ej. ESTAFETA, DHL, Transporte propio\"" +
+    " style=\"width:100%;padding:10px 14px;border:1.5px solid var(--line);border-radius:10px;" +
+    "font-size:14px;font-family:inherit\">" +
+    "</div>" +
+
+    // Botón continuar
+    "<button onclick=\"_guiasContinuarMateriales()\"" +
+    " style=\"width:100%;padding:14px;background:var(--primary);color:white;border:none;" +
+    "border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit\">" +
+    "Continuar &rarr; Capturar materiales</button>" +
+    "</div>";
+
+  // Poner fecha de hoy por default
+  var hoy = new Date();
+  var yyyy = hoy.getFullYear();
+  var mm = String(hoy.getMonth()+1).padStart(2,'0');
+  var dd = String(hoy.getDate()).padStart(2,'0');
+  document.getElementById("gFecha").value = yyyy+"-"+mm+"-"+dd;
+}
+
+function _guiasActualizarDestinatario(){
+  var sigla = document.getElementById("gDestino").value;
+  var info = document.getElementById("gDestinatarioInfo");
+  if(!sigla){ info.style.display="none"; return; }
+  var d = _guiasAlmInfo(sigla);
+  info.innerHTML =
+    "<b>" + d.nombre + "</b><br>" +
+    (d.atiende ? "Atiende: " + d.atiende + "<br>" : "") +
+    (d.domicilio ? d.domicilio + "<br>" : "") +
+    (d.ciudad ? d.ciudad + (d.cp?" &nbsp; C.P. "+d.cp:"") : "") +
+    (d.tel ? "<br>Tel. " + d.tel : "");
+  info.style.display = "block";
+}
+
+function _guiasContinuarMateriales(){
+  var area    = document.getElementById("gArea").value;
+  var folio   = document.getElementById("gFolio").value.trim();
+  var destino = document.getElementById("gDestino").value;
+  var fecha   = document.getElementById("gFecha").value;
+  var transp  = document.getElementById("gTransporte").value.trim();
+
+  if(!folio){ alert("Ingresa el número de guía."); return; }
+  if(!destino){ alert("Selecciona el almacén destino."); return; }
+
+  var almInfo = _guiasAlmInfo(destino);
+  _guiaActual = {
+    area: area, folio: parseInt(folio), destino: destino,
+    almInfo: almInfo, fecha: fecha, transporte: transp, lineas: [],
+    generador: '', surtio: '', operador: '', placas: '', tipoVeh: ''
+  };
+
+  _guiasCapturaMateriales();
+}
+
+// ── PANTALLA 3: Captura de materiales ─────────────────────────────────────────
+function _guiasCapturaMateriales(){
+  var lineas = _guiaActual.lineas;
+
+  var lineasHtml = "";
+  for(var i=0; i<lineas.length; i++){
+    var l = lineas[i];
+    lineasHtml += _tplLineaGuia(l, i);
+  }
+
+  var footerBtns = lineas.length > 0 ?
+    "<button onclick=\"_guiasRevision()\"" +
+    " style=\"width:100%;padding:14px;background:var(--primary);color:white;border:none;" +
+    "border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;" +
+    "margin-top:16px\">Revisar y generar guía &rarr;</button>" : "";
+
+  $("#moduleView").innerHTML =
+    "<div style=\"max-width:700px;margin:0 auto;padding:24px 16px\">" +
+    "<div style=\"display:flex;align-items:center;gap:12px;margin-bottom:16px\">" +
+    "<button onclick=\"_guiasNueva()\" style=\"background:none;border:1.5px solid var(--line);" +
+    "border-radius:8px;padding:6px 14px;cursor:pointer;font-size:13px;font-family:inherit;" +
+    "color:var(--muted)\">&lsaquo; Datos</button>" +
+    "<div><div style=\"font-size:17px;font-weight:800;color:var(--primary)\">" +
+    "Guía " + _guiaActual.area + " No. " + _guiaActual.folio + "</div>" +
+    "<div style=\"font-size:12px;color:var(--muted)\">" + _guiaActual.destino +
+    " &middot; " + _guiaActual.almInfo.nombre + "</div></div>" +
+    "</div>" +
+
+    // Panel de entrada de material
+    "<div style=\"background:white;border:1.5px solid var(--line);border-radius:12px;" +
+    "padding:16px;margin-bottom:16px\">" +
+    "<div style=\"font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;" +
+    "letter-spacing:.4px;margin-bottom:10px\">Agregar material</div>" +
+    "<div style=\"display:flex;gap:8px;flex-wrap:wrap\">" +
+    "<input id=\"gCatInput\" type=\"text\" placeholder=\"Catálogo SAP (escanea o escribe)\"" +
+    " oninput=\"_guiasCatBuscar(this.value)\"" +
+    " onkeydown=\"if(event.key==='Enter')_guiasCatConfirmar()\"" +
+    " style=\"flex:1;min-width:160px;padding:10px 14px;border:1.5px solid var(--line);" +
+    "border-radius:10px;font-size:14px;font-family:inherit;font-weight:700;color:var(--primary)\">" +
+    "<button onclick=\"_guiasCatConfirmar()\"" +
+    " style=\"padding:10px 18px;background:var(--primary);color:white;border:none;" +
+    "border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit\">" +
+    "Agregar</button>" +
+    "</div>" +
+    "<div id=\"gCatInfo\" style=\"margin-top:8px;font-size:12px;color:var(--muted)\"></div>" +
+    "</div>" +
+
+    // Opciones de origen (OR o manual)
+    "<div style=\"display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap\">" +
+    "<button onclick=\"_guiasCargarOR()\"" +
+    " style=\"flex:1;padding:10px;background:white;border:1.5px solid var(--line);" +
+    "border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;" +
+    "color:var(--primary)\">&#8679; Importar desde OR (Excel)</button>" +
+    "<input type=\"file\" id=\"gORFile\" accept=\".xlsx\" style=\"display:none\"" +
+    " onchange=\"_guiasProcesarOR(this)\">" +
+    "</div>" +
+
+    // Lista de líneas capturadas
+    "<div id=\"gLineasLista\" style=\"display:flex;flex-direction:column;gap:8px\">" +
+    lineasHtml +
+    "</div>" +
+    footerBtns +
+    "</div>";
+}
+
+function _tplLineaGuia(l, idx){
+  return (
+    "<div style=\"background:white;border:1px solid var(--line);border-radius:10px;" +
+    "padding:12px 14px;display:flex;align-items:flex-start;gap:10px\">" +
+    "<div style=\"flex:1\">" +
+    "<div style=\"font-size:12px;font-weight:700;font-family:monospace;color:var(--primary)\">" + l.cat + "</div>" +
+    "<div style=\"font-size:12px;color:var(--text);margin:2px 0\">" + l.desc + "</div>" +
+    "<div style=\"font-size:11px;color:var(--muted)\">" +
+    l.cant + " " + l.um + " &mdash; " + l.bultos + " " + l.tipoEmp +
+    (l.contEmp > 1 ? " de " + l.contEmp + " " + l.um : "") +
+    (l.patio ? " &mdash; <b>PATIO</b>" : "") +
+    "</div>" +
+    "</div>" +
+    "<button onclick=\"_guiasEliminarLinea(" + idx + ")\"" +
+    " style=\"background:none;border:none;color:#dc2626;cursor:pointer;font-size:18px;" +
+    "padding:0;line-height:1\">&times;</button>" +
+    "</div>"
+  );
+}
+
+function _guiasCatBuscar(val){
+  var info = document.getElementById("gCatInfo");
+  if(!val){ info.textContent = ""; return; }
+  var m = mat(val.trim());
+  if(m.desc){
+    info.innerHTML = "<b>" + m.desc + "</b> &middot; " + m.um;
+  } else {
+    info.innerHTML = "<span style=\"color:var(--muted)\">Catálogo no encontrado en maestro &mdash; puedes agregarlo manualmente</span>";
+  }
+}
+
+function _guiasCatConfirmar(){
+  var catInput = document.getElementById("gCatInput");
+  var cat = (catInput.value || "").trim();
+  if(!cat){ alert("Ingresa un catálogo."); return; }
+
+  var m = mat(cat);
+  var desc = m.desc || "";
+  var um   = m.um   || "";
+
+  // Si no está en el maestro, pedir descripción manual
+  if(!desc){
+    desc = prompt("Descripción del material " + cat + ":", "") || "";
+    um   = prompt("Unidad de medida:", "PZ") || "PZ";
+  }
+
+  // Buscar opciones de empaque en BD
+  var opciones = _guiasBDOpciones(cat);
+  _guiasPedirEmpaque(cat, desc, um, opciones);
+}
+
+function _guiasPedirEmpaque(cat, desc, um, opciones){
+  // Mostrar modal de empaque
+  var modal = document.createElement("div");
+  modal.className = "modal on";
+
+  var opcionesHtml = "";
+  if(opciones.length > 0){
+    opcionesHtml = "<div style=\"margin-bottom:12px\">" +
+      "<div style=\"font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px\">" +
+      "EMPAQUES CONOCIDOS (por frecuencia de uso)</div>" +
+      "<div style=\"display:flex;flex-direction:column;gap:6px\" id=\"gEmpOpciones\">";
+    for(var i=0; i<opciones.length; i++){
+      var op = opciones[i];
+      opcionesHtml +=
+        "<button onclick=\"_guiasSeleccionarEmpaque('" + cat + "','" +
+        desc.replace(/'/g,"&#39;") + "','" + um + "','" +
+        op.tipo + "'," + op.cont + ")\"" +
+        " style=\"text-align:left;padding:10px 14px;background:white;border:1.5px solid var(--line);" +
+        "border-radius:8px;cursor:pointer;font-family:inherit;font-size:13px\">" +
+        "<b>" + op.tipo + "</b> de " + op.cont + " " + um +
+        " <span style=\"color:var(--muted);font-size:11px\">(usado " + (op.freq||1) + " vez" + ((op.freq||1)!==1?"es":"") + ")</span>" +
+        "</button>";
+    }
+    opcionesHtml += "</div></div>";
+  }
+
+  modal.innerHTML =
+    "<div class=\"modal-box\" style=\"max-width:420px\">" +
+    "<h3>Empaque &mdash; " + cat + "</h3>" +
+    "<div class=\"modal-body\" style=\"gap:12px\">" +
+    "<div style=\"font-size:13px;color:var(--muted)\">" + desc + "</div>" +
+    opcionesHtml +
+    "<div style=\"border-top:1px solid var(--line);padding-top:12px\">" +
+    "<div style=\"font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px\">" +
+    (opciones.length > 0 ? "O CAPTURA NUEVO EMPAQUE" : "CAPTURA EL EMPAQUE") + "</div>" +
+    "<div style=\"display:grid;grid-template-columns:1fr 1fr;gap:8px\">" +
+    "<div><label style=\"font-size:11px;color:var(--muted)\">Tipo de empaque</label>" +
+    "<input id=\"gEmpTipo\" type=\"text\" value=\"Caja\" placeholder=\"Caja, Costal, Pieza...\"" +
+    " style=\"width:100%;padding:8px;border:1.5px solid var(--line);border-radius:8px;" +
+    "font-family:inherit\"></div>" +
+    "<div><label style=\"font-size:11px;color:var(--muted)\">Contenido por empaque</label>" +
+    "<input id=\"gEmpCont\" type=\"number\" min=\"1\" value=\"1\"" +
+    " style=\"width:100%;padding:8px;border:1.5px solid var(--line);border-radius:8px;" +
+    "font-family:inherit\"></div>" +
+    "</div>" +
+    "<div style=\"margin-top:8px\">" +
+    "<label style=\"font-size:11px;color:var(--muted)\">Cantidad total a despachar</label>" +
+    "<input id=\"gEmpCant\" type=\"number\" min=\"1\" value=\"\"" +
+    " style=\"width:100%;padding:8px;border:1.5px solid var(--line);border-radius:8px;" +
+    "font-family:inherit;font-size:16px;font-weight:700;color:var(--primary)\">" +
+    "</div>" +
+    "</div>" +
+    "</div>" +
+    "<div class=\"modal-foot\" style=\"gap:8px\">" +
+    "<button class=\"btn\" onclick=\"this.closest('.modal').remove()\">Cancelar</button>" +
+    "<button class=\"btn-prim\" onclick=\"_guiasConfirmarEmpaque('" + cat + "','" +
+    desc.replace(/'/g,"&#39;") + "','" + um + "')\">Agregar</button>" +
+    "</div></div>";
+
+  document.body.appendChild(modal);
+  // Foco en cantidad
+  setTimeout(function(){ var el=document.getElementById("gEmpCant"); if(el) el.focus(); }, 100);
+}
+
+function _guiasSeleccionarEmpaque(cat, desc, um, tipo, cont){
+  // Pedir solo la cantidad, empaque ya está seleccionado
+  var cant = prompt("Cantidad total de " + cat + " (" + desc + "):", "");
+  if(!cant || isNaN(cant) || parseInt(cant) < 1) return;
+  cant = parseInt(cant);
+  document.querySelector(".modal")?.remove();
+  _guiasAgregarLinea(cat, desc, um, tipo, parseInt(cont), cant);
+  _guiasBDActualizarEmpaque(cat, tipo, parseInt(cont), um);
+}
+
+function _guiasConfirmarEmpaque(cat, desc, um){
+  var tipo = (document.getElementById("gEmpTipo")?.value || "Caja").trim();
+  var cont = parseInt(document.getElementById("gEmpCont")?.value || "1");
+  var cant = parseInt(document.getElementById("gEmpCant")?.value || "0");
+  if(!cant || cant < 1){ alert("Ingresa la cantidad total."); return; }
+  document.querySelector(".modal")?.remove();
+  _guiasAgregarLinea(cat, desc, um, tipo, cont, cant);
+  _guiasBDActualizarEmpaque(cat, tipo, cont, um);
+}
+
+function _guiasAgregarLinea(cat, desc, um, tipoEmp, contEmp, cant){
+  var bultos = contEmp > 1 ? Math.ceil(cant / contEmp) : cant;
+  _guiaActual.lineas.push({
+    cat: cat, desc: desc, um: um,
+    cant: cant, tipoEmp: tipoEmp, contEmp: contEmp,
+    bultos: bultos, patio: false
+  });
+  // Limpiar input y refrescar
+  var inp = document.getElementById("gCatInput");
+  if(inp){ inp.value = ""; document.getElementById("gCatInfo").textContent = ""; }
+  _guiasRefrescarLineas();
+}
+
+function _guiasEliminarLinea(idx){
+  _guiaActual.lineas.splice(idx, 1);
+  _guiasRefrescarLineas();
+}
+
+function _guiasRefrescarLineas(){
+  var lista = document.getElementById("gLineasLista");
+  if(!lista) return;
+  var lineas = _guiaActual.lineas;
+  var html = "";
+  for(var i=0; i<lineas.length; i++) html += _tplLineaGuia(lineas[i], i);
+  lista.innerHTML = html;
+  // Mostrar u ocultar botón continuar
+  var footer = lista.nextElementSibling;
+  if(footer && footer.tagName === "BUTTON"){
+    footer.style.display = lineas.length > 0 ? "" : "none";
+  } else if(lineas.length > 0 && !document.querySelector("#gLineasLista + button")){
+    var btn = document.createElement("button");
+    btn.onclick = _guiasRevision;
+    btn.style.cssText = "width:100%;padding:14px;background:var(--primary);color:white;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:16px";
+    btn.textContent = "Revisar y generar guía →";
+    lista.parentNode.appendChild(btn);
+  }
+}
+
+function _guiasCargarOR(){
+  document.getElementById("gORFile")?.click();
+}
+
+function _guiasProcesarOR(input){
+  var file = input.files[0];
+  if(!file) return;
+  input.value = "";
+  var reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      var wb = XLSX.read(e.target.result, {type:"array"});
+      // Buscar primera hoja que no sea SAP
+      var sheetName = wb.SheetNames.find(function(s){ return !s.startsWith("SAP"); });
+      if(!sheetName){ alert("No se encontró hoja de datos en el archivo."); return; }
+      var ws = wb.Sheets[sheetName];
+      var rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:""});
+      // Buscar fila de encabezados
+      var hdrIdx = -1;
+      for(var i=0; i<rows.length; i++){
+        if(rows[i].some(function(c){ return String(c||"").toUpperCase().includes("CATALOGO") || String(c||"").toUpperCase().includes("CATÁLOGO"); })){
+          hdrIdx = i; break;
+        }
+      }
+      if(hdrIdx < 0){ alert("No se encontró columna de Catálogo."); return; }
+      var hdrs = rows[hdrIdx].map(function(h){ return String(h||"").toLowerCase(); });
+      var iCat = hdrs.findIndex(function(h){ return h.includes("cat"); });
+      var iXS  = hdrs.findIndex(function(h){ return h.includes("surtir") || h.includes("x surtir"); });
+      if(iCat < 0 || iXS < 0){ alert("No se encontraron columnas de Catálogo y X Surtir."); return; }
+      var importados = 0;
+      for(var r=hdrIdx+1; r<rows.length; r++){
+        var row = rows[r];
+        var cat = String(row[iCat]||"").trim();
+        var xs  = parseInt(row[iXS]||0);
+        if(!cat || !xs || xs <= 0) continue;
+        var m = mat(cat);
+        var opciones = _guiasBDOpciones(cat);
+        if(opciones.length === 1){
+          // Solo una opción — agregar directamente
+          _guiasAgregarLinea(cat, m.desc||cat, m.um||"PZ", opciones[0].tipo, opciones[0].cont, xs);
+          importados++;
+        } else {
+          // Sin BD o múltiples opciones — agregar como "pendiente de empaque"
+          _guiaActual.lineas.push({cat:cat, desc:m.desc||cat, um:m.um||"PZ", cant:xs,
+            tipoEmp:"?", contEmp:1, bultos:xs, patio:false, pendiente:true});
+          importados++;
+        }
+      }
+      _guiasRefrescarLineas();
+      if(_guiaActual.lineas.some(function(l){ return l.pendiente; })){
+        alert(importados + " materiales importados.\n\nAlgunos materiales no tienen empaque definido (marcados con ?).\nTócalos para completar el empaque antes de generar la guía.");
+      } else {
+        alert(importados + " materiales importados correctamente.");
+      }
+    }catch(err){
+      alert("Error al leer el archivo: " + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ── PANTALLA 4: Revisión y datos de firma ─────────────────────────────────────
+function _guiasRevision(){
+  if(_guiaActual.lineas.length === 0){ alert("No hay materiales capturados."); return; }
+  if(_guiaActual.lineas.some(function(l){ return l.pendiente; })){
+    alert("Hay materiales con empaque pendiente (?). Defínelos antes de continuar.");
+    return;
+  }
+
+  var totalBultos = _guiaActual.lineas.reduce(function(s,l){ return s+l.bultos; }, 0);
+
+  var filasHtml = "";
+  for(var i=0; i<_guiaActual.lineas.length; i++){
+    var l = _guiaActual.lineas[i];
+    var descEmp = l.bultos + " " + l.tipoEmp + (l.contEmp>1?" de "+l.contEmp+" "+l.um:"");
+    filasHtml +=
+      "<tr style=\"border-bottom:1px solid var(--lite,#f4f6fb)\">" +
+      "<td style=\"padding:6px 8px;font-size:12px;font-weight:700;font-family:monospace;" +
+      "color:var(--primary)\">" + l.cat + "</td>" +
+      "<td style=\"padding:6px 8px;font-size:12px\">" + l.desc + "</td>" +
+      "<td style=\"padding:6px 8px;font-size:12px;text-align:center\">" + l.cant + " " + l.um + "</td>" +
+      "<td style=\"padding:6px 8px;font-size:12px;text-align:center\">" + descEmp + "</td>" +
+      "<td style=\"padding:6px 8px;text-align:center\">" +
+      "<button onclick=\"_guiasEditarLinea(" + i + ")\"" +
+      " style=\"background:none;border:none;cursor:pointer;color:var(--primary);font-size:14px\">&#9998;</button>" +
+      "</td>" +
+      "</tr>";
+  }
+
+  $("#moduleView").innerHTML =
+    "<div style=\"max-width:720px;margin:0 auto;padding:24px 16px\">" +
+    "<div style=\"display:flex;align-items:center;gap:12px;margin-bottom:20px\">" +
+    "<button onclick=\"_guiasCapturaMateriales()\" style=\"background:none;border:1.5px solid var(--line);" +
+    "border-radius:8px;padding:6px 14px;cursor:pointer;font-size:13px;font-family:inherit;" +
+    "color:var(--muted)\">&lsaquo; Materiales</button>" +
+    "<div><div style=\"font-size:18px;font-weight:800;color:var(--primary)\">" +
+    "Guía " + _guiaActual.area + " No. " + _guiaActual.folio + " &mdash; Revisión</div>" +
+    "<div style=\"font-size:12px;color:var(--muted)\">" + _guiaActual.destino + " &middot; " +
+    _guiaActual.almInfo.nombre + " &middot; " + totalBultos + " bultos total</div></div>" +
+    "</div>" +
+
+    // Tabla de materiales
+    "<div style=\"background:white;border:1px solid var(--line);border-radius:12px;" +
+    "overflow:hidden;margin-bottom:20px\">" +
+    "<div style=\"overflow-x:auto\">" +
+    "<table style=\"width:100%;border-collapse:collapse\">" +
+    "<thead style=\"background:var(--lite,#f4f6fb)\"><tr>" +
+    "<th style=\"padding:8px;font-size:11px;color:var(--muted);text-align:left\">CATÁLOGO</th>" +
+    "<th style=\"padding:8px;font-size:11px;color:var(--muted);text-align:left\">DESCRIPCIÓN</th>" +
+    "<th style=\"padding:8px;font-size:11px;color:var(--muted);text-align:center\">CANTIDAD</th>" +
+    "<th style=\"padding:8px;font-size:11px;color:var(--muted);text-align:center\">EMPAQUE</th>" +
+    "<th style=\"padding:8px;width:32px\"></th>" +
+    "</tr></thead><tbody>" + filasHtml + "</tbody>" +
+    "</table></div></div>" +
+
+    // Datos de firma
+    "<div style=\"background:white;border:1px solid var(--line);border-radius:12px;" +
+    "padding:16px;margin-bottom:20px\">" +
+    "<div style=\"font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;" +
+    "letter-spacing:.4px;margin-bottom:12px\">Datos para la guía</div>" +
+    "<div style=\"display:grid;grid-template-columns:1fr 1fr;gap:12px\">" +
+    _tplCampoFirma("gSurtio", "Surtió (quien despacha)", _guiaActual.surtio) +
+    _tplCampoFirma("gGenerador", "Cargos en sistema", _guiaActual.generador) +
+    _tplCampoFirma("gTransporteRev", "Línea de transporte", _guiaActual.transporte) +
+    _tplCampoFirma("gOperador", "Operador", _guiaActual.operador) +
+    _tplCampoFirma("gTipoVeh", "Tipo de vehículo", _guiaActual.tipoVeh) +
+    _tplCampoFirma("gPlacas", "Placas", _guiaActual.placas) +
+    "</div></div>" +
+
+    "<button onclick=\"_guiasGenerar()\"" +
+    " style=\"width:100%;padding:14px;background:var(--primary);color:white;border:none;" +
+    "border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit\">" +
+    "&#128203; Generar e imprimir guía</button>" +
+    "</div>";
+}
+
+function _tplCampoFirma(id, label, valor){
+  return "<div><label style=\"font-size:11px;color:var(--muted);display:block;margin-bottom:4px\">" +
+    label + "</label>" +
+    "<input id=\"" + id + "\" type=\"text\" value=\"" + (valor||"") + "\"" +
+    " style=\"width:100%;padding:8px 12px;border:1.5px solid var(--line);border-radius:8px;" +
+    "font-family:inherit;font-size:13px\"></div>";
+}
+
+function _guiasEditarLinea(idx){
+  var l = _guiaActual.lineas[idx];
+  var cant = prompt("Nueva cantidad para " + l.cat + ":", l.cant);
+  if(cant === null) return;
+  cant = parseInt(cant);
+  if(!cant || cant < 1){ alert("Cantidad inválida."); return; }
+  l.cant = cant;
+  l.bultos = l.contEmp > 1 ? Math.ceil(cant / l.contEmp) : cant;
+  _guiasRevision(); // refrescar
+}
+
+// ── PANTALLA 5: Generar guía imprimible ───────────────────────────────────────
+function _guiasGenerar(){
+  // Capturar datos de firma
+  _guiaActual.surtio     = document.getElementById("gSurtio")?.value || "";
+  _guiaActual.generador  = document.getElementById("gGenerador")?.value || "";
+  _guiaActual.transporte = document.getElementById("gTransporteRev")?.value || "";
+  _guiaActual.operador   = document.getElementById("gOperador")?.value || "";
+  _guiaActual.tipoVeh    = document.getElementById("gTipoVeh")?.value || "";
+  _guiaActual.placas     = document.getElementById("gPlacas")?.value || "";
+
+  var alm  = _guiaActual.almInfo;
+  var hoy  = _guiaActual.fecha ? new Date(_guiaActual.fecha+"T12:00:00") : new Date();
+  var fechaStr = hoy.toLocaleDateString("es-MX",{day:"2-digit",month:"2-digit",year:"numeric"});
+  var totalBultos = _guiaActual.lineas.reduce(function(s,l){ return s+l.bultos; }, 0);
+
+  // Generar QR con datos de la guía (como URL de datos JSON)
+  var qrData = JSON.stringify({
+    folio: _guiaActual.folio, area: _guiaActual.area,
+    destino: _guiaActual.destino, fecha: fechaStr,
+    bultos: totalBultos, mats: _guiaActual.lineas.length
+  });
+
+  var filasHtml = "";
+  for(var i=0; i<_guiaActual.lineas.length; i++){
+    var l = _guiaActual.lineas[i];
+    var descEmp = l.bultos + " " + l.tipoEmp + (l.contEmp>1?" de "+l.contEmp+" "+l.um:"");
+    filasHtml +=
+      "<tr><td class=\"col-cant\">" + l.cant + "</td>" +
+      "<td class=\"col-emp\">" + descEmp + "</td>" +
+      "<td class=\"col-desc\">" + l.desc + "</td>" +
+      "<td class=\"col-cat\">" + l.cat + "</td>" +
+      "<td class=\"col-tot\">" + l.cant + " " + l.um + "</td></tr>";
+  }
+
+  var guiaHtml =
+    "<!DOCTYPE html><html lang=\"es\"><head><meta charset=\"UTF-8\">" +
+    "<title>Guía " + _guiaActual.area + " No." + _guiaActual.folio + " &mdash; D041</title>" +
+    "<style>" +
+    "body{font-family:Arial,sans-serif;font-size:11px;margin:0;padding:12px;color:#000}" +
+    "h1{font-size:13px;margin:0}.hdr{display:grid;grid-template-columns:1fr auto;gap:12px;margin-bottom:8px}" +
+    ".empresa{font-size:13px;font-weight:bold}.sub{font-size:11px}" +
+    ".folio-box{border:2px solid #000;padding:6px 12px;text-align:right;min-width:160px}" +
+    ".folio-box .label{font-size:10px;color:#555}.folio-box .num{font-size:16px;font-weight:bold}" +
+    ".dest{border:1px solid #aaa;padding:6px 10px;margin-bottom:8px;font-size:11px}" +
+    ".dest table{width:100%;border-collapse:collapse}" +
+    ".dest td{padding:2px 4px;vertical-align:top}" +
+    "table.items{width:100%;border-collapse:collapse;margin:8px 0}" +
+    "table.items th{background:#001E6E;color:#fff;padding:5px 6px;font-size:10px;text-align:center;border:1px solid #001E6E}" +
+    "table.items td{border:1px solid #ccc;padding:4px 6px;vertical-align:middle}" +
+    ".col-cant{text-align:center;width:60px}.col-emp{width:160px}" +
+    ".col-desc{}.col-cat{text-align:center;width:90px;font-weight:bold;font-family:monospace}" +
+    ".col-tot{text-align:center;width:80px}" +
+    ".firmas{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}" +
+    ".firma-box{border-top:1px solid #000;padding-top:4px;font-size:10px}" +
+    ".transp{border:1px solid #aaa;padding:6px;font-size:11px;margin-top:8px}" +
+    ".transp table{width:100%;border-collapse:collapse}" +
+    ".transp td{padding:3px 6px;border-bottom:1px solid #eee}" +
+    ".sello-box{border:1px dashed #999;height:60px;display:flex;align-items:center;" +
+    "justify-content:center;color:#bbb;font-size:10px;margin-top:8px}" +
+    "@media print{body{padding:0}button{display:none}}" +
+    "</style></head><body>" +
+
+    // Encabezado
+    "<div class=\"hdr\">" +
+    "<div>" +
+    "<div class=\"empresa\">TELÉFONOS DE MÉXICO, S.A.B. DE C.V.</div>" +
+    "<div class=\"sub\">ALMACÉN DISTRIBUIDOR PUEBLA</div>" +
+    "<div class=\"sub\">Esquina Tepeyac, Calz. Ignacio Zaragoza, Los Pinos &nbsp; Tel. 2-57-73-90</div>" +
+    "<div class=\"sub\">C.P. 72103 Heroica Puebla de Zaragoza, Pue.</div>" +
+    "</div>" +
+    "<div class=\"folio-box\">" +
+    "<div class=\"label\">Guía de embarque</div>" +
+    "<div class=\"label\">No. Guía</div>" +
+    "<div class=\"num\">" + _guiaActual.folio + "</div>" +
+    "<div class=\"label\">Área: " + _guiaActual.area + "</div>" +
+    "</div>" +
+    "</div>" +
+
+    // Destinatario
+    "<div class=\"dest\"><table>" +
+    "<tr><td><b>Destinatario:</b></td><td>" + alm.nombre + "</td>" +
+    "<td><b>Tel.:</b></td><td>" + (alm.tel||"") + "</td></tr>" +
+    "<tr><td><b>Atiende:</b></td><td>" + (alm.atiende||"") + "</td>" +
+    "<td><b>C.P.:</b></td><td>" + (alm.cp||"") + "</td></tr>" +
+    "<tr><td><b>Domicilio:</b></td><td colspan=\"3\">" + (alm.domicilio||"") + " &nbsp; " + (alm.ciudad||"") + "</td></tr>" +
+    "</table></div>" +
+
+    // Tabla de materiales
+    "<table class=\"items\">" +
+    "<thead><tr>" +
+    "<th class=\"col-cant\">Cantidad</th>" +
+    "<th class=\"col-emp\">Unidad de embarque</th>" +
+    "<th class=\"col-desc\">Descripción</th>" +
+    "<th class=\"col-cat\">Catálogo</th>" +
+    "<th class=\"col-tot\">Total</th>" +
+    "</tr></thead><tbody>" + filasHtml + "</tbody>" +
+    "<tfoot><tr><td colspan=\"5\" style=\"text-align:right;padding:5px 6px;font-weight:bold;font-size:12px\">" +
+    "Total bultos: " + totalBultos + "</td></tr></tfoot>" +
+    "</table>" +
+
+    // Transporte
+    "<div class=\"transp\"><table>" +
+    "<tr><td><b>Surtió:</b></td><td>" + (_guiaActual.surtio||"") + "</td>" +
+    "<td><b>Línea de transporte:</b></td><td>" + (_guiaActual.transporte||"") + "</td></tr>" +
+    "<tr><td></td><td></td>" +
+    "<td><b>Operador:</b></td><td>" + (_guiaActual.operador||"") + "</td></tr>" +
+    "<tr><td><b>Recibe:</b></td><td style=\"border-bottom:1px solid #000;min-width:200px\">&nbsp;</td>" +
+    "<td><b>Tipo de vehículo:</b></td><td>" + (_guiaActual.tipoVeh||"") + "</td></tr>" +
+    "<tr><td></td><td></td>" +
+    "<td><b>Placas:</b></td><td>" + (_guiaActual.placas||"") + "</td></tr>" +
+    "</table></div>" +
+
+    // Firmas
+    "<div class=\"firmas\">" +
+    "<div>" +
+    "<div class=\"firma-box\">Nombre y firma &nbsp;&mdash;&nbsp; " + (_guiaActual.generador||"Cargos en sistema") + "</div>" +
+    "<div style=\"font-size:10px;margin-top:4px\">Fecha de embarque: " + fechaStr + "</div>" +
+    "</div>" +
+    "<div>" +
+    "<div class=\"firma-box\">Fecha y firma &nbsp;&mdash;&nbsp; Transportista</div>" +
+    "<div class=\"sello-box\">SELLO INSTITUCIONAL</div>" +
+    "</div>" +
+    "</div>" +
+
+    "<div style=\"text-align:center;font-size:9px;color:#999;margin-top:8px\">" +
+    "Sistema TX41 &middot; D041 Puebla &middot; Generado: " + new Date().toLocaleString("es-MX") +
+    "</div>" +
+    "<button onclick=\"window.print()\" style=\"margin-top:12px;padding:10px 24px;background:#001E6E;" +
+    "color:white;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer\">" +
+    "&#128424; Imprimir</button>" +
+    "</body></html>";
+
+  // Abrir en ventana nueva
+  var win = window.open("", "_blank");
+  win.document.write(guiaHtml);
+  win.document.close();
+
+  // Guardar en historial
+  _guiasHistAgregar({
+    folio: _guiaActual.folio, area: _guiaActual.area,
+    destino: _guiaActual.destino, fecha: fechaStr,
+    lineas: _guiaActual.lineas.length
+  });
+}
+
+function _guiasAbrirHistorial(idx){
+  var hist = _guiasHistCargar();
+  if(!hist[idx]) return;
+  alert("Guía " + hist[idx].area + " No. " + hist[idx].folio +
+    "\nDestino: " + hist[idx].destino +
+    "\nFecha: " + hist[idx].fecha +
+    "\nMateriales: " + hist[idx].lineas +
+    "\n\nPara reabrir o reimprimir, genera una nueva guía con los mismos datos.");
+}
