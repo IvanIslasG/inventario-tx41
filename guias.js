@@ -545,7 +545,11 @@ function _guiasRevision(){
     return;
   }
 
-  var totalBultos = _guiaActual.lineas.reduce(function(s,l){ return s+l.bultos; }, 0);
+  var _gruposBultos = _guiasAgruparLineas(_guiaActual.lineas, _guiaActual.area);
+  var totalBultos = 0;
+  _gruposBultos.cajas.forEach(function(l){ totalBultos += Math.floor(l.cant/l.contEmp); });
+  _gruposBultos.patio.forEach(function(l){ totalBultos += l.bultos || 1; });
+  if(_gruposBultos.granel.length > 0) totalBultos += 1; // 1 caja colectiva
 
   var filasHtml = "";
   for(var i=0; i<_guiaActual.lineas.length; i++){
@@ -631,6 +635,97 @@ function _guiasEditarLinea(idx){
   _guiasRevision(); // refrescar
 }
 
+
+var _GUIAS_COLECTIVO = {
+  "Misceláneos":   "Material Misceláneo",
+  "Herramientas":  "Herramienta en General",
+  "Papelería":     "Papelería en General",
+  "Ropa y Calzado":"Ropa y Calzado",
+  "General":       "Material en General",
+};
+
+
+function _guiasAgruparLineas(lineas, area){
+  // Clasificar cada línea
+  var cajas   = [];
+  var patio   = [];
+  var granel  = [];
+
+  for(var i=0; i<lineas.length; i++){
+    var l = lineas[i];
+    if(l.patio){
+      patio.push(l);
+    } else if(l.contEmp > 1 && l.cant >= l.contEmp){
+      cajas.push(l);
+    } else {
+      granel.push(l);
+    }
+  }
+
+  // Ordenar cada grupo por catálogo ascendente
+  var sortCat = function(a,b){ return a.cat.localeCompare(b.cat); };
+  cajas.sort(sortCat);
+  patio.sort(sortCat);
+  granel.sort(sortCat);
+
+  return { cajas: cajas, patio: patio, granel: granel };
+}
+
+function _guiasFilasImpresion(lineas, area){
+  var grupos = _guiasAgruparLineas(lineas, area);
+  var filas = [];
+  var colectivo = _GUIAS_COLECTIVO[area] || "Material en General";
+
+  // GRUPO 1: Cajas cerradas
+  grupos.cajas.forEach(function(l){
+    var nCajas = Math.floor(l.cant / l.contEmp);
+    var descEmp = "C/C " + l.contEmp + " " + l.um;
+    filas.push({
+      cant:    nCajas,
+      um:      descEmp,
+      desc:    l.desc,
+      cat:     l.cat,
+      total:   l.cant + " " + l.um,
+      tipo:    "caja",
+      patio:   false
+    });
+  });
+
+  // GRUPO 2: Patio
+  grupos.patio.forEach(function(l){
+    filas.push({
+      cant:    l.bultos || l.cant,
+      um:      l.um,
+      desc:    l.desc,
+      cat:     l.cat,
+      total:   l.cant + " " + l.um,
+      tipo:    "patio",
+      patio:   true
+    });
+  });
+
+  // GRUPO 3: Granel (solo si hay)
+  if(grupos.granel.length > 0){
+    // Renglón en blanco + encabezado colectivo
+    filas.push({ tipo: "separador" });
+    filas.push({ tipo: "colectivo", desc: colectivo });
+
+    grupos.granel.forEach(function(l){
+      filas.push({
+        cant:    l.cant,
+        um:      l.um,
+        desc:    l.desc,
+        cat:     l.cat,
+        total:   l.cant + " " + l.um,
+        tipo:    "granel",
+        patio:   false
+      });
+    });
+  }
+
+  return filas;
+}
+
 // ── PANTALLA 5: Generar guía imprimible ───────────────────────────────────────
 function _guiasGenerar(){
   // Capturar datos de firma
@@ -644,7 +739,11 @@ function _guiasGenerar(){
   var alm  = _guiaActual.almInfo;
   var hoy  = _guiaActual.fecha ? new Date(_guiaActual.fecha+"T12:00:00") : new Date();
   var fechaStr = hoy.toLocaleDateString("es-MX",{day:"2-digit",month:"2-digit",year:"numeric"});
-  var totalBultos = _guiaActual.lineas.reduce(function(s,l){ return s+l.bultos; }, 0);
+  var _gruposBultos = _guiasAgruparLineas(_guiaActual.lineas, _guiaActual.area);
+  var totalBultos = 0;
+  _gruposBultos.cajas.forEach(function(l){ totalBultos += Math.floor(l.cant/l.contEmp); });
+  _gruposBultos.patio.forEach(function(l){ totalBultos += l.bultos || 1; });
+  if(_gruposBultos.granel.length > 0) totalBultos += 1; // 1 caja colectiva
 
   // Generar QR con datos de la guía (como URL de datos JSON)
   var qrData = JSON.stringify({
@@ -653,16 +752,32 @@ function _guiasGenerar(){
     bultos: totalBultos, mats: _guiaActual.lineas.length
   });
 
+  var _filas = _guiasFilasImpresion(_guiaActual.lineas, _guiaActual.area);
   var filasHtml = "";
-  for(var i=0; i<_guiaActual.lineas.length; i++){
-    var l = _guiaActual.lineas[i];
-    var descEmp = l.bultos + " " + l.tipoEmp + (l.contEmp>1?" de "+l.contEmp+" "+l.um:"");
-    filasHtml +=
-      "<tr><td class=\"col-cant\">" + l.cant + "</td>" +
-      "<td class=\"col-emp\">" + descEmp + "</td>" +
-      "<td class=\"col-desc\">" + l.desc + "</td>" +
-      "<td class=\"col-cat\">" + l.cat + "</td>" +
-      "<td class=\"col-tot\">" + l.cant + " " + l.um + "</td></tr>";
+  for(var fi=0; fi<_filas.length; fi++){
+    var f = _filas[fi];
+    if(f.tipo === "separador"){
+      filasHtml += "<tr><td colspan=\"5\" style=\"padding:6px 0\">&nbsp;</td></tr>";
+    } else if(f.tipo === "colectivo"){
+      filasHtml += "<tr><td colspan=\"5\" style=\"padding:5px 8px;font-weight:700;" +
+        "font-size:12px;border-top:1px solid #ccc\">" + f.desc + "</td></tr>";
+    } else if(f.tipo === "patio"){
+      filasHtml +=
+        "<tr style=\"background:#fff8e1\">" +
+        "<td class=\"col-cant\">" + f.cant + " - Patio</td>" +
+        "<td class=\"col-emp\">" + f.um + "</td>" +
+        "<td class=\"col-desc\">" + f.desc + "</td>" +
+        "<td class=\"col-cat\">" + f.cat + "</td>" +
+        "<td class=\"col-tot\">" + f.total + "</td></tr>";
+    } else {
+      filasHtml +=
+        "<tr>" +
+        "<td class=\"col-cant\">" + f.cant + "</td>" +
+        "<td class=\"col-emp\">" + (f.tipo==="caja" ? f.um : f.um) + "</td>" +
+        "<td class=\"col-desc\">" + f.desc + "</td>" +
+        "<td class=\"col-cat\">" + f.cat + "</td>" +
+        "<td class=\"col-tot\">" + f.total + "</td></tr>";
+    }
   }
 
   var guiaHtml =
