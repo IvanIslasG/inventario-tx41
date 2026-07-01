@@ -843,6 +843,8 @@ async function _exportarORSimple(rows, numReabasto, generador, areasSeleccionada
       const datRows=filasSAP.map(f=>[f.cat, f.xsurtir, "", "", "", "", siglaDestino, "NUEVO"]);
       wsaSAP=XLSX.utils.aoa_to_sheet([hdr,...datRows]);
       colWidths=[{wch:18},{wch:13},{wch:8},{wch:14},{wch:15},{wch:13},{wch:18},{wch:18}];
+      wsaSAP["!cols"]=colWidths;
+      XLSX.utils.book_append_sheet(wb, wsaSAP, "SAP MIGO 313");
     } else {
       // Rama ME21N — diferente centro
       const hdr=["Material","Txt.brv.","Ctd.Pedido","Lote","Almacén Procedencia","Centro","Almacén"];
