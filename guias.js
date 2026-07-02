@@ -5,8 +5,7 @@
 
 // ── BD de empaques (seed inicial — crece orgánicamente en localStorage) ──────
 const _GUIAS_BD_SEED = [{"cat": "1000320", "um": "PZ", "tipo": "Caja", "cont": 192, "freq": 3, "patio": false}, {"cat": "1000372", "um": "PZ", "tipo": "Caja", "cont": 15, "freq": 1, "patio": false}, {"cat": "1000416", "um": "PZ", "tipo": "Caja", "cont": 150, "freq": 1, "patio": false}, {"cat": "1000430", "um": "PZ", "tipo": "Caja", "cont": 100, "freq": 1, "patio": false}, {"cat": "1000430", "um": "PZ", "tipo": "Caja", "cont": 200, "freq": 1, "patio": false}, {"cat": "1000381", "um": "PZ", "tipo": "Costal", "cont": 50, "freq": 1, "patio": false}, {"cat": "1000418", "um": "PZ", "tipo": "Caja", "cont": 100, "freq": 1, "patio": false}, {"cat": "1000600", "um": "PZ", "tipo": "Caja", "cont": 1, "freq": 1, "patio": false}, {"cat": "1000713", "um": "PZ", "tipo": "Caja", "cont": 5000, "freq": 1, "patio": false}, {"cat": "1000715", "um": "PZ", "tipo": "Caja", "cont": 3000, "freq": 1, "patio": false}, {"cat": "1000902", "um": "PZ", "tipo": "Caja", "cont": 5000, "freq": 1, "patio": false}, {"cat": "1000903", "um": "PZ", "tipo": "Caja", "cont": 5000, "freq": 1, "patio": false}, {"cat": "1001224", "um": "M", "tipo": "Caja", "cont": 250, "freq": 1, "patio": false}, {"cat": "1026180", "um": "PZ", "tipo": "Pieza", "cont": 1, "freq": 1, "patio": true}, {"cat": "1028665", "um": "PZ", "tipo": "Caja", "cont": 1, "freq": 1, "patio": false}, {"cat": "1028954", "um": "PZ", "tipo": "Caja", "cont": 20000, "freq": 1, "patio": false}, {"cat": "1034256", "um": "PZ", "tipo": "Caja", "cont": 500, "freq": 1, "patio": false}, {"cat": "1034325", "um": "PZ", "tipo": "Caja", "cont": 1, "freq": 1, "patio": false}, {"cat": "1035461", "um": "PZ", "tipo": "Caja", "cont": 12, "freq": 1, "patio": false}, {"cat": "1036183", "um": "PZ", "tipo": "Caja", "cont": 140, "freq": 1, "patio": false}, {"cat": "1036183", "um": "PZ", "tipo": "Caja", "cont": 100, "freq": 1, "patio": false}, {"cat": "1036713", "um": "PZ", "tipo": "Caja", "cont": 6000, "freq": 1, "patio": false}, {"cat": "1038272", "um": "PZ", "tipo": "Caja", "cont": 150, "freq": 1, "patio": false}, {"cat": "1038272", "um": "PZ", "tipo": "Caja", "cont": 500, "freq": 1, "patio": false}, {"cat": "1045853", "um": "PZ", "tipo": "Caja", "cont": 1, "freq": 1, "patio": false}, {"cat": "1046965", "um": "PZ", "tipo": "Caja", "cont": 30, "freq": 1, "patio": false}, {"cat": "1052980", "um": "PZ", "tipo": "Caja", "cont": 500, "freq": 1, "patio": false}, {"cat": "1054083", "um": "PZ", "tipo": "Caja", "cont": 1, "freq": 1, "patio": false}, {"cat": "1054594", "um": "PZ", "tipo": "Caja", "cont": 100, "freq": 2, "patio": false}, {"cat": "1054594", "um": "PZ", "tipo": "Caja", "cont": 1000, "freq": 1, "patio": false}, {"cat": "1000291", "um": "PZ", "tipo": "Caja", "cont": 20, "freq": 1, "patio": false}, {"cat": "1000295", "um": "PZ", "tipo": "Caja", "cont": 24, "freq": 1, "patio": false}, {"cat": "1000296", "um": "PZ", "tipo": "Caja", "cont": 24, "freq": 1, "patio": false}, {"cat": "1000337", "um": "PZ", "tipo": "Caja", "cont": 10000, "freq": 1, "patio": false}, {"cat": "1000371", "um": "PZ", "tipo": "Caja", "cont": 20, "freq": 1, "patio": false}, {"cat": "1000674", "um": "PZ", "tipo": "Caja", "cont": 100, "freq": 1, "patio": false}, {"cat": "1002447", "um": "PZ", "tipo": "Pieza", "cont": 1, "freq": 1, "patio": true}, {"cat": "1002449", "um": "PZ", "tipo": "Pieza", "cont": 1, "freq": 1, "patio": false}, {"cat": "1002470", "um": "PZ", "tipo": "Pieza", "cont": 1, "freq": 1, "patio": false}, {"cat": "1002502", "um": "PZ", "tipo": "Pieza", "cont": 1, "freq": 1, "patio": false}, {"cat": "1002447", "um": "PZ", "tipo": "Pieza", "cont": 1, "freq": 1, "patio": false}, {"cat": "1002535", "um": "PZ", "tipo": "Pieza", "cont": 1, "freq": 1, "patio": false}, {"cat": "1034445", "um": "PZ", "tipo": "Pieza", "cont": 120, "freq": 3, "patio": false}, {"cat": "1002433", "um": "PZ", "tipo": "Caja", "cont": 6, "freq": 1, "patio": false}, {"cat": "1002521", "um": "PZ", "tipo": "Caja", "cont": 20, "freq": 1, "patio": false}, {"cat": "1002522", "um": "PZ", "tipo": "Caja", "cont": 20, "freq": 1, "patio": false}, {"cat": "1002554", "um": "PZ", "tipo": "Caja", "cont": 6, "freq": 1, "patio": false}, {"cat": "1002556", "um": "PZ", "tipo": "Caja", "cont": 6, "freq": 1, "patio": false}, {"cat": "1034253", "um": "PZ", "tipo": "Caja", "cont": 200, "freq": 1, "patio": false}, {"cat": "1034254", "um": "PZ", "tipo": "Caja", "cont": 200, "freq": 1, "patio": false}, {"cat": "1034445", "um": "PZ", "tipo": "Caja", "cont": 12, "freq": 2, "patio": false}, {"cat": "1034445", "um": "PZ", "tipo": "Caja", "cont": 50, "freq": 1, "patio": false}, {"cat": "1000508", "um": "M", "tipo": "Tubo", "cont": 6, "freq": 1, "patio": true}, {"cat": "1002353", "um": "PZ", "tipo": "Caja", "cont": 20, "freq": 1, "patio": false}, {"cat": "1002413", "um": "PZ", "tipo": "Caja", "cont": 20, "freq": 1, "patio": false}, {"cat": "1002551", "um": "PZ", "tipo": "Caja", "cont": 6, "freq": 1, "patio": false}, {"cat": "1002734", "um": "PZ", "tipo": "Caja", "cont": 10, "freq": 1, "patio": false}, {"cat": "1010457", "um": "PZ", "tipo": "Caja", "cont": 20, "freq": 1, "patio": false}, {"cat": "1025372", "um": "PZ", "tipo": "Caja", "cont": 40, "freq": 1, "patio": false}, {"cat": "1026092", "um": "PZ", "tipo": "Caja", "cont": 6, "freq": 1, "patio": false}, {"cat": "1038152", "um": "PZ", "tipo": "Caja", "cont": 10, "freq": 1, "patio": false}];
-const _GUIAS_ALM_SEED = {"TX41": {"nombre": "ALMACEN DISTRIBUIDOR PUEBLA", "atiende": "GERMAN PEREZ PORRAS", "domicilio": "Esquina Tepeyac, Calz. Ignacio Zaragoza, Los Pinos", "ciudad": "PUEBLA, PUE.", "cp": "72103", "tel": "2577390"}, "TX8A": {"nombre": "ALMACEN AUXILIAR SAN PEDRO", "atiende": "ASSENETH ALVARADO HERRERA, RAFAEL PACHECO FERNANDEZ", "domicilio": "25 NORTE No. 3617  COL NUEVA AURORA", "ciudad": "PUEBLA, PUE.", "cp": "72070", "tel": "01 222 2463193"}, "TX8B": {"nombre": "ALMACEN AUXILIAR ZARAGOZA", "atiende": "ROBERTO COYOTZI MONTES", "domicilio": "CALZ IGNACIO ZARAGOZA No 247 COL TEPEYAC", "ciudad": "PUEBLA, PUE.", "cp": "", "tel": "12222352031"}, "TX8C": {"nombre": "ALMACEN AUXILIAR ORIZABA", "atiende": "Lic.VANIA HERNANDEZ JUAREZ,", "domicilio": "31 ORIENTE No 308 CIRCUNVALACION", "ciudad": "ORIZABA, VERACRUZ", "cp": "", "tel": ""}, "TX8D": {"nombre": "ALMACEN AUXILIAR TLAXCALA", "atiende": "CARLOS VERGARA JIMENEZ", "domicilio": "AV INSTITUTO POLITECNICO NACIONAL S/N", "ciudad": "TLAXCALA, TLAXCALA", "cp": "", "tel": ""}, "TX8E": {"nombre": "ALMACEN AUXILIAR TEHUACAN", "atiende": "OMAR MARTINEZ EURESTI", "domicilio": "16 NORTE No 413 COL SERDAN", "ciudad": "TEHUACAN, PUEBLA", "cp": "75750", "tel": "12383821393"}, "TX8F": {"nombre": "ALMACEN AUXILIAR SAN BRUNO", "atiende": "GONZALO SILVA POZOS", "domicilio": "MARTIREZ 28 DE AGOSTO", "ciudad": "XALAPA, VERACRUZ", "cp": "91020", "tel": "12288153631"}, "TX8G": {"nombre": "ALMACEN AUXILIAR CRISTAL", "atiende": "LAURA MANZO SILVESTRE, OMAR BAIZABAL", "domicilio": "ANTONIO CHEDRAHUI CARAM No 250", "ciudad": "XALAPA, VERACRUZ", "cp": "91180", "tel": "12288150444"}, "TX8H": {"nombre": "ALMACEN AUXILIAR MOCAMBO", "atiende": "HIRAM SALAMANCA, JUAN CARLOS ENGEL, DAMARIS DEL R", "domicilio": "AV PALMERAS No 305 COL JARDINES DE VIRGINIA", "ciudad": "BOCA DEL RIO, VERACRUZ", "cp": "", "tel": "12299214122"}, "TX8I": {"nombre": "ALMACEN AUXILIAR DOS CAMINOS", "atiende": "DIEGO GARCÍA, EDEL", "domicilio": "AV 11 No 2627", "ciudad": "CORDOBA, VERACRUZ", "cp": "", "tel": "12717165433"}, "TX8J": {"nombre": "ALMACEN AUXILIAR AQUILES SERDAN", "atiende": "JOSÉ ANTONIO LÓPEZ C", "domicilio": "35 PONIENTE No 723", "ciudad": "PUEBLA, PUE.", "cp": "", "tel": "12222433928"}, "TX8K": {"nombre": "ALMACEN AUXILIAR ALTAMIRANO", "atiende": "LILIA CONTRERAS", "domicilio": "ALTAMIRANO No 1226", "ciudad": "VERACRUZ, VERACRUZ", "cp": "91700", "tel": "12299204842"}, "TX8L": {"nombre": "ALMACEN AUXILIAR LERDO", "atiende": "JULIO CÉSAR GONZÁLEZ", "domicilio": "MARIANO ARISTA No 4424", "ciudad": "VERACRUZ, VERACRUZ", "cp": "91726", "tel": "12299204842"}, "TX8M": {"nombre": "ALMACEN AUXILIAR PEÑUELA", "atiende": "JESSICA VELAZQUEZ MARAÑON", "domicilio": "KM 343 BOULEVARD S/N", "ciudad": "CORDOBA, VERACRUZ", "cp": "94501", "tel": "12717166707"}, "TX8T": {"nombre": "ALMACEN AUXILIAR TULANCINGO", "atiende": "PEDRO MORALES LIRA", "domicilio": "RIVA PALACIOS 203 COL LOS ALAMOS", "ciudad": "TULANCINGO, HIDALGO", "cp": "43640", "tel": "17757536701"}, "TX8V": {"nombre": "ALMACEN AUXILIAR PACHUCA", "atiende": "HIRAM ROSALES", "domicilio": "SAN MARTIN DE PORRES No 407 CFE", "ciudad": "PACHUCA DE SOTO, HIDALGO", "cp": "42090", "tel": "17717143677"}, "TX8X": {"nombre": "ALMACEN AUXILIAR ATLIXCO", "atiende": "SERGIO NOE MILIAN PINTLE", "domicilio": "CALZ. OAXACA No 2710", "ciudad": "ATLIXCO, PUEBLA", "cp": "74294", "tel": "12444451868"}, "TX8Y": {"nombre": "ALMACEN AUXILIAR MAYORAZGO", "atiende": "GLORIA MARCELA SILVA T", "domicilio": "CALLE BENITO JUAREZ No 12311", "ciudad": "PUEBLA, PUE.", "cp": "", "tel": "12222192800"}, "TX8Z": {"nombre": "ALMACEN AUXILIAR POZA RICA", "atiende": "ENRIQUE LEANDRO BLANCO", "domicilio": "POZO 2 No 48 COL DIVISION NORTE", "ciudad": "POZA RICA, VERACRUZ", "cp": "93350", "tel": "17828233004"}, "TX9C": {"nombre": "ALMACEN AUXILIAR COATZACOALCOS", "atiende": "JUANA MARIA RAMOS", "domicilio": "AV. JACINTO LEMARROY S/N FRACC. RANCHO ALEGRE 2", "ciudad": "COATZACOALCOS, VERACRUZ", "cp": "96558", "tel": "19212186550"}, "TX9S": {"nombre": "ALMACEN AUXILIAR MINATITLAN", "atiende": "SERGIO VAZQUEZ", "domicilio": "EMILIANO ZAPATA No. 25 COL. INSURGENTES SUR", "ciudad": "MINATITLAN, VERACRUZ", "cp": "96710", "tel": "19222211979"}, "TX9T": {"nombre": "ALMACEN AUXILIAR CHOLULA", "atiende": "ILIANA DE ITA, CARLOS GUTIERREZ", "domicilio": "22 ORIENTE No 606", "ciudad": "CHOLULA, PUEBLA", "cp": "", "tel": "12222474746"}, "TX9U": {"nombre": "ALMACEN AUXILIAR AMALUCAN", "atiende": "JOSEFINA ONOFRE M", "domicilio": "BLVRD ATEOPAN ESQ 17A", "ciudad": "PUEBLA, PUE.", "cp": "", "tel": "12222868207"}, "TX9V": {"nombre": "ALMACEN AUXILIAR TULA", "atiende": "TALIA", "domicilio": "AV SUR ESQUINA OTE No 25 COL CENTRO", "ciudad": "TULA DE ALLENDE, HIDALGO", "cp": "42800", "tel": "17737322888"}, "TXX4": {"nombre": "ALMACEN TELECO", "atiende": "", "domicilio": "", "ciudad": "", "cp": "", "tel": ""}, "TXY4": {"nombre": "ALMACEN CYCSA PUEBLA", "atiende": "ERNESTO CENTENO", "domicilio": "CALLE C No. 7 PARQUE INDUSTRIAL 2000", "ciudad": "PUEBLA, PUE.", "cp": "", "tel": ""}, "TX82": {"nombre": "ALMACEN AUXILIAR TUXPAN", "atiende": "LAURA CECILIA", "domicilio": "DEMETRIO RUIZ MALERVA S/N COL CENTRO", "ciudad": "TUXPAN VERACRUZ", "cp": "", "tel": "17838340234"}, "TX81": {"nombre": "ALMACEN AUXILIAR PACHOACAN", "atiende": "FELIPE OLANDES MORA", "domicilio": "AV FRNACISCO SARABIA No 100 COL CARLOS ROVIROSA", "ciudad": "PACHUCA DE SOTO, HIDALGO", "cp": "42082", "tel": "1771148651"}, "TX83": {"nombre": "ALMACEN AUXILIAR SAN MARTIN", "atiende": "AGUSTIN BALBUENA SCHIAFINI (RETIRADO)", "domicilio": "AV. JUVENTUD S/N COL. LOS DICIOS", "ciudad": "SAN MARTIN TEXMELUCAN, PUEBLA", "cp": "", "tel": ""}, "TX32": {"nombre": "ALMACEN DISTRIBUIDOR CELAYA", "atiende": "JOSE TORADO", "domicilio": "AV LAS FUENTES 10904 COL LAS FUENTES", "ciudad": "CELAYA, GTO", "cp": "", "tel": ""}, "TX22": {"nombre": "ALMACEN DISTRIBUIDOR HERMOSILLO", "atiende": "BRUNO GENDA FERNANDEZ", "domicilio": "BLVRD JESUS GARCIA MORALES KM 5 No 145 COL EL LLANO", "ciudad": "HERMOSILLO, SONORA", "cp": "83210", "tel": "16622188701"}, "TX9P": {"nombre": "ALMACEN AUXILIAR PINOTEPA", "atiende": "VLADIMIR", "domicilio": "AV AGUIRRE PALANCARES Y BAÑOS AGUIRRE", "ciudad": "PINOTEPA NACIONAL", "cp": "71600", "tel": "19545433906"}, "TX9O": {"nombre": "ALMACEN AUXILIAR OAXACA 1", "atiende": "REYNA GARCIA MARTINEZ", "domicilio": "HEROICO COLEGIO MILITAR No 1013 COL REFORMA", "ciudad": "OAXACA, OAX", "cp": "68050", "tel": "19515127100"}, "TX91": {"nombre": "ALMACEN AUXILIAR APIZACO", "atiende": "MA LOURDES", "domicilio": "VENUSTIANO CARRANZA ESQ JOSE A", "ciudad": "APIZACO, TLAXCALA", "cp": "90350", "tel": "12414174555"}, "TX84": {"nombre": "ALMACEN AUXILIAR TEZIUTLAN", "atiende": "RAMON GALINDO BECERRA", "domicilio": "AV ENCINO Y AVELLANO SN", "ciudad": "TEZIUTLAN, PUEBLA", "cp": "73890", "tel": "12313130715"}, "TX9Q": {"nombre": "ALMACEN AUXILIAR OAXACA II", "atiende": "LEON RUIZ MATADAMAS", "domicilio": "ESMERALDA No 201 COL BUGAMBILIAS", "ciudad": "OAXACA, OAX", "cp": "68010", "tel": "19515127100"}, "TX9R": {"nombre": "ALMACEN AUXILIAR HUAJUAPAN", "atiende": "FROYLAN HERNANDEZ", "domicilio": "PROLONGACION DE MINA No 120", "ciudad": "H. CIUDAD DE HUAJUAPAN DE LEON, OAX", "cp": "69007", "tel": "19535324388"}, "TX11": {"nombre": "ALMACEN DISTRIBUIDOR MONTERREY", "atiende": "ANTONIO AGUILAR", "domicilio": "CORDILLERA DE LOS ANDES No 701 JARDIN DE LAS PTES S/N0", "ciudad": "SN NICOLAS DE LOS GARZA, NUEVO LEON", "cp": "66460", "tel": "18183505572"}, "TXLG": {"nombre": "ALMACEN AUXILIAR LEGARIA", "atiende": "HERNESTO HERNANDEZ", "domicilio": "FELIPE CARRILLO PUERTO No. 750 TORRE BLANCA  MIGUEL HIDALGO", "ciudad": "MEXICO, DF", "cp": "", "tel": ""}, "TX43": {"nombre": "ALMACEN DISTRIBUIDOR VILLAHERMOSA", "atiende": "EDUARDO TABOADA", "domicilio": "AV. ACERO S/N ESQUINA COBRE CD.INDUSTRIAL", "ciudad": "VILLAHERMOSA. TABASCO", "cp": "", "tel": ""}, "TX9X": {"nombre": "ALMACEN AUXILIAR CHETUMAL", "atiende": "ARTURO ALONSO RAMIREZ", "domicilio": "AVENIDA 4 DE MARZO NO.30 COL.FIDEL VELAZQUEZ", "ciudad": "CHETUMAL QUINTANA ROO", "cp": "77080", "tel": "19838372365"}, "TX21": {"nombre": "ALMACEN DISTRIBUIDOR GUADALAJARA", "atiende": "ENRIQUE MEDINA LOPEZ", "domicilio": "TRATADO DE TLALTELOCO No. 4114 COL. PARQUE AUDITORIO", "ciudad": "ZAPOPAN, JALISCO", "cp": "", "tel": "3336601554"}, "TX13": {"nombre": "ALMACEN DISTRIBUIDOR CHIHUAHUA", "atiende": "CARLOS DURAN", "domicilio": "MIGUEL BARRAGAN No. 6903 COL. EL PARRAL", "ciudad": "CHIHUAHUA, CHIHUAHUA", "cp": "", "tel": ""}, "TX07": {"nombre": "ALMACEN GENERAL LA PERLA", "atiende": "ROGER CANO", "domicilio": "CALLE NUEVA ESQUINA NEGRA MODELO COL. INDUSTRIAL", "ciudad": "NAUCALPAN EDO DE MEXICO", "cp": "", "tel": ""}, "MTZ": {"nombre": "ALMACEN AUXILIAR MARTINEZ DE LA TORRE", "atiende": "ROLANDO RAZGADO DE JESUS", "domicilio": "BOULEVARD ALFINO FLORES S/N COL. ADOLFO RUIZ CORTINA", "ciudad": "MARTINEZ DE LA TORRE, VER.", "cp": "", "tel": ""}, "CI9A": {"nombre": "CARSO TLAXCALA", "atiende": "", "domicilio": "CALLE AV.OCOTLAN S/N CONTRA ESQ. CALLE CONSTRUCTORES", "ciudad": "SANTA ANA CHIAUTEMPAN", "cp": "", "tel": ",012464620646"}, "ACTOPAN": {"nombre": "NUEVO ACTOPAN", "atiende": "PAREDES TENORIO FRANCISCA", "domicilio": "PEDRO MORENO No 49", "ciudad": "NUEVO ACTOPAN, HGO", "cp": "42500", "tel": "17727273187"}, "TX9I": {"nombre": "MERIDA BUENAVISTA", "atiende": "", "domicilio": "CONOCIDO", "ciudad": "MERIDA", "cp": "-", "tel": "-"}, "SAHAGUN": {"nombre": "CT SAHAGUN", "atiende": "", "domicilio": "CONOCIDO", "ciudad": "CD SAHAGÚN", "cp": "-", "tel": "-"}, "TECA": {"nombre": "CT TECAMACHALCO", "atiende": "", "domicilio": "CONOCIDO", "ciudad": "TECAMACHALCO", "cp": "-", "tel": "-"}, "TXAS": {"nombre": "ALMACEN ABASTOS", "atiende": "", "domicilio": "CONOCIDO", "ciudad": "&", "cp": "&", "tel": "&"}, "TXCD": {"nombre": "ALMACEN AUXILIAR  DIANA", "atiende": "LUIS FELIPE ESTROP", "domicilio": "", "ciudad": "", "cp": "", "tel": ""}, "TXPI": {"nombre": "ALMACEN AUXILIAR PINO", "atiende": "", "domicilio": "", "ciudad": "", "cp": "", "tel": ""}, "TX85": {"nombre": "ALMACEN AUXILIAR PUERTO ESCONDIDO", "atiende": "", "domicilio": "", "ciudad": "", "cp": "", "tel": ""}, "TX93": {"nombre": "ALMACEN AUXILIAR HUATULCO", "atiende": "GLORIA", "domicilio": "", "ciudad": "", "cp": "", "tel": ""}};
-
+const _GUIAS_ALM_SEED = {"D041": {"nombre": "ALMACEN DISTRIBUIDOR PUEBLA", "atiende": "GERMAN PEREZ PORRAS", "domicilio": "", "ciudad": "", "tel": "", "cp": ""}, "A08A": {"nombre": "ALMACEN AUXILIAR SAN PEDRO", "atiende": "ASSENETH ALAVARADO HERRERA", "domicilio": "25 NORTE No. 3617  COL NUEVA AURORA", "ciudad": "PUEBLA, PUE.", "tel": "01 222 2463193 , 01 222 2424783 FAX", "cp": "72070"}, "A08B": {"nombre": "ALMACEN AUXILIAR ZARAGOZA", "atiende": "ROBERTO COYOTZI MONTES", "domicilio": "CALZ IGNACIO ZARAGOZA No 247 COL TEPEYAC", "ciudad": "PUEBLA, PUE.", "tel": "12222352031", "cp": ""}, "A08C": {"nombre": "ALMACEN AUXILIAR ORIZABA", "atiende": "VANIA MARTINEZ JUAREZ", "domicilio": "31 ORIENTE No 308 CIRCUNVALACION", "ciudad": "ORIZABA, VERACRUZ", "tel": "", "cp": ""}, "A08D": {"nombre": "ALMACEN AUXILIAR TLAXCALA", "atiende": "CARLOS VERGARA", "domicilio": "AV INSTITUTO POLITECNICO NACIONAL S/N", "ciudad": "TLAXCALA, TLAXCALA", "tel": "", "cp": ""}, "A08E": {"nombre": "ALMACEN AUXILIAR TEHUACAN", "atiende": "OMAR EURESTI MARTINEZ", "domicilio": "16 NORTE No 413 COL SERDAN", "ciudad": "TEHUACAN, PUEBLA", "tel": "12383821393", "cp": "75750"}, "A08F": {"nombre": "ALMACEN AUXILIAR SAN BRUNO", "atiende": "GONZALO SILCA POZOS", "domicilio": "MARTIREZ 28 DE AGOSTO", "ciudad": "XALAPA, VERACRUZ", "tel": "12288153631", "cp": "91020"}, "A08G": {"nombre": "ALMACEN AUXILIAR CRISTAL", "atiende": "LAURA MANZO SILVESTRE, OMAR BAIZABAL", "domicilio": "ANTONIO CHEDRAHUI CARAM No 250", "ciudad": "XALAPA, VERACRUZ", "tel": "12288150444", "cp": "91180"}, "A08H": {"nombre": "ALMACEN AUXILIAR MOCAMBO", "atiende": "HIRAM SALAMANCA", "domicilio": "AV PALMERAS No 305 COL JARDINES DE VIRGINIA", "ciudad": "BOCA DEL RIO, VERACRUZ", "tel": "12299214122", "cp": ""}, "A08I": {"nombre": "ALMACEN AUXILIAR DOS CAMINOS", "atiende": "DIEGO GARCÍA", "domicilio": "AV 11 No 2627", "ciudad": "CORDOBA, VERACRUZ", "tel": "12717165433", "cp": ""}, "A08J": {"nombre": "ALMACEN AUXILIAR AQUILES SERDAN", "atiende": "JOSÉ ANTONIO LÓPEZ C", "domicilio": "35 PONIENTE No 723", "ciudad": "PUEBLA, PUE.", "tel": "12222433928", "cp": ""}, "A08K": {"nombre": "ALMACEN AUXILIAR ALTAMIRANO", "atiende": "LILIA CONTRERAS", "domicilio": "ALTAMIRANO No 1226", "ciudad": "VERACRUZ, VERACRUZ", "tel": "12299204842", "cp": "91700"}, "A08L": {"nombre": "ALMACEN AUXILIAR LERDO", "atiende": "JULIO CÉSAR GONZÁLEZ", "domicilio": "MARIANO ARISTA No 4424", "ciudad": "VERACRUZ, VERACRUZ", "tel": "12299204842", "cp": "91726"}, "A08M": {"nombre": "ALMACEN AUXILIAR PEÑUELA", "atiende": "JUAN LUNA", "domicilio": "KM 343 BOULEVARD S/N", "ciudad": "CORDOBA, VERACRUZ", "tel": "12717166707", "cp": "94501"}, "A08T": {"nombre": "ALMACEN AUXILIAR TULANCINGO", "atiende": "PEDRO MORALES LIRA", "domicilio": "RIVA PALACIOS 203 COL LOS ALAMOS", "ciudad": "TULANCINGO, HIDALGO", "tel": "17757536701", "cp": "43640"}, "A08V": {"nombre": "ALMACEN AUXILIAR PACHUCA", "atiende": "HIRAM ROSALES", "domicilio": "SAN MARTIN DE PORRES No 407 CFE", "ciudad": "PACHUCA DE SOTO, HIDALGO", "tel": "17717143677", "cp": "42090"}, "A08X": {"nombre": "ALMACEN AUXILIAR ATLIXCO", "atiende": "SERGIO NOE MILIAN PINTLE", "domicilio": "CALZ. OAXACA No 2710", "ciudad": "ATLIXCO, PUEBLA", "tel": "12444451868", "cp": "74294"}, "A08Y": {"nombre": "ALMACEN AUXILIAR MAYORAZGO", "atiende": "GLORIA MARCELA SILVA T", "domicilio": "CALLE BENITO JUAREZ No 12311", "ciudad": "PUEBLA, PUE.", "tel": "12222192800", "cp": ""}, "A08Z": {"nombre": "ALMACEN AUXILIAR POZA RICA", "atiende": "ENRIQUE LEANDRO BLANCO", "domicilio": "POZO 2 No 48 COL DIVISION NORTE", "ciudad": "POZA RICA, VERACRUZ", "tel": "17828233004", "cp": "93350"}, "A09C": {"nombre": "ALMACEN AUXILIAR COATZACOALCOS", "atiende": "JUANA MARIA RAMOS", "domicilio": "AV. JACINTO LEMARROY S/N FRACC. RANCHO ALEGRE 2", "ciudad": "COATZACOALCOS, VERACRUZ", "tel": "19212186550", "cp": "96558"}, "A09S": {"nombre": "ALMACEN AUXILIAR MINATITLAN", "atiende": "SERGIO VAZQUEZ", "domicilio": "EMILIANO ZAPATA No. 25 COL. INSURGENTES SUR", "ciudad": "MINATITLAN, VERACRUZ", "tel": "19222211979", "cp": "96710"}, "A09T": {"nombre": "ALMACEN AUXILIAR CHOLULA", "atiende": "ILIANA DE ITA, CARLOS GUTIERREZ", "domicilio": "22 ORIENTE No 606", "ciudad": "CHOLULA, PUEBLA", "tel": "12222474746", "cp": ""}, "A09U": {"nombre": "ALMACEN AUXILIAR AMALUCAN", "atiende": "JOSEFINA ONOFRE M", "domicilio": "BLVRD ATEOPAN ESQ 17A", "ciudad": "PUEBLA, PUE.", "tel": "12222868207", "cp": ""}, "A09V": {"nombre": "ALMACEN AUXILIAR TULA", "atiende": "PILAR HERNANDEZ, VERONICA MEZA", "domicilio": "AV SUR ESQUINA OTE No 25 COL CENTRO", "ciudad": "TULA DE ALLENDE, HIDALGO", "tel": "17737322888", "cp": "42800"}, "A0X4": {"nombre": "ALMACEN TELECO", "atiende": "", "domicilio": "", "ciudad": "", "tel": "", "cp": ""}, "A0Y4": {"nombre": "ALMACEN CYCSA PUEBLA", "atiende": "ERNESTO CENTENO", "domicilio": "CALLE C No. 7 PARQUE INDUSTRIAL 2000", "ciudad": "PUEBLA, PUE.", "tel": "", "cp": ""}, "A082": {"nombre": "ALMACEN AUXILIAR TUXPAN", "atiende": "JAVIER CRUZ YAÑEZ", "domicilio": "DEMETRIO RUIZ MALERVA S/N COL CENTRO", "ciudad": "TUXPAN VERACRUZ", "tel": "17838340234", "cp": ""}, "A081": {"nombre": "ALMACEN AUXILIAR PACHOACAN", "atiende": "FELIPE OLANDES MORA", "domicilio": "AV FRNACISCO SARABIA No 100 COL CARLOS ROVIROSA", "ciudad": "PACHUCA DE SOTO, HIDALGO", "tel": "1771148651", "cp": "42082"}, "A083": {"nombre": "ALMACEN AUXILIAR SAN MARTIN", "atiende": "AGUSTIN BALBUENA SCHIAFINI", "domicilio": "AV. JUVENTUD S/N COL. LOS DICIOS", "ciudad": "SAN MARTIN TEXMELUCAN, PUEBLA", "tel": "", "cp": ""}, "D032": {"nombre": "ALMACEN DISTRIBUIDOR CELAYA", "atiende": "JOSE TORADO", "domicilio": "AV LAS FUENTES 10904 COL LAS FUENTES", "ciudad": "CELAYA, GTO", "tel": "", "cp": ""}, "D022": {"nombre": "ALMACEN DISTRIBUIDOR HERMOSILLO", "atiende": "BRUNO GENDA FERNANDEZ", "domicilio": "BLVRD JESUS GARCIA MORALES KM 5 No 145 COL EL LLANO", "ciudad": "HERMOSILLO, SONORA", "tel": "16622188701", "cp": "83210"}, "A09P": {"nombre": "ALMACEN AUXILIAR PINOTEPA", "atiende": "JUAN PEDRO GONZALEZ MARTINEZ", "domicilio": "AV AGUIRRE PALANCARES Y BAÑOS AGUIRRE", "ciudad": "PINOTEPA NACIONAL", "tel": "19545433906", "cp": "71600"}, "A09O": {"nombre": "ALMACEN AUXILIAR OAXACA 1", "atiende": "CARLOS TEJEDA", "domicilio": "HEROICO COLEGIO MILITAR No 1013 COL REFORMA", "ciudad": "OAXACA, OAX", "tel": "19515127100", "cp": "68050"}, "A091": {"nombre": "ALMACEN AUXILIAR APIZACO", "atiende": "LOURDES ESPINOSA", "domicilio": "VENUSTIANO CARRANZA ESQ JOSE A", "ciudad": "APIZACO, TLAXCALA", "tel": "12414174555", "cp": "90350"}, "A084": {"nombre": "ALMACEN AUXILIAR TEZIUTLAN", "atiende": "RAMON GALINDO BECERRA", "domicilio": "AV ENCINO Y AVELLANO SN", "ciudad": "TEZIUTLAN, PUEBLA", "tel": "12313130715", "cp": "73890"}, "A09Q": {"nombre": "ALMACEN AUXILIAR OAXACA II", "atiende": "LEON RUIS MATADAMAS", "domicilio": "ESMERALDA No 201 COL BUGAMBILIAS", "ciudad": "OAXACA, OAX", "tel": "19515127100", "cp": "68010"}, "A09R": {"nombre": "ALMACEN AUXILIAR HUAJUAPAN", "atiende": "J CARLOS GARCIA, VEDA CAROLINA OSORIO", "domicilio": "PROLONGACION DE MINA No 120", "ciudad": "H. CIUDAD DE HUAJUAPAN DE LEON, OAX", "tel": "19535324388", "cp": "69007"}, "D011": {"nombre": "ALMACEN DISTRIBUIDOR MONTERREY", "atiende": "ANTONIO AGUILAR", "domicilio": "CORDILLERA DE LOS ANDES No 701 JARDIN DE LAS PTES S/N0", "ciudad": "SN NICOLAS DE LOS GARZA, NUEVO LEON", "tel": "18183505572", "cp": "66460"}, "A0LE": {"nombre": "ALMACEN AUXILIAR LEGARIA", "atiende": "HERNESTO HERNANDEZ", "domicilio": "FELIPE CARRILLO PUERTO No. 750 TORRE BLANCA  MIGUEL HIDALGO", "ciudad": "MEXICO, DF", "tel": "", "cp": ""}, "D043": {"nombre": "ALMACEN DISTRIBUIDOR VILLAHERMOSA", "atiende": "EDUARDO TABOADA", "domicilio": "AV. ACERO S/N ESQUINA COBRE CD.INDUSTRIAL", "ciudad": "VILLAHERMOSA. TABASCO", "tel": "", "cp": ""}, "A09X": {"nombre": "ALMACEN AUXILIAR CHETUMAL", "atiende": "ARTURO ALONSO RAMIREZ", "domicilio": "AVENIDA 4 DE MARZO NO.30 COL.FIDEL VELAZQUEZ", "ciudad": "CHETUMAL QUINTANA ROO", "tel": "19838372365", "cp": "77080"}, "D021": {"nombre": "ALMACEN DISTRIBUIDOR GUADALAJARA", "atiende": "ENRIQUE MEDINA LOPEZ", "domicilio": "TRATADO DE TLALTELOCO No. 4114 COL. PARQUE AUDITORIO", "ciudad": "ZAPOPAN, JALISCO", "tel": "3336601554", "cp": ""}, "D013": {"nombre": "ALMACEN DISTRIBUIDOR CHIHUAHUA", "atiende": "CARLOS DURAN", "domicilio": "MIGUEL BARRAGAN No. 6903 COL. EL PARRAL", "ciudad": "CHIHUAHUA, CHIHUAHUA", "tel": "", "cp": ""}, "D007": {"nombre": "ALMACEN GENERAL LA PERLA", "atiende": "ROGER CANO", "domicilio": "CALLE NUEVA ESQUINA NEGRA MODELO COL. INDUSTRIAL", "ciudad": "NAUCALPAN EDO DE MEXICO", "tel": "", "cp": ""}, "MTZ": {"nombre": "ALMACEN AUXILIAR MARTINEZ DE LA TORRE", "atiende": "ROLANDO RAZGADO DE JESUS", "domicilio": "BOULEVARD ALFINO FLORES S/N COL. ADOLFO RUIZ CORTINA", "ciudad": "MARTINEZ DE LA TORRE, VER.", "tel": "", "cp": ""}, "C0TA": {"nombre": "CARSO TLAXCALA", "atiende": "", "domicilio": "CALLE AV.OCOTLAN S/N CONTRA ESQ. CALLE CONSTRUCTORES", "ciudad": "SANTA ANA CHIAUTEMPAN", "tel": ",012464620646", "cp": ""}, "ACTOPAN": {"nombre": "NUEVO ACTOPAN", "atiende": "PAREDES TENORIO FRANCISCA", "domicilio": "PEDRO MORENO No 49", "ciudad": "NUEVO ACTOPAN, HGO", "tel": "17727273187", "cp": "42500"}, "A09I": {"nombre": "MERIDA BUENAVISTA", "atiende": "CONOCIDO", "domicilio": "CONOCIDO", "ciudad": "MERIDA", "tel": "-", "cp": "-"}, "SAHAGUN": {"nombre": "CT SAHAGUN", "atiende": "CONOCIDO", "domicilio": "CONOCIDO", "ciudad": "CD SAHAGÚN", "tel": "-", "cp": "-"}, "TECA": {"nombre": "CT TECAMACHALCO", "atiende": "CONOCIDO", "domicilio": "CONOCIDO", "ciudad": "TECAMACHALCO", "tel": "-", "cp": "-"}, "A0AS": {"nombre": "ALMACEN ABASTOS", "atiende": "CONOCIDO", "domicilio": "CONOCIDO", "ciudad": "&", "tel": "&", "cp": "&"}, "A0CD": {"nombre": "ALMACEN AUXILIAR  DIANA", "atiende": "LUIS FELIPE ESTROP", "domicilio": "", "ciudad": "", "tel": "", "cp": ""}, "SLPI": {"nombre": "ALMACEN AUXILIAR PINO", "atiende": "", "domicilio": "", "ciudad": "", "tel": "", "cp": ""}};
 const _GUIAS_LS_BD    = "guias_bd_empaques_v1";
 const _GUIAS_LS_HIST  = "guias_historial_v1";
 
@@ -76,23 +75,40 @@ var _guiaActual = null; // { destino, area, folio, fecha, lineas:[], transporte:
 function modGuias(){
   var hist = _guiasHistCargar();
 
+  // Agrupar historial por área
+  var areas = ["Herramientas","Misceláneos","Papelería","Cables","Ropa y Calzado","General"];
+  var porArea = {};
+  areas.forEach(function(a){ porArea[a] = []; });
+  hist.forEach(function(g,i){ var a = g.area||"General"; if(!porArea[a]) porArea[a]=[]; porArea[a].push({g:g,i:i}); });
+
   var histHtml = "";
   if(hist.length === 0){
     histHtml = "<div style=\"color:var(--muted);font-size:13px;padding:16px 0\">No hay guías generadas aún.</div>";
   } else {
-    for(var i=0; i<Math.min(hist.length,10); i++){
-      var g = hist[i];
+    areas.forEach(function(area){
+      var items = porArea[area] || [];
+      if(!items.length) return;
       histHtml +=
-        "<div style=\"display:flex;align-items:center;gap:12px;padding:12px 16px;" +
-        "background:white;border:1px solid var(--line);border-radius:10px;cursor:pointer\"" +
-        " onclick=\"_guiasAbrirHistorial(" + i + ")\">" +
-        "<div style=\"flex:1\">" +
-        "<div style=\"font-size:13px;font-weight:700\">Guía " + g.area + " No. " + g.folio + "</div>" +
-        "<div style=\"font-size:11px;color:var(--muted)\">" + (g.destino||'') + " &middot; " + (g.fecha||'') + "</div>" +
-        "</div>" +
-        "<span style=\"font-size:18px;color:var(--muted)\">&rsaquo;</span>" +
-        "</div>";
-    }
+        "<details open style=\"margin-bottom:12px\">" +
+        "<summary style=\"font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;" +
+        "letter-spacing:.4px;cursor:pointer;padding:6px 0;list-style:none\">" +
+        area + " <span style=\"color:var(--primary)\">(" + items.length + ")</span></summary>" +
+        "<div style=\"display:flex;flex-direction:column;gap:6px;margin-top:8px\">";
+      items.forEach(function(item){
+        var g=item.g, i=item.i;
+        histHtml +=
+          "<div style=\"display:flex;align-items:center;gap:10px;padding:10px 14px;" +
+          "background:white;border:1px solid var(--line);border-radius:10px\">" +
+          "<div style=\"flex:1;cursor:pointer\" onclick=\"_guiasAbrirHistorial(" + i + ")\">" +
+          "<div style=\"font-size:13px;font-weight:700\">No. " + g.folio + " &mdash; " + (g.destino||'') + "</div>" +
+          "<div style=\"font-size:11px;color:var(--muted)\">" + (g.fecha||'') + " &middot; " + (g.lineas||0) + " materiales</div>" +
+          "</div>" +
+          "<button onclick=\"_guiasBorrarHistorial(" + i + ")\" title=\"Borrar\"" +
+          " style=\"background:none;border:none;color:#dc2626;cursor:pointer;font-size:16px;padding:0\">&times;</button>" +
+          "</div>";
+      });
+      histHtml += "</div></details>";
+    });
   }
 
   $("#moduleView").innerHTML =
@@ -160,10 +176,11 @@ function _guiasNueva(){
     "<div style=\"margin-bottom:16px\">" +
     "<label style=\"font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;" +
     "letter-spacing:.4px;display:block;margin-bottom:6px\">Destino</label>" +
-    "<select id=\"gDestino\" onchange=\"_guiasActualizarDestinatario()\"" +
+    "<input id=\"gDestino\" list=\"gDestinoList\" placeholder=\"Escribe o selecciona almacén...\"" +
+    " oninput=\"_guiasActualizarDestinatario()\"" +
     " style=\"width:100%;padding:10px 14px;border:1.5px solid var(--line);" +
     "border-radius:10px;font-size:14px;font-family:inherit\">" +
-    "<option value=\"\">-- Selecciona almacén --</option>" + almsHtml + "</select>" +
+    "<datalist id=\"gDestinoList\">" + almsHtml + "</datalist>" +
     "</div>" +
 
     // Info destinatario (se llena automático)
@@ -205,7 +222,9 @@ function _guiasNueva(){
 }
 
 function _guiasActualizarDestinatario(){
-  var sigla = document.getElementById("gDestino").value;
+  var raw = document.getElementById("gDestino").value.trim();
+  // Aceptar sigla directa o "SIGLA — NOMBRE"
+  var sigla = raw.split(" ")[0].split("—")[0].trim().toUpperCase();
   var info = document.getElementById("gDestinatarioInfo");
   if(!sigla){ info.style.display="none"; return; }
   var d = _guiasAlmInfo(sigla);
@@ -221,7 +240,8 @@ function _guiasActualizarDestinatario(){
 function _guiasContinuarMateriales(){
   var area    = document.getElementById("gArea").value;
   var folio   = document.getElementById("gFolio").value.trim();
-  var destino = document.getElementById("gDestino").value;
+  var raw = document.getElementById("gDestino").value.trim();
+  var destino = raw.split(" ")[0].split("—")[0].trim().toUpperCase();
   var fecha   = document.getElementById("gFecha").value;
   var transp  = document.getElementById("gTransporte").value.trim();
 
@@ -304,11 +324,22 @@ function _guiasCapturaMateriales(){
 }
 
 function _tplLineaGuia(l, idx){
+  // Determinar si va a granel (cant < contEmp) o es caja
+  var esGranel = (!l.patio) && (l.contEmp <= 1 || l.cant < l.contEmp);
+  var esPatio  = l.patio;
+  var bgColor  = esPatio ? "#fff8e1" : esGranel ? "#f0fdf4" : "white";
+  var badgeHtml = esPatio
+    ? "<span style=\"background:#f59e0b;color:white;font-size:9px;font-weight:700;" +
+      "padding:1px 6px;border-radius:8px;margin-left:6px\">PATIO</span>"
+    : esGranel
+    ? "<span style=\"background:#16a34a;color:white;font-size:9px;font-weight:700;" +
+      "padding:1px 6px;border-radius:8px;margin-left:6px\">GRANEL</span>"
+    : "";
   return (
-    "<div style=\"background:white;border:1px solid var(--line);border-radius:10px;" +
+    "<div style=\"background:" + bgColor + ";border:1px solid var(--line);border-radius:10px;" +
     "padding:12px 14px;display:flex;align-items:flex-start;gap:10px\">" +
     "<div style=\"flex:1\">" +
-    "<div style=\"font-size:12px;font-weight:700;font-family:monospace;color:var(--primary)\">" + l.cat + "</div>" +
+    "<div style=\"font-size:12px;font-weight:700;font-family:monospace;color:var(--primary)\">" + l.cat + badgeHtml + "</div>" +
     "<div style=\"font-size:12px;color:var(--text);margin:2px 0\">" + l.desc + "</div>" +
     "<div style=\"font-size:11px;color:var(--muted)\">" +
     l.cant + " " + l.um + " &mdash; " + l.bultos + " " + l.tipoEmp +
@@ -361,9 +392,9 @@ function _guiasPedirEmpaque(cat, desc, um, opciones){
 
   var opcionesHtml = "";
   if(opciones.length > 0){
-    opcionesHtml = "<div style=\"margin-bottom:12px\">" +
-      "<div style=\"font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px\">" +
-      "EMPAQUES CONOCIDOS (por frecuencia de uso)</div>" +
+    opcionesHtml = "<div style=\"margin-bottom:16px;background:#f0f4ff;border-radius:10px;padding:12px\">" +
+      "<div style=\"font-size:11px;font-weight:700;color:var(--primary);margin-bottom:8px\">" +
+      "✓ EMPAQUES CONOCIDOS &mdash; toca para usar</div>" +
       "<div style=\"display:flex;flex-direction:column;gap:6px\" id=\"gEmpOpciones\">";
     for(var i=0; i<opciones.length; i++){
       var op = opciones[i];
@@ -386,9 +417,9 @@ function _guiasPedirEmpaque(cat, desc, um, opciones){
     "<div class=\"modal-body\" style=\"gap:12px\">" +
     "<div style=\"font-size:13px;color:var(--muted)\">" + desc + "</div>" +
     opcionesHtml +
-    "<div style=\"border-top:1px solid var(--line);padding-top:12px\">" +
+    "<div style=\"border-top:2px dashed var(--line);padding-top:14px;margin-top:4px\">" +
     "<div style=\"font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px\">" +
-    (opciones.length > 0 ? "O CAPTURA NUEVO EMPAQUE" : "CAPTURA EL EMPAQUE") + "</div>" +
+    (opciones.length > 0 ? "+ NUEVO EMPAQUE (diferente al conocido)" : "CAPTURA EL EMPAQUE") + "</div>" +
     "<div style=\"display:grid;grid-template-columns:1fr 1fr;gap:8px\">" +
     "<div><label style=\"font-size:11px;color:var(--muted)\">Tipo de empaque</label>" +
     "<input id=\"gEmpTipo\" type=\"text\" value=\"Caja\" placeholder=\"Caja, Costal, Pieza...\"" +
@@ -563,7 +594,7 @@ function _guiasRevision(){
       "<td style=\"padding:6px 8px;font-size:12px;text-align:center\">" + l.cant + " " + l.um + "</td>" +
       "<td style=\"padding:6px 8px;font-size:12px;text-align:center\">" + descEmp + "</td>" +
       "<td style=\"padding:6px 8px;text-align:center\">" +
-      "<button onclick=\"_guiasEditarLinea(" + i + ")\"" +
+      "<button onclick=\"_guiasEditarLineaCompleta(" + i + ")\"" +
       " style=\"background:none;border:none;cursor:pointer;color:var(--primary);font-size:14px\">&#9998;</button>" +
       "</td>" +
       "</tr>";
@@ -602,7 +633,7 @@ function _guiasRevision(){
     "letter-spacing:.4px;margin-bottom:12px\">Datos para la guía</div>" +
     "<div style=\"display:grid;grid-template-columns:1fr 1fr;gap:12px\">" +
     _tplCampoFirma("gSurtio", "Surtió (quien despacha)", _guiaActual.surtio) +
-    _tplCampoFirma("gGenerador", "Cargos en sistema", _guiaActual.generador) +
+    _tplCampoFirma("gGenerador", "Capturista SAP", _guiaActual.generador) +
     _tplCampoFirma("gTransporteRev", "Línea de transporte", _guiaActual.transporte) +
     _tplCampoFirma("gOperador", "Operador", _guiaActual.operador) +
     _tplCampoFirma("gTipoVeh", "Tipo de vehículo", _guiaActual.tipoVeh) +
@@ -622,6 +653,15 @@ function _tplCampoFirma(id, label, valor){
     "<input id=\"" + id + "\" type=\"text\" value=\"" + (valor||"") + "\"" +
     " style=\"width:100%;padding:8px 12px;border:1.5px solid var(--line);border-radius:8px;" +
     "font-family:inherit;font-size:13px\"></div>";
+}
+
+function _guiasEditarLineaCompleta(idx){
+  var l = _guiaActual.lineas[idx];
+  // Abrir modal de empaque con los datos actuales precargados
+  var opciones = _guiasBDOpciones(l.cat);
+  _guiasPedirEmpaque(l.cat, l.desc, l.um, opciones);
+  // Cuando se confirme, reemplazará como línea nueva — primero quitamos la vieja
+  _guiaActual.lineas.splice(idx, 1);
 }
 
 function _guiasEditarLinea(idx){
@@ -861,7 +901,7 @@ function _guiasGenerar(){
     // Firmas
     "<div class=\"firmas\">" +
     "<div>" +
-    "<div class=\"firma-box\">Nombre y firma &nbsp;&mdash;&nbsp; " + (_guiaActual.generador||"Cargos en sistema") + "</div>" +
+    "<div class=\"firma-box\">Nombre y firma &nbsp;&mdash;&nbsp; " + (_guiaActual.generador||"Capturista SAP") + "</div>" +
     "<div style=\"font-size:10px;margin-top:4px\">Fecha de embarque: " + fechaStr + "</div>" +
     "</div>" +
     "<div>" +
@@ -887,16 +927,31 @@ function _guiasGenerar(){
   _guiasHistAgregar({
     folio: _guiaActual.folio, area: _guiaActual.area,
     destino: _guiaActual.destino, fecha: fechaStr,
-    lineas: _guiaActual.lineas.length
+    lineas: _guiaActual.lineas.length,
+    datos: JSON.parse(JSON.stringify(_guiaActual))
   });
+}
+
+function _guiasBorrarHistorial(idx){
+  if(!confirm("¿Borrar esta guía del historial? No se puede deshacer.")) return;
+  var hist = _guiasHistCargar();
+  hist.splice(idx, 1);
+  _guiasHistGuardar(hist);
+  modGuias();
 }
 
 function _guiasAbrirHistorial(idx){
   var hist = _guiasHistCargar();
-  if(!hist[idx]) return;
-  alert("Guía " + hist[idx].area + " No. " + hist[idx].folio +
-    "\nDestino: " + hist[idx].destino +
-    "\nFecha: " + hist[idx].fecha +
-    "\nMateriales: " + hist[idx].lineas +
-    "\n\nPara reabrir o reimprimir, genera una nueva guía con los mismos datos.");
+  var g = hist[idx];
+  if(!g) return;
+  if(g.datos){
+    // Tiene datos completos — reimprimir directamente
+    _guiaActual = g.datos;
+    _guiasGenerar();
+  } else {
+    alert("Guía " + g.area + " No. " + g.folio +
+      "\nDestino: " + g.destino +
+      "\nFecha: " + g.fecha +
+      "\n\nEsta guía se generó con una versión anterior y no tiene datos para reimprimir.");
+  }
 }
