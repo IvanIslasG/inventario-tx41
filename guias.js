@@ -493,12 +493,27 @@ function _guiasPedirEmpaque(cat, desc, um, opciones){
 }
 
 function _guiasSeleccionarEmpaque(cat, desc, um, tipo, cont){
-  // Pedir solo la cantidad, empaque ya está seleccionado
-  var cant = prompt("Cantidad total de " + cat + " (" + desc + "):", "");
+  cont = parseInt(cont);
+  var cant = prompt("Cantidad total de " + cat + ":", "");
   if(!cant || isNaN(cant) || parseInt(cant) < 1) return;
   cant = parseInt(cant);
-  _guiasAgregarLinea(cat, desc, um, tipo, parseInt(cont), cant);
-  _guiasBDActualizarEmpaque(cat, tipo, parseInt(cont), um);
+  document.querySelector(".modal")?.remove();
+
+  var nCajas  = Math.floor(cant / cont);
+  var residuo = cant % cont;
+
+  if(nCajas > 0 && residuo > 0){
+    // División automática: cajas cerradas + granel
+    _guiasAgregarLineaSilente(cat, desc, um, tipo, cont, nCajas * cont, false);
+    _guiasAgregarLineaSilente(cat, desc, um, "Granel", 0, residuo, true);
+    _limpiarCatInput();
+    _guiasRefrescarLineas();
+  } else {
+    // Todo en cajas cerradas o todo a granel
+    var esGranel = (nCajas === 0);
+    _guiasAgregarLinea(cat, desc, um, tipo, cont, cant, esGranel);
+  }
+  _guiasBDActualizarEmpaque(cat, tipo, cont, um);
 }
 
 function _guiasAPatioModal(cat, desc, um){
@@ -518,7 +533,7 @@ function _guiasAPatioModal(cat, desc, um){
 
 function _guiasAGranelModal(cat, desc, um){
   var cant = parseInt(document.getElementById("gGranelCant")?.value || "0");
-  if(!cant || cant < 1){ alert("Ingresa la cantidad a despachar a granel."); return; }
+  if(!cant || cant < 1){ alert("Ingresa la cantidad."); return; }
   document.querySelector(".modal")?.remove();
   _guiasAgregarLinea(cat, desc, um, "Granel", 0, cant, true);
 }
@@ -538,8 +553,35 @@ function _guiasConfirmarEmpaque(cat, desc, um){
   var cant = parseInt(document.getElementById("gEmpCant")?.value || "0");
   if(!cant || cant < 1){ alert("Ingresa la cantidad total."); return; }
   document.querySelector(".modal")?.remove();
-  _guiasAgregarLinea(cat, desc, um, tipo, cont, cant);
+
+  var nCajas  = cont > 1 ? Math.floor(cant / cont) : 0;
+  var residuo = cont > 1 ? cant % cont : 0;
+
+  if(nCajas > 0 && residuo > 0){
+    _guiasAgregarLineaSilente(cat, desc, um, tipo, cont, nCajas * cont, false);
+    _guiasAgregarLineaSilente(cat, desc, um, "Granel", 0, residuo, true);
+    _limpiarCatInput();
+    _guiasRefrescarLineas();
+  } else {
+    var esGranel = (nCajas === 0 && cont > 1);
+    _guiasAgregarLinea(cat, desc, um, tipo, cont, cant, esGranel);
+  }
   _guiasBDActualizarEmpaque(cat, tipo, cont, um);
+}
+
+function _limpiarCatInput(){
+  var inp = document.getElementById("gCatInput");
+  if(inp){ inp.value = ""; document.getElementById("gCatInfo").textContent = ""; }
+}
+
+function _guiasAgregarLineaSilente(cat, desc, um, tipoEmp, contEmp, cant, esGranel){
+  // Agrega sin limpiar input ni refrescar (para llamadas múltiples)
+  var bultos = contEmp > 1 ? Math.floor(cant / contEmp) : cant;
+  _guiaActual.lineas.push({
+    cat: cat, desc: desc, um: um,
+    cant: cant, tipoEmp: tipoEmp, contEmp: contEmp,
+    bultos: bultos, patio: false, granel: esGranel || false
+  });
 }
 
 function _guiasAgregarLinea(cat, desc, um, tipoEmp, contEmp, cant, esGranel){
@@ -550,8 +592,7 @@ function _guiasAgregarLinea(cat, desc, um, tipoEmp, contEmp, cant, esGranel){
     bultos: bultos, patio: false, granel: esGranel || false
   });
   // Limpiar input y cerrar modal
-  var inp = document.getElementById("gCatInput");
-  if(inp){ inp.value = ""; document.getElementById("gCatInfo").textContent = ""; }
+  _limpiarCatInput();
   document.querySelector(".modal")?.remove();
   _guiasRefrescarLineas();
 }
