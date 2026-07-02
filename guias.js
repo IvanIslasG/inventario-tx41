@@ -394,8 +394,8 @@ function _guiasPedirEmpaque(cat, desc, um, opciones){
   if(opciones.length > 0){
     opcionesHtml = "<div style=\"margin-bottom:16px;background:#f0f4ff;border-radius:10px;padding:12px\">" +
       "<div style=\"font-size:11px;font-weight:700;color:var(--primary);margin-bottom:8px\">" +
-      "✓ EMPAQUES CONOCIDOS &mdash; toca para usar</div>" +
-      "<div style=\"display:flex;flex-direction:column;gap:6px\" id=\"gEmpOpciones\">";
+      "&#10003; EMPAQUES CONOCIDOS &mdash; toca para usar</div>" +
+      "<div style=\"display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px\" id=\"gEmpOpciones\">";
     for(var i=0; i<opciones.length; i++){
       var op = opciones[i];
       opcionesHtml +=
@@ -438,10 +438,13 @@ function _guiasPedirEmpaque(cat, desc, um, opciones){
     "</div>" +
     "</div>" +
     "</div>" +
-    "<div class=\"modal-foot\" style=\"gap:8px\">" +
+    "<div class=\"modal-foot\" style=\"gap:8px;flex-wrap:wrap\">" +
     "<button class=\"btn\" onclick=\"this.closest('.modal').remove()\">Cancelar</button>" +
+    "<button class=\"btn\" style=\"color:var(--primary);border-color:var(--primary)\" " +
+    "onclick=\"_guiasAGranel('" + cat + "','" + desc.replace(/'/g,'&#39;') + "','" + um + "')\">" +
+    "A granel</button>" +
     "<button class=\"btn-prim\" onclick=\"_guiasConfirmarEmpaque('" + cat + "','" +
-    desc.replace(/'/g,"&#39;") + "','" + um + "')\">Agregar</button>" +
+    desc.replace(/'/g,'&#39;') + "','" + um + "')\">Agregar</button>" +
     "</div></div>";
 
   document.body.appendChild(modal);
@@ -454,9 +457,24 @@ function _guiasSeleccionarEmpaque(cat, desc, um, tipo, cont){
   var cant = prompt("Cantidad total de " + cat + " (" + desc + "):", "");
   if(!cant || isNaN(cant) || parseInt(cant) < 1) return;
   cant = parseInt(cant);
-  document.querySelector(".modal")?.remove();
   _guiasAgregarLinea(cat, desc, um, tipo, parseInt(cont), cant);
   _guiasBDActualizarEmpaque(cat, tipo, parseInt(cont), um);
+}
+
+function _guiasAGranelModal(cat, desc, um){
+  var cant = parseInt(document.getElementById("gGranelCant")?.value || "0");
+  if(!cant || cant < 1){ alert("Ingresa la cantidad a despachar a granel."); return; }
+  document.querySelector(".modal")?.remove();
+  _guiasAgregarLinea(cat, desc, um, "Granel", 0, cant, true);
+}
+
+function _guiasAGranel(cat, desc, um){
+  var cant = prompt("Cantidad de " + cat + " que va a granel:", "");
+  if(!cant || isNaN(cant) || parseInt(cant) < 1) return;
+  cant = parseInt(cant);
+  document.querySelector(".modal")?.remove();
+  // contEmp=0 indica granel explícito
+  _guiasAgregarLinea(cat, desc, um, "Granel", 0, cant, true);
 }
 
 function _guiasConfirmarEmpaque(cat, desc, um){
@@ -469,16 +487,17 @@ function _guiasConfirmarEmpaque(cat, desc, um){
   _guiasBDActualizarEmpaque(cat, tipo, cont, um);
 }
 
-function _guiasAgregarLinea(cat, desc, um, tipoEmp, contEmp, cant){
+function _guiasAgregarLinea(cat, desc, um, tipoEmp, contEmp, cant, esGranel){
   var bultos = contEmp > 1 ? Math.ceil(cant / contEmp) : cant;
   _guiaActual.lineas.push({
     cat: cat, desc: desc, um: um,
     cant: cant, tipoEmp: tipoEmp, contEmp: contEmp,
-    bultos: bultos, patio: false
+    bultos: bultos, patio: false, granel: esGranel || false
   });
-  // Limpiar input y refrescar
+  // Limpiar input y cerrar modal
   var inp = document.getElementById("gCatInput");
   if(inp){ inp.value = ""; document.getElementById("gCatInfo").textContent = ""; }
+  document.querySelector(".modal")?.remove();
   _guiasRefrescarLineas();
 }
 
