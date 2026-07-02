@@ -392,23 +392,21 @@ function _guiasPedirEmpaque(cat, desc, um, opciones){
 
   var opcionesHtml = "";
   if(opciones.length > 0){
-    opcionesHtml = "<div style=\"margin-bottom:16px;background:#f0f4ff;border-radius:10px;padding:12px\">" +
-      "<div style=\"font-size:11px;font-weight:700;color:var(--primary);margin-bottom:8px\">" +
-      "&#10003; EMPAQUES CONOCIDOS &mdash; toca para usar</div>" +
-      "<div style=\"display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px\" id=\"gEmpOpciones\">";
+    opcionesHtml = ""; // ya no se usa directamente
+    opcionesInnerHtml = "";
+    
     for(var i=0; i<opciones.length; i++){
       var op = opciones[i];
-      opcionesHtml +=
+      opcionesInnerHtml +=
         "<button onclick=\"_guiasSeleccionarEmpaque('" + cat + "','" +
         desc.replace(/'/g,"&#39;") + "','" + um + "','" +
         op.tipo + "'," + op.cont + ")\"" +
-        " style=\"text-align:left;padding:10px 14px;background:white;border:1.5px solid var(--line);" +
-        "border-radius:8px;cursor:pointer;font-family:inherit;font-size:13px\">" +
+        " style=\"text-align:left;padding:10px 14px;background:#f0f4ff;border:1.5px solid var(--primary);" +
+        "border-radius:8px;cursor:pointer;font-family:inherit;font-size:13px;width:100%\">" +
         "<b>" + op.tipo + "</b> de " + op.cont + " " + um +
-        " <span style=\"color:var(--muted);font-size:11px\">(usado " + (op.freq||1) + " vez" + ((op.freq||1)!==1?"es":"") + ")</span>" +
+        " <span style=\"color:var(--muted);font-size:11px\">(x" + (op.freq||1) + ")</span>" +
         "</button>";
     }
-    opcionesHtml += "</div></div>";
   }
 
   modal.innerHTML =
@@ -459,6 +457,21 @@ function _guiasSeleccionarEmpaque(cat, desc, um, tipo, cont){
   cant = parseInt(cant);
   _guiasAgregarLinea(cat, desc, um, tipo, parseInt(cont), cant);
   _guiasBDActualizarEmpaque(cat, tipo, parseInt(cont), um);
+}
+
+function _guiasAPatioModal(cat, desc, um){
+  var cant = parseInt(document.getElementById("gPatioCant")?.value || "0");
+  if(!cant || cant < 1){ alert("Ingresa la cantidad de patio."); return; }
+  document.querySelector(".modal")?.remove();
+  var bultos = cant;
+  _guiaActual.lineas.push({
+    cat: cat, desc: desc, um: um,
+    cant: cant, tipoEmp: "Patio", contEmp: 1,
+    bultos: bultos, patio: true, granel: false
+  });
+  var inp = document.getElementById("gCatInput");
+  if(inp){ inp.value = ""; document.getElementById("gCatInfo").textContent = ""; }
+  _guiasRefrescarLineas();
 }
 
 function _guiasAGranelModal(cat, desc, um){
@@ -564,13 +577,19 @@ function _guiasProcesarOR(input){
         var m = mat(cat);
         var opciones = _guiasBDOpciones(cat);
         if(opciones.length === 1){
-          // Solo una opción — agregar directamente
-          _guiasAgregarLinea(cat, m.desc||cat, m.um||"PZ", opciones[0].tipo, opciones[0].cont, xs);
+          var op = opciones[0];
+          var esGranel = op.cont <= 1 || xs < op.cont;
+          _guiasAgregarLinea(cat, m.desc||cat, m.um||"PZ", op.tipo, op.cont, xs, esGranel);
+          importados++;
+        } else if(opciones.length > 1){
+          // Múltiples opciones — pendiente, el usuario elige
+          _guiaActual.lineas.push({cat:cat, desc:m.desc||cat, um:m.um||"PZ", cant:xs,
+            tipoEmp:"?", contEmp:0, bultos:xs, patio:false, granel:true, pendiente:true});
           importados++;
         } else {
-          // Sin BD o múltiples opciones — agregar como "pendiente de empaque"
+          // Sin BD — agregar como granel por default
           _guiaActual.lineas.push({cat:cat, desc:m.desc||cat, um:m.um||"PZ", cant:xs,
-            tipoEmp:"?", contEmp:1, bultos:xs, patio:false, pendiente:true});
+            tipoEmp:"Granel", contEmp:0, bultos:xs, patio:false, granel:true, pendiente:false});
           importados++;
         }
       }
@@ -705,7 +724,6 @@ var _GUIAS_COLECTIVO = {
 
 
 function _guiasAgruparLineas(lineas, area){
-  // Clasificar cada línea
   var cajas   = [];
   var patio   = [];
   var granel  = [];
@@ -714,10 +732,11 @@ function _guiasAgruparLineas(lineas, area){
     var l = lineas[i];
     if(l.patio){
       patio.push(l);
-    } else if(l.contEmp > 1 && l.cant >= l.contEmp){
-      cajas.push(l);
-    } else {
+    } else if(l.granel || l.contEmp === 0 || l.contEmp === 1 || l.cant < l.contEmp){
+      // granel explícito, sin empaque definido, o cantidad menor al contenido del empaque
       granel.push(l);
+    } else {
+      cajas.push(l);
     }
   }
 
