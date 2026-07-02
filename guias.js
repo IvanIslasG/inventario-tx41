@@ -71,6 +71,96 @@ function _guiasAlmInfo(sigla){
 // ── Estado de la guía en progreso ─────────────────────────────────────────────
 var _guiaActual = null; // { destino, area, folio, fecha, lineas:[], transporte:'' }
 
+
+// ── Exportar / Importar guías y BD de empaques ───────────────────────────────
+function _guiasExportarTodo(){
+  _guiasExportarSeleccion(null); // null = todas
+}
+
+function _guiasExportarSeleccion(indices){
+  var hist = _guiasHistCargar();
+  var bd   = _guiasBDCargar();
+  var datos = indices === null ? hist : indices.map(function(i){ return hist[i]; });
+
+  if(!datos.length){ alert("No hay guías para exportar."); return; }
+
+  var bundle = {
+    version:   "tx41-guias-v1",
+    exportado: new Date().toISOString(),
+    guias:     datos,
+    bd_empaques: bd
+  };
+
+  var json = JSON.stringify(bundle, null, 2);
+  var blob = new Blob([json], {type: "application/json"});
+  var url  = URL.createObjectURL(blob);
+  var a    = document.createElement("a");
+  a.href   = url;
+  a.download = "guias_tx41_" + new Date().toLocaleDateString("es-MX").replace(/\//g,"-") + ".json";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function _guiasImportar(){
+  var input = document.createElement("input");
+  input.type   = "file";
+  input.accept = ".json";
+  input.onchange = function(){
+    var file = input.files[0];
+    if(!file) return;
+    var reader = new FileReader();
+    reader.onload = function(e){
+      try{
+        var bundle = JSON.parse(e.target.result);
+        if(!bundle.version || !bundle.guias){
+          alert("El archivo no es un respaldo válido de guías TX41."); return;
+        }
+
+        // Fusionar guías (por folio+area como clave, no duplicar)
+        var hist = _guiasHistCargar();
+        var importadas = 0;
+        bundle.guias.forEach(function(g){
+          var existe = hist.some(function(h){ return h.folio===g.folio && h.area===g.area; });
+          if(!existe){ hist.unshift(g); importadas++; }
+        });
+        _guiasHistGuardar(hist);
+
+        // Fusionar BD de empaques
+        var bdLocal = _guiasBDCargar();
+        var bdImport = bundle.bd_empaques || [];
+        var empAgg = 0;
+        bdImport.forEach(function(e){
+          var idx = bdLocal.findIndex(function(l){ return l.cat===e.cat && l.cont===e.cont; });
+          if(idx < 0){ bdLocal.push(e); empAgg++; }
+          else if((e.freq||0) > (bdLocal[idx].freq||0)){ bdLocal[idx] = e; }
+        });
+        _guiasBDGuardar(bdLocal);
+
+        alert("Importación completada:\n" +
+          importadas + " guías nuevas\n" +
+          empAgg + " empaques nuevos en BD");
+        modGuias();
+      } catch(err){
+        alert("Error al leer el archivo: " + err.message);
+      }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+function _guiasGetSeleccionados(){
+  var checks = document.querySelectorAll(".guia-chk:checked");
+  return Array.from(checks).map(function(c){ return parseInt(c.dataset.idx); });
+}
+
+function _guiasToggleExportBtn(){
+  var n = document.querySelectorAll(".guia-chk:checked").length;
+  var btn = document.getElementById("btnExportSel");
+  if(btn) btn.disabled = n === 0;
+  if(btn) btn.textContent = n > 0 ? "Exportar seleccionadas (" + n + ")" : "Exportar seleccionadas";
+}
+
 // ── PANTALLA 1: Menú principal ────────────────────────────────────────────────
 function modGuias(){
   var hist = _guiasHistCargar();
@@ -120,7 +210,21 @@ function modGuias(){
     "<button onclick=\"_guiasNueva()\"" +
     " style=\"width:100%;padding:14px;background:var(--primary);color:white;border:none;" +
     "border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;" +
-    "margin-bottom:20px\">+ Nueva guía de embarque</button>" +
+    "margin-bottom:10px\">+ Nueva guía de embarque</button>" +
+    "<div style=\"display:flex;gap:8px;margin-bottom:20px\">" +
+    "<button id=\"btnExportSel\" disabled onclick=\"_guiasExportarSeleccion(_guiasGetSeleccionados())\"" +
+    " style=\"flex:1;padding:9px;background:white;border:1.5px solid var(--line);border-radius:10px;" +
+    "font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;color:var(--primary);\">" +
+    "Exportar seleccionadas</button>" +
+    "<button onclick=\"_guiasExportarTodo()\"" +
+    " style=\"flex:1;padding:9px;background:white;border:1.5px solid var(--line);border-radius:10px;" +
+    "font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;color:var(--primary)\">" +
+    "Exportar todo</button>" +
+    "<button onclick=\"_guiasImportar()\"" +
+    " style=\"flex:1;padding:9px;background:white;border:1.5px solid var(--line);border-radius:10px;" +
+    "font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;color:var(--primary)\">" +
+    "&#8679; Importar</button>" +
+    "</div>" +
     "<div style=\"font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;" +
     "letter-spacing:.4px;margin-bottom:10px\">Guías recientes</div>" +
     "<div style=\"display:flex;flex-direction:column;gap:8px\">" + histHtml + "</div>" +
@@ -986,9 +1090,9 @@ function _guiasGenerar(){
     "</div></div>" +
     "<div class=\"folio-box\">" +
     "<div class=\"label\">Guía de embarque</div>" +
-    "<div class=\"label\">No. Guía &nbsp; <b>" + _guiaActual.folio + "</b></div>" +
-    "<div class=\"label\">Pedido: <b>" + (_guiaActual.pedido||"0") + "</b></div>" +
-    "<div class=\"label\">Siatel: <b>" + (_guiaActual.siatel||"0") + "</b></div>" +
+    "<div style=\"font-size:15px;font-weight:800;margin:3px 0\">No. Guía &nbsp; " + _guiaActual.folio + "</div>" +
+    "<div style=\"font-size:13px;font-weight:700;margin:2px 0\">Pedido: " + (_guiaActual.pedido||"0") + "</div>" +
+    "<div style=\"font-size:13px;font-weight:700;margin:2px 0\">Siatel: " + (_guiaActual.siatel||"0") + "</div>" +
     "<div class=\"label\">Área: " + _guiaActual.area + "</div>" +
     "</div>" +
     "</div>" +
