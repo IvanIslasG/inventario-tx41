@@ -391,88 +391,105 @@ function _guiasPedirEmpaque(cat, desc, um, opciones){
 
   var catEsc  = cat.replace(/'/g,"&#39;");
   var descEsc = desc.replace(/'/g,"&#39;");
+  var esPatio = (mat(cat).ubic || "").toLowerCase() === "patio";
 
-  // Columna izquierda — empaques conocidos + patio
-  var izqHtml = "";
-  if(opciones.length > 0){
-    var btns = "";
-    for(var i=0; i<opciones.length; i++){
-      var op = opciones[i];
-      btns +=
-        "<button onclick=\"_guiasSeleccionarEmpaque('" + catEsc + "','" + descEsc + "','" + um + "','" +
-        op.tipo + "'," + op.cont + ")\"" +
-        " style=\"text-align:left;padding:10px 14px;background:#f0f4ff;" +
-        "border:1.5px solid var(--primary);border-radius:8px;cursor:pointer;" +
-        "font-family:inherit;font-size:13px;width:100%;margin-bottom:6px\">" +
-        "<b>" + op.tipo + "</b> de " + op.cont + " " + um +
-        " <span style=\"color:var(--muted);font-size:11px\">(x" + (op.freq||1) + ")</span>" +
-        "</button>";
-    }
-
-    izqHtml =
-      "<div style=\"flex:1;min-width:0;padding-right:16px;border-right:1px solid var(--line)\">" +
-      "<div style=\"font-size:11px;font-weight:700;color:var(--primary);text-transform:uppercase;" +
-      "letter-spacing:.4px;margin-bottom:10px\">&#10003; Conocidos</div>" +
-      btns +
-      "<div style=\"border-top:1px dashed var(--line);margin-top:10px;padding-top:10px\">" +
-      "<div style=\"font-size:11px;font-weight:700;color:#f59e0b;text-transform:uppercase;" +
-      "letter-spacing:.4px;margin-bottom:6px\">&#9634; Patio</div>" +
-      "<p style=\"font-size:11px;color:var(--muted);margin:0 0 6px\">Va a patio, no en caja</p>" +
-      "<div style=\"display:flex;gap:6px\">" +
-      "<input id=\"gPatioCant\" type=\"number\" min=\"1\" placeholder=\"Cantidad\"" +
-      " style=\"flex:1;padding:7px;border:1.5px solid #f59e0b;border-radius:8px;font-family:inherit\"/>" +
-      "<button onclick=\"_guiasAPatioModal('" + catEsc + "','" + descEsc + "','" + um + "')\"" +
-      " style=\"padding:7px 12px;background:#f59e0b;color:white;border:none;border-radius:8px;" +
-      "font-weight:700;cursor:pointer;font-family:inherit\">Patio</button>" +
-      "</div></div></div>";
+  // Si es patio — preguntar solo cantidad y agregar directo
+  if(esPatio){
+    var cant = prompt("Cantidad de " + cat + " (va a PATIO):", "");
+    if(!cant || isNaN(cant) || parseInt(cant) < 1) return;
+    cant = parseInt(cant);
+    _guiaActual.lineas.push({
+      cat: cat, desc: desc, um: um,
+      cant: cant, tipoEmp: "Patio", contEmp: 1,
+      bultos: cant, patio: true, granel: false
+    });
+    var inp = document.getElementById("gCatInput");
+    if(inp){ inp.value = ""; document.getElementById("gCatInfo").textContent = ""; }
+    _guiasRefrescarLineas();
+    return;
   }
 
-  // Columna derecha — nuevo empaque + granel
+  // Botones de empaques conocidos
+  var btnsConocidos = "";
+  for(var i=0; i<opciones.length; i++){
+    var op = opciones[i];
+    btnsConocidos +=
+      "<button onclick=\"_guiasSeleccionarEmpaque('" + catEsc + "','" + descEsc + "','" + um + "','" +
+      op.tipo + "'," + op.cont + ")\"" +
+      " style=\"text-align:left;padding:10px 14px;background:#f0f4ff;" +
+      "border:1.5px solid var(--primary);border-radius:8px;cursor:pointer;" +
+      "font-family:inherit;font-size:13px;width:100%;margin-bottom:6px\">" +
+      "<b>" + op.tipo + "</b> de " + op.cont + " " + um +
+      " <span style=\"color:var(--muted);font-size:11px\">(x" + (op.freq||1) + ")</span>" +
+      "</button>";
+  }
+
+  // Columna izquierda — conocidos + granel
+  var izqHtml =
+    "<div style=\"flex:1;min-width:0;padding:16px\">" +
+    (opciones.length > 0 ?
+      "<div style=\"font-size:11px;font-weight:700;color:var(--primary);text-transform:uppercase;" +
+      "letter-spacing:.4px;margin-bottom:10px\">&#10003; Conocidos</div>" +
+      btnsConocidos +
+      "<div style=\"border-top:1px dashed var(--line);margin-top:12px;padding-top:12px\">" : "") +
+    "<div style=\"font-size:11px;font-weight:700;color:#16a34a;text-transform:uppercase;" +
+    "letter-spacing:.4px;margin-bottom:6px\">&#9744; A granel</div>" +
+    "<p style=\"font-size:11px;color:var(--muted);margin:0 0 8px\">Va a la caja colectiva del área</p>" +
+    "<div style=\"display:flex;gap:6px\">" +
+    "<input id=\"gGranelCant\" type=\"number\" min=\"1\" placeholder=\"Cantidad\"" +
+    " style=\"flex:1;padding:8px;border:1.5px solid #16a34a;border-radius:8px;font-family:inherit\"/>" +
+    "<button onclick=\"_guiasAGranelModal('" + catEsc + "','" + descEsc + "','" + um + "')\"" +
+    " style=\"padding:8px 14px;background:#16a34a;color:white;border:none;border-radius:8px;" +
+    "font-weight:700;cursor:pointer;font-family:inherit\">Granel</button>" +
+    "</div>" +
+    (opciones.length > 0 ? "</div>" : "") +
+    "</div>";
+
+  // Columna derecha — nuevo empaque (desplegable)
   var derechaHtml =
-    "<div style=\"flex:1;min-width:0;" + (opciones.length > 0 ? "padding-left:16px" : "") + "\">" +
-    "<div style=\"font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;" +
-    "letter-spacing:.4px;margin-bottom:10px\">" +
-    (opciones.length > 0 ? "Nuevo empaque" : "Captura el empaque") + "</div>" +
-    "<div style=\"margin-bottom:8px\"><label style=\"font-size:11px;color:var(--muted)\">Tipo de empaque</label>" +
+    "<div style=\"flex:1;min-width:0;padding:16px;border-left:1px solid var(--line)\">" +
+    "<details" + (opciones.length === 0 ? " open" : "") + ">" +
+    "<summary style=\"font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;" +
+    "letter-spacing:.4px;cursor:pointer;padding:4px 0;list-style:none\">" +
+    (opciones.length > 0 ? "+ Nuevo empaque diferente" : "Captura el empaque") +
+    "</summary>" +
+    "<div style=\"margin-top:10px;display:flex;flex-direction:column;gap:8px\">" +
+    "<div><label style=\"font-size:11px;color:var(--muted)\">Tipo de empaque</label>" +
     "<input id=\"gEmpTipo\" type=\"text\" value=\"Caja\" placeholder=\"Caja, Costal...\"" +
     " style=\"width:100%;padding:8px;border:1.5px solid var(--line);border-radius:8px;" +
     "font-family:inherit;margin-top:3px\"></div>" +
-    "<div style=\"margin-bottom:8px\"><label style=\"font-size:11px;color:var(--muted)\">Contenido por empaque</label>" +
+    "<div><label style=\"font-size:11px;color:var(--muted)\">Contenido por empaque</label>" +
     "<input id=\"gEmpCont\" type=\"number\" min=\"1\" value=\"1\"" +
     " style=\"width:100%;padding:8px;border:1.5px solid var(--line);border-radius:8px;" +
     "font-family:inherit;margin-top:3px\"></div>" +
-    "<div style=\"margin-bottom:12px\"><label style=\"font-size:11px;color:var(--muted)\">Cantidad total</label>" +
+    "<div><label style=\"font-size:11px;color:var(--muted)\">Cantidad total</label>" +
     "<input id=\"gEmpCant\" type=\"number\" min=\"1\" value=\"\"" +
     " style=\"width:100%;padding:8px;border:1.5px solid var(--line);border-radius:8px;" +
     "font-family:inherit;font-size:15px;font-weight:700;color:var(--primary);margin-top:3px\"></div>" +
-    "<button class=\"btn-prim\" style=\"width:100%;margin-bottom:14px\"" +
-    " onclick=\"_guiasConfirmarEmpaque('" + catEsc + "','" + descEsc + "','" + um + "')\">Agregar</button>" +
-    "<div style=\"border-top:1px dashed var(--line);padding-top:12px\">" +
-    "<div style=\"font-size:11px;font-weight:700;color:#16a34a;text-transform:uppercase;" +
-    "letter-spacing:.4px;margin-bottom:6px\">&#9744; A granel</div>" +
-    "<p style=\"font-size:11px;color:var(--muted);margin:0 0 6px\">Va a la caja colectiva del área</p>" +
-    "<div style=\"display:flex;gap:6px\">" +
-    "<input id=\"gGranelCant\" type=\"number\" min=\"1\" placeholder=\"Cantidad\"" +
-    " style=\"flex:1;padding:7px;border:1.5px solid #16a34a;border-radius:8px;font-family:inherit\"/>" +
-    "<button onclick=\"_guiasAGranelModal('" + catEsc + "','" + descEsc + "','" + um + "')\"" +
-    " style=\"padding:7px 12px;background:#16a34a;color:white;border:none;border-radius:8px;" +
-    "font-weight:700;cursor:pointer;font-family:inherit\">Granel</button>" +
-    "</div></div></div>";
+    "</div></details>" +
+    "</div>";
 
   modal.innerHTML =
-    "<div class=\"modal-box\" style=\"max-width:" + (opciones.length > 0 ? "660px" : "380px") + "\">" +
+    "<div class=\"modal-box\" style=\"max-width:660px;padding:0\">" +
+    "<div style=\"padding:16px 20px;border-bottom:1px solid var(--line)\">" +
     "<h3 style=\"margin:0 0 4px\">Empaque &mdash; " + cat + "</h3>" +
-    "<div style=\"font-size:12px;color:var(--muted);margin-bottom:16px\">" + desc + "</div>" +
-    "<div style=\"display:flex;gap:0;align-items:stretch\">" +
+    "<div style=\"font-size:12px;color:var(--muted)\">" + desc + "</div>" +
+    "</div>" +
+    "<div style=\"display:flex;align-items:stretch\">" +
     izqHtml +
     derechaHtml +
     "</div>" +
-    "<div class=\"modal-foot\" style=\"margin-top:16px\">" +
+    "<div style=\"padding:12px 20px;border-top:1px solid var(--line);display:flex;" +
+    "justify-content:space-between;align-items:center\">" +
     "<button class=\"btn\" onclick=\"this.closest('.modal').remove()\">Cancelar</button>" +
+    "<button class=\"btn-prim\" onclick=\"_guiasConfirmarEmpaque('" + catEsc + "','" + descEsc + "','" + um + "')\">Agregar empaque</button>" +
     "</div></div>";
 
   document.body.appendChild(modal);
-  setTimeout(function(){ var el=document.getElementById("gEmpCant"); if(el) el.focus(); }, 100);
+  setTimeout(function(){
+    var el = document.getElementById(opciones.length === 0 ? "gEmpCant" : "gGranelCant");
+    if(el) el.focus();
+  }, 100);
 }
 
 function _guiasSeleccionarEmpaque(cat, desc, um, tipo, cont){
