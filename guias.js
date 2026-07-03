@@ -10,14 +10,44 @@ const _GUIAS_LS_BD    = "guias_bd_empaques_v1";
 const _GUIAS_LS_HIST  = "guias_historial_v1";
 
 // ── Cargar/guardar BD de empaques ────────────────────────────────────────────
+var _guiasBDSeedMerged = false;
 function _guiasBDCargar(){
+  var bd = null;
   try{
     const raw = localStorage.getItem(_GUIAS_LS_BD);
-    if(raw) return JSON.parse(raw);
+    if(raw) bd = JSON.parse(raw);
   }catch(e){}
-  // Primera vez — usar seed
-  localStorage.setItem(_GUIAS_LS_BD, JSON.stringify(_GUIAS_BD_SEED));
-  return JSON.parse(JSON.stringify(_GUIAS_BD_SEED));
+
+  if(bd === null){
+    // Primera vez en este navegador — usar la semilla completa
+    bd = JSON.parse(JSON.stringify(_GUIAS_BD_SEED));
+    _guiasBDGuardar(bd);
+    _guiasBDSeedMerged = true;
+    return bd;
+  }
+
+  // Fusionar la semilla del código (nuevos empaques homologados) sin pisar lo que ya
+  // tiene este navegador. Solo se hace una vez por sesión, no en cada llamada.
+  if(!_guiasBDSeedMerged){
+    var cambio = false;
+    _GUIAS_BD_SEED.forEach(function(se){
+      var yaExiste = bd.some(function(e){ return e.cat === se.cat && e.cont === se.cont; });
+      if(!yaExiste){
+        bd.push(JSON.parse(JSON.stringify(se)));
+        cambio = true;
+      } else if(se.preferido){
+        // Si la semilla ya trae un preferido definido y este navegador aún no tiene uno para ese catálogo, adoptarlo
+        var tienePreferido = bd.some(function(e){ return e.cat === se.cat && e.preferido; });
+        if(!tienePreferido){
+          var idx = bd.findIndex(function(e){ return e.cat === se.cat && e.cont === se.cont; });
+          if(idx >= 0){ bd[idx].preferido = true; cambio = true; }
+        }
+      }
+    });
+    if(cambio) _guiasBDGuardar(bd);
+    _guiasBDSeedMerged = true;
+  }
+  return bd;
 }
 
 function _guiasBDGuardar(bd){
@@ -40,7 +70,27 @@ function _guiasBDActualizarEmpaque(cat, tipo, cont, um){
 function _guiasBDOpciones(cat){
   var bd = _guiasBDCargar();
   return bd.filter(function(e){ return e.cat === cat; })
-           .sort(function(a,b){ return (b.freq||0)-(a.freq||0); });
+           .sort(function(a,b){
+             var pa = a.preferido ? 1 : 0, pb = b.preferido ? 1 : 0;
+             if(pa !== pb) return pb - pa; // preferido siempre primero
+             return (b.freq||0)-(a.freq||0);
+           });
+}
+
+// Fija un empaque como preferido para un catálogo: siempre se propondrá primero,
+// sin importar la frecuencia de uso de otras opciones.
+function _guiasBDMarcarPreferido(cat, cont){
+  var bd = _guiasBDCargar();
+  bd.forEach(function(e){
+    if(e.cat === cat) e.preferido = (e.cont === cont);
+  });
+  _guiasBDGuardar(bd);
+}
+
+function _guiasTogglePreferido(cat, desc, um, cont){
+  _guiasBDMarcarPreferido(cat, cont);
+  document.querySelector(".modal")?.remove();
+  _guiasPedirEmpaque(cat, desc, um, _guiasBDOpciones(cat));
 }
 
 // ── Historial de guías ────────────────────────────────────────────────────────
@@ -184,6 +234,40 @@ function _guiasImportar(){
   input.click();
 }
 
+// Genera el código de la semilla (_GUIAS_BD_SEED) a partir de la BD actual de este navegador,
+// para pegarlo en guias.js y que todos los equipos lo reciban al cargar la página.
+function _guiasBDExportarSemilla(){
+  var bd = _guiasBDCargar();
+  if(!bd.length){ alert("No hay empaques capturados todavía."); return; }
+  var ordenado = bd.slice().sort(function(a,b){
+    return a.cat.localeCompare(b.cat) || (a.cont - b.cont);
+  });
+  var codigo = "const _GUIAS_BD_SEED = " + JSON.stringify(ordenado) + ";";
+
+  var modal = document.createElement("div");
+  modal.className = "modal on";
+  modal.innerHTML =
+    "<div class=\"modal-box\" style=\"max-width:700px\">" +
+    "<h3 style=\"margin:0 0 8px\">Semilla de empaques &mdash; código</h3>" +
+    "<p style=\"font-size:12px;color:var(--muted);margin:0 0 10px\">" +
+    ordenado.length + " empaques (incluye tus preferidos &#9733;). Copia este texto y reemplaza la línea " +
+    "<code>const _GUIAS_BD_SEED = ...</code> al inicio de guias.js. Sube el archivo y todos los equipos " +
+    "recibirán estos empaques automáticamente la próxima vez que carguen la página, sin perder lo que ya " +
+    "tengan capturado localmente.</p>" +
+    "<textarea readonly onclick=\"this.select()\" style=\"width:100%;height:220px;font-family:monospace;" +
+    "font-size:11px;padding:8px;border:1.5px solid var(--line);border-radius:8px;box-sizing:border-box\">" +
+    codigo.replace(/</g,"&lt;") + "</textarea>" +
+    "<div style=\"display:flex;justify-content:flex-end;gap:8px;margin-top:12px\">" +
+    "<button class=\"btn\" onclick=\"this.closest('.modal').remove()\">Cerrar</button>" +
+    "<button class=\"btn-prim\" onclick=\"navigator.clipboard.writeText(this.closest('.modal-box')." +
+    "querySelector('textarea').value).then(function(){alert('Copiado al portapapeles.');})." +
+    "catch(function(){alert('No se pudo copiar automático — selecciona el texto y usa Ctrl+C.');})\">" +
+    "Copiar</button>" +
+    "</div></div>";
+  document.body.appendChild(modal);
+}
+
+
 function _guiasGetSeleccionados(){
   var checks = document.querySelectorAll(".guia-chk:checked");
   return Array.from(checks).map(function(c){ return parseInt(c.dataset.idx); });
@@ -264,6 +348,10 @@ function modGuias(){
     "font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;color:var(--primary)\">" +
     "&#8679; Importar</button>" +
     "</div>" +
+    "<button onclick=\"_guiasBDExportarSemilla()\"" +
+    " style=\"width:100%;padding:9px;background:white;border:1.5px solid var(--line);border-radius:10px;" +
+    "font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;color:var(--primary);margin-bottom:20px\">" +
+    "&#9733; Generar código de semilla de empaques</button>" +
     "<div style=\"font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;" +
     "letter-spacing:.4px;margin-bottom:10px\">Guías recientes</div>" +
     "<div style=\"display:flex;flex-direction:column;gap:8px\">" + histHtml + "</div>" +
@@ -605,15 +693,23 @@ function _guiasPedirEmpaque(cat, desc, um, opciones){
   var btnsConocidos = "";
   for(var i=0; i<opciones.length; i++){
     var op = opciones[i];
+    var estrella = op.preferido ? "&#9733;" : "&#9734;"; // ★ / ☆
     btnsConocidos +=
+      "<div style=\"display:flex;align-items:center;gap:4px;margin-bottom:6px\">" +
       "<button onclick=\"_guiasSeleccionarEmpaque('" + catEsc + "','" + descEsc + "','" + um + "','" +
       op.tipo + "'," + op.cont + ")\"" +
-      " style=\"text-align:left;padding:10px 14px;background:#f0f4ff;" +
+      " style=\"flex:1;text-align:left;padding:10px 14px;background:#f0f4ff;" +
       "border:1.5px solid var(--primary);border-radius:8px;cursor:pointer;" +
-      "font-family:inherit;font-size:13px;width:100%;margin-bottom:6px\">" +
+      "font-family:inherit;font-size:13px\">" +
       "<b>" + op.tipo + "</b> de " + op.cont + " " + um +
       " <span style=\"color:var(--muted);font-size:11px\">(x" + (op.freq||1) + ")</span>" +
-      "</button>";
+      (op.preferido ? " <span style=\"color:#f59e0b;font-size:10px;font-weight:700\">PREFERIDO</span>" : "") +
+      "</button>" +
+      "<button onclick=\"_guiasTogglePreferido('" + catEsc + "','" + descEsc + "','" + um + "'," + op.cont + ")\"" +
+      " title=\"" + (op.preferido ? "Preferido — siempre se propondrá primero" : "Marcar como preferido") + "\"" +
+      " style=\"background:none;border:none;cursor:pointer;font-size:20px;line-height:1;" +
+      "color:" + (op.preferido ? "#f59e0b" : "#ccc") + ";flex-shrink:0\">" + estrella + "</button>" +
+      "</div>";
   }
 
   // Columna izquierda — conocidos + granel
@@ -973,8 +1069,8 @@ function _guiasImportarFilasOR(rows, hdrIdx, iCat, iXS){
         _guiasAgregarLineaSilente(cat, m.desc||cat, m.um||"PZ", "Granel", 0, xs, true);
       }
 
-      // Si había más de un empaque conocido para este catálogo, marcar para revisar
-      if(opciones.length > 1){
+      // Si había más de un empaque conocido Y ninguno está marcado como preferido, pedir revisión
+      if(opciones.length > 1 && !op.preferido){
         for(var k=antesLen; k<_guiaActual.lineas.length; k++) _guiaActual.lineas[k].revisar = true;
         paraRevisar++;
       }
