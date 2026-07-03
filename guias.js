@@ -1122,28 +1122,30 @@ function _guiasGenerar(){
     "</table>" +
 
     // Transporte
-    "<div class=\"transp\"><table>" +
-    "<tr><td><b>Surtió:</b></td><td>" + (_guiaActual.surtio||"") + "</td>" +
-    "<td><b>Línea de transporte:</b></td><td>" + (_guiaActual.transporte||"") + "</td></tr>" +
-    "<tr><td></td><td></td>" +
-    "<td><b>Operador:</b></td><td>" + (_guiaActual.operador||"") + "</td></tr>" +
-    "<tr><td><b>Recibe:</b></td><td style=\"border-bottom:1px solid #000;min-width:200px\">&nbsp;</td>" +
-    "<td><b>Tipo de vehículo:</b></td><td>" + (_guiaActual.tipoVeh||"") + "</td></tr>" +
-    "<tr><td></td><td></td>" +
-    "<td><b>Placas:</b></td><td>" + (_guiaActual.placas||"") + "</td></tr>" +
+    "<div class=\"transp\" style=\"display:flex;flex-direction:column;min-height:6cm\">" +
+    "<table style=\"width:100%;border-collapse:collapse\">" +
+    "<tr><td style=\"padding:8px 6px;border-bottom:1px solid #eee\"><b>Surtió:</b></td>" +
+    "<td style=\"padding:8px 6px;border-bottom:1px solid #eee\">" + (_guiaActual.surtio||"") + "</td>" +
+    "<td style=\"padding:8px 6px;border-bottom:1px solid #eee\"><b>Línea de transporte:</b></td>" +
+    "<td style=\"padding:8px 6px;border-bottom:1px solid #eee\">" + (_guiaActual.transporte||"") + "</td></tr>" +
+    "<tr><td style=\"padding:8px 6px;border-bottom:1px solid #eee\"></td><td style=\"padding:8px 6px;border-bottom:1px solid #eee\"></td>" +
+    "<td style=\"padding:8px 6px;border-bottom:1px solid #eee\"><b>Operador:</b></td>" +
+    "<td style=\"padding:8px 6px;border-bottom:1px solid #eee\">" + (_guiaActual.operador||"") + "</td></tr>" +
+    "<tr><td style=\"padding:8px 6px;border-bottom:1px solid #eee\"><b>Recibe:</b></td>" +
+    "<td style=\"padding:8px 6px;border-bottom:1px solid #eee;min-width:160px\">&nbsp;</td>" +
+    "<td style=\"padding:8px 6px;border-bottom:1px solid #eee\"><b>Tipo de vehículo:</b></td>" +
+    "<td style=\"padding:8px 6px;border-bottom:1px solid #eee\">" + (_guiaActual.tipoVeh||"") + "</td></tr>" +
+    "<tr><td style=\"padding:8px 6px\"></td><td></td>" +
+    "<td style=\"padding:8px 6px\"><b>Placas:</b></td>" +
+    "<td style=\"padding:8px 6px\">" + (_guiaActual.placas||"") + "</td></tr>" +
     "</table>" +
-    // Firmas pegadas al fondo del recuadro transp
+    "<div style=\"flex:1\"></div>" +
     "<div class=\"firmas\">" +
-    "<div class=\"firma-box\">" +
-    "Nombre y firma &nbsp;&mdash;&nbsp; " + (_guiaActual.generador||"Capturista SAP") + "<br>" +
-    "<span style=\"font-size:10px;color:#555\">Fecha de embarque: " + fechaStr + "</span>" +
-    "</div>" +
-    "<div class=\"firma-box\" style=\"display:flex;flex-direction:column\">" +
-    "<span>Fecha y firma &nbsp;&mdash;&nbsp; Transportista</span>" +
-    "</div>" +
+    "<div class=\"firma-box\">Nombre y firma</div>" +
+    "<div class=\"firma-box\">Fecha y firma &nbsp;&mdash;&nbsp; Transportista</div>" +
     "</div></div>" +
-    // Sello fuera del recuadro, abajo a la derecha
-    "<div style=\"display:flex;justify-content:flex-end;margin-top:8px\">" +
+    "<div style=\"display:flex;justify-content:space-between;align-items:flex-end;margin-top:8px\">" +
+    "<div style=\"font-size:10px;color:#555\">Fecha de embarque: " + fechaStr + "</div>" +
     "<div class=\"sello-box\">Sello</div>" +
     "</div>" +
 
