@@ -77,6 +77,7 @@ function _guiasAlmInfo(sigla){
 var _guiaActual = null; // { destino, area, folio, fecha, lineas:[], transporte:'' }
 var _guiaEditandoOriginal = null; // { folio, area } de la guía que se está editando desde el historial, o null si es nueva
 var _guiasEditandoLineaIdx = null; // índice de línea que se está reemplazando (edición desde Revisión), o null
+var _guiasORPendiente = null; // { rows, hdrIdx, iCat, iXS } de un OR importado desde la pantalla de Datos, pendiente de aplicar a las líneas
 
 // Si estamos en la pantalla de Revisión, guarda lo ya escrito en los campos de firma
 // para no perderlo al refrescar la vista después de editar/borrar una línea.
@@ -300,6 +301,16 @@ function _guiasNueva(){
     "<h2 style=\"margin:0;font-size:18px\">" + (editando ? "Editar guía" : "Nueva guía") + "</h2>" +
     "</div>" +
 
+    (editando ? "" :
+    "<div style=\"margin-bottom:20px\">" +
+    "<button onclick=\"_guiasCargarORDesdeNueva()\"" +
+    " style=\"width:100%;padding:10px;background:white;border:1.5px solid var(--line);" +
+    "border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;" +
+    "color:var(--primary)\">&#8679; Importar desde OR (Excel) &mdash; autocompleta Área, Destino y Fecha</button>" +
+    "<input type=\"file\" id=\"gORFileNueva\" accept=\".xlsx\" style=\"display:none\"" +
+    " onchange=\"_guiasProcesarORDesdeNueva(this)\">" +
+    "</div>") +
+
     // Área
     "<div style=\"margin-bottom:16px\">" +
     "<label style=\"font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;" +
@@ -416,6 +427,20 @@ function _guiasContinuarMateriales(){
     siatel:    previa ? previa.siatel    : ''
   };
 
+  // Si se importó un OR desde esta pantalla, aplicar ahora los materiales
+  if(_guiasORPendiente){
+    var res = _guiasImportarFilasOR(_guiasORPendiente.rows, _guiasORPendiente.hdrIdx, _guiasORPendiente.iCat, _guiasORPendiente.iXS);
+    _guiasORPendiente = null;
+    _guiasCapturaMateriales();
+    if(res.paraRevisar > 0){
+      alert(res.importados + " materiales importados.\n\n" + res.paraRevisar +
+        " se marcaron con \"Revisar\" (empaque ambiguo o desconocido). El sistema propuso lo más probable, pero conviene confirmarlo con el lápiz antes de generar la guía.");
+    } else {
+      alert(res.importados + " materiales importados correctamente.");
+    }
+    return;
+  }
+
   _guiasCapturaMateriales();
 }
 
@@ -485,17 +510,19 @@ function _guiasCapturaMateriales(){
 }
 
 function _tplLineaGuia(l, idx){
-  // Determinar si va a granel (cant < contEmp) o es caja
-  var esGranel = (!l.patio) && (l.contEmp <= 1 || l.cant < l.contEmp);
+  var esGranel = (!l.patio) && !!l.granel;
   var esPatio  = l.patio;
-  var bgColor  = esPatio ? "#fff8e1" : esGranel ? "#f0fdf4" : "white";
-  var badgeHtml = esPatio
-    ? "<span style=\"background:#f59e0b;color:white;font-size:9px;font-weight:700;" +
-      "padding:1px 6px;border-radius:8px;margin-left:6px\">PATIO</span>"
-    : esGranel
-    ? "<span style=\"background:#16a34a;color:white;font-size:9px;font-weight:700;" +
-      "padding:1px 6px;border-radius:8px;margin-left:6px\">GRANEL</span>"
-    : "";
+  var bgColor  = esPatio ? "#fff8e1" : l.revisar ? "#fff7ed" : esGranel ? "#f0fdf4" : "white";
+  var badgeHtml =
+    (esPatio ?
+      "<span style=\"background:#f59e0b;color:white;font-size:9px;font-weight:700;" +
+      "padding:1px 6px;border-radius:8px;margin-left:6px\">PATIO</span>" :
+     esGranel ?
+      "<span style=\"background:#16a34a;color:white;font-size:9px;font-weight:700;" +
+      "padding:1px 6px;border-radius:8px;margin-left:6px\">GRANEL</span>" : "") +
+    (l.revisar ?
+      "<span style=\"background:#ea580c;color:white;font-size:9px;font-weight:700;" +
+      "padding:1px 6px;border-radius:8px;margin-left:6px\">REVISAR</span>" : "");
   return (
     "<div style=\"background:" + bgColor + ";border:1px solid var(--line);border-radius:10px;" +
     "padding:12px 14px;display:flex;align-items:flex-start;gap:10px\">" +
@@ -797,65 +824,187 @@ function _guiasCargarOR(){
   document.getElementById("gORFile")?.click();
 }
 
+function _guiasCargarORDesdeNueva(){
+  document.getElementById("gORFileNueva")?.click();
+}
+
+function _guiasProcesarORDesdeNueva(input){
+  var file = input.files[0];
+  if(!file) return;
+  input.value = "";
+  var reader = new FileReader();
+  reader.onload = function(e){
+    _guiasLeerFilasOR(e.target.result, function(rows, hdrIdx, iCat, iXS){
+      var hdr = _guiasParsearHeaderOR(rows, hdrIdx);
+      var detectado = [];
+
+      if(hdr.area){
+        var selArea = document.getElementById("gArea");
+        if(selArea){ selArea.value = hdr.area; detectado.push("Área: " + hdr.area); }
+      }
+      if(hdr.destino){
+        var inpDestino = document.getElementById("gDestino");
+        if(inpDestino){ inpDestino.value = hdr.destino; _guiasActualizarDestinatario(); detectado.push("Destino: " + hdr.destino); }
+      }
+      if(hdr.fecha){
+        var inpFecha = document.getElementById("gFecha");
+        if(inpFecha){ inpFecha.value = hdr.fecha; detectado.push("Fecha: " + hdr.fecha); }
+      }
+
+      // Guardar filas de materiales para aplicarlas en cuanto se cree la guía (falta el folio)
+      _guiasORPendiente = { rows: rows, hdrIdx: hdrIdx, iCat: iCat, iXS: iXS };
+
+      var msg = detectado.length ? detectado.join("\n") : "No se detectaron Área/Destino/Fecha en el archivo — verifica esos campos manualmente.";
+      alert("Datos detectados del OR:\n\n" + msg + "\n\nLos materiales se importarán al continuar. Completa el número de guía (folio) y continúa.");
+    });
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// Lee el archivo y regresa {rows, hdrIdx, iCat, iXS} o null (con alert) si no se pudo interpretar
+function _guiasLeerFilasOR(data, cb){
+  try{
+    var wb = XLSX.read(data, {type:"array"});
+    // Buscar primera hoja que no sea SAP
+    var sheetName = wb.SheetNames.find(function(s){ return !s.startsWith("SAP"); });
+    if(!sheetName){ alert("No se encontró hoja de datos en el archivo."); return; }
+    var ws = wb.Sheets[sheetName];
+    var rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:""});
+    // Buscar fila de encabezados
+    var hdrIdx = -1;
+    for(var i=0; i<rows.length; i++){
+      if(rows[i].some(function(c){ return String(c||"").toUpperCase().includes("CATALOGO") || String(c||"").toUpperCase().includes("CATÁLOGO"); })){
+        hdrIdx = i; break;
+      }
+    }
+    if(hdrIdx < 0){ alert("No se encontró columna de Catálogo."); return; }
+    var hdrs = rows[hdrIdx].map(function(h){ return String(h||"").toLowerCase(); });
+    var iCat = hdrs.findIndex(function(h){ return h.includes("cat"); });
+    var iXS  = hdrs.findIndex(function(h){ return h.includes("surtir") || h.includes("x surtir"); });
+    if(iCat < 0 || iXS < 0){ alert("No se encontraron columnas de Catálogo y X Surtir."); return; }
+    cb(rows, hdrIdx, iCat, iXS);
+  }catch(err){
+    alert("Error al leer el archivo: " + err.message);
+  }
+}
+
+// Extrae Área / Destino / Fecha de las filas de encabezado del OR (antes de la tabla de materiales)
+var _GUIAS_AREAS = ["Herramientas","Misceláneos","Papelería","Cables","Ropa y Calzado","General"];
+function _guiasParsearHeaderOR(rows, hdrIdx){
+  var area = null, destino = null, fecha = null;
+  var limite = Math.min(hdrIdx, 10);
+  for(var i=0; i<limite; i++){
+    var row = rows[i] || [];
+    for(var c=0; c<row.length; c++){
+      var val = String(row[c]||"").trim();
+      if(!val) continue;
+
+      if(!destino){
+        var mAlm = val.match(/^Almac[eé]n:\s*(.+)$/i);
+        if(mAlm){
+          var mCod = mAlm[1].trim().match(/-\s*([A-Za-z0-9]{3,6})\s*$/);
+          if(mCod) destino = mCod[1].toUpperCase();
+        }
+      }
+      if(!area){
+        var mOR = val.match(/^OR\s+(.+)$/i);
+        if(mOR){
+          var raw = mOR[1].trim();
+          var norm = _GUIAS_AREAS.find(function(a){ return a.toLowerCase() === raw.toLowerCase(); });
+          area = norm || raw;
+        }
+      }
+      if(!fecha){
+        var mFecha = val.match(/^Fecha:\s*(\d{1,2})\/(\d{1,2})\/(\d{4})$/i);
+        if(mFecha){
+          fecha = mFecha[3] + "-" + mFecha[2].padStart(2,'0') + "-" + mFecha[1].padStart(2,'0');
+        }
+      }
+    }
+  }
+  return { area: area, destino: destino, fecha: fecha };
+}
+
+// Importa las filas de materiales del OR hacia _guiaActual.lineas (requiere _guiaActual ya creada)
+function _guiasImportarFilasOR(rows, hdrIdx, iCat, iXS){
+  var importados = 0;
+  var paraRevisar = 0;
+  for(var r=hdrIdx+1; r<rows.length; r++){
+    var row = rows[r];
+    var cat = String(row[iCat]||"").trim();
+    var xs  = parseInt(row[iXS]||0);
+    if(!cat || !xs || xs <= 0) continue;
+    var m = mat(cat);
+    var esPatioMat = (m.ubic || "").toLowerCase() === "patio";
+
+    if(esPatioMat){
+      // Material de patio — nunca lleva empaque, se marca directo como PATIO
+      _guiaActual.lineas.push({
+        cat: cat, desc: m.desc||cat, um: m.um||"PZ",
+        cant: xs, tipoEmp: "Patio", contEmp: 1,
+        bultos: xs, patio: true, granel: false
+      });
+      importados++;
+      continue;
+    }
+
+    var opciones = _guiasBDOpciones(cat);
+    var antesLen = _guiaActual.lineas.length;
+
+    if(opciones.length > 0){
+      // Proponer el empaque más usado (ya viene ordenado por frecuencia)
+      var op = opciones[0];
+      var cont = op.cont > 0 ? op.cont : 1;
+      var nCajas  = cont > 1 ? Math.floor(xs / cont) : xs;
+      var residuo = cont > 1 ? xs % cont : 0;
+
+      if(cont <= 1){
+        // Empaque individual (1 pza por caja) — todo en cajas de 1
+        _guiasAgregarLineaSilente(cat, m.desc||cat, m.um||"PZ", op.tipo, 1, xs, false);
+      } else if(nCajas > 0 && residuo > 0){
+        // División automática: cajas cerradas + residuo a granel
+        _guiasAgregarLineaSilente(cat, m.desc||cat, m.um||"PZ", op.tipo, cont, nCajas*cont, false);
+        _guiasAgregarLineaSilente(cat, m.desc||cat, m.um||"PZ", "Granel", 0, residuo, true);
+      } else if(nCajas > 0){
+        // Cabe exacto en cajas completas
+        _guiasAgregarLineaSilente(cat, m.desc||cat, m.um||"PZ", op.tipo, cont, xs, false);
+      } else {
+        // No alcanza ni para una caja completa — todo a granel
+        _guiasAgregarLineaSilente(cat, m.desc||cat, m.um||"PZ", "Granel", 0, xs, true);
+      }
+
+      // Si había más de un empaque conocido para este catálogo, marcar para revisar
+      if(opciones.length > 1){
+        for(var k=antesLen; k<_guiaActual.lineas.length; k++) _guiaActual.lineas[k].revisar = true;
+        paraRevisar++;
+      }
+    } else {
+      // Sin empaque conocido — proponer granel por default, marcado para revisar
+      _guiaActual.lineas.push({cat:cat, desc:m.desc||cat, um:m.um||"PZ", cant:xs,
+        tipoEmp:"Granel", contEmp:0, bultos:xs, patio:false, granel:true, revisar:true});
+      paraRevisar++;
+    }
+    importados++;
+  }
+  return { importados: importados, paraRevisar: paraRevisar };
+}
+
 function _guiasProcesarOR(input){
   var file = input.files[0];
   if(!file) return;
   input.value = "";
   var reader = new FileReader();
   reader.onload = function(e){
-    try{
-      var wb = XLSX.read(e.target.result, {type:"array"});
-      // Buscar primera hoja que no sea SAP
-      var sheetName = wb.SheetNames.find(function(s){ return !s.startsWith("SAP"); });
-      if(!sheetName){ alert("No se encontró hoja de datos en el archivo."); return; }
-      var ws = wb.Sheets[sheetName];
-      var rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:""});
-      // Buscar fila de encabezados
-      var hdrIdx = -1;
-      for(var i=0; i<rows.length; i++){
-        if(rows[i].some(function(c){ return String(c||"").toUpperCase().includes("CATALOGO") || String(c||"").toUpperCase().includes("CATÁLOGO"); })){
-          hdrIdx = i; break;
-        }
-      }
-      if(hdrIdx < 0){ alert("No se encontró columna de Catálogo."); return; }
-      var hdrs = rows[hdrIdx].map(function(h){ return String(h||"").toLowerCase(); });
-      var iCat = hdrs.findIndex(function(h){ return h.includes("cat"); });
-      var iXS  = hdrs.findIndex(function(h){ return h.includes("surtir") || h.includes("x surtir"); });
-      if(iCat < 0 || iXS < 0){ alert("No se encontraron columnas de Catálogo y X Surtir."); return; }
-      var importados = 0;
-      for(var r=hdrIdx+1; r<rows.length; r++){
-        var row = rows[r];
-        var cat = String(row[iCat]||"").trim();
-        var xs  = parseInt(row[iXS]||0);
-        if(!cat || !xs || xs <= 0) continue;
-        var m = mat(cat);
-        var opciones = _guiasBDOpciones(cat);
-        if(opciones.length === 1){
-          var op = opciones[0];
-          var esGranel = op.cont <= 1 || xs < op.cont;
-          _guiasAgregarLinea(cat, m.desc||cat, m.um||"PZ", op.tipo, op.cont, xs, esGranel);
-          importados++;
-        } else if(opciones.length > 1){
-          // Múltiples opciones — pendiente, el usuario elige
-          _guiaActual.lineas.push({cat:cat, desc:m.desc||cat, um:m.um||"PZ", cant:xs,
-            tipoEmp:"?", contEmp:0, bultos:xs, patio:false, granel:true, pendiente:true});
-          importados++;
-        } else {
-          // Sin BD — agregar como granel por default
-          _guiaActual.lineas.push({cat:cat, desc:m.desc||cat, um:m.um||"PZ", cant:xs,
-            tipoEmp:"Granel", contEmp:0, bultos:xs, patio:false, granel:true, pendiente:false});
-          importados++;
-        }
-      }
+    _guiasLeerFilasOR(e.target.result, function(rows, hdrIdx, iCat, iXS){
+      var res = _guiasImportarFilasOR(rows, hdrIdx, iCat, iXS);
       _guiasRefrescarLineas();
-      if(_guiaActual.lineas.some(function(l){ return l.pendiente; })){
-        alert(importados + " materiales importados.\n\nAlgunos materiales no tienen empaque definido (marcados con ?).\nTócalos para completar el empaque antes de generar la guía.");
+      if(res.paraRevisar > 0){
+        alert(res.importados + " materiales importados.\n\n" + res.paraRevisar +
+          " se marcaron con \"Revisar\" (empaque ambiguo o desconocido). El sistema propuso lo más probable, pero conviene confirmarlo con el lápiz antes de generar la guía.");
       } else {
-        alert(importados + " materiales importados correctamente.");
+        alert(res.importados + " materiales importados correctamente.");
       }
-    }catch(err){
-      alert("Error al leer el archivo: " + err.message);
-    }
+    });
   };
   reader.readAsArrayBuffer(file);
 }
