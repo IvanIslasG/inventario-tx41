@@ -1099,7 +1099,7 @@ function _guiasGenerar(){
       "<tr><td><b>Recibe:</b></td><td style=\"min-width:160px\">&nbsp;</td>" +
       "<td><b>Tipo de vehículo:</b></td><td>" + (_guiaActual.tipoVeh||"") + "</td></tr>" +
       "<tr><td></td><td></td><td><b>Placas:</b></td><td>" + (_guiaActual.placas||"") + "</td></tr>" +
-      "<tr><td colspan=\"4\" style=\"padding-top:2cm;border-top:none\"></td></tr>" +
+      
       "<tr style=\"border-top:2px solid #000\">" +
       "<td colspan=\"2\" style=\"padding:6px 4px;font-size:11px;font-weight:700\">Nombre y firma</td>" +
       "<td colspan=\"2\" style=\"padding:6px 4px;font-size:11px;font-weight:700;border-left:1px solid #ccc\">Fecha y firma &nbsp;&mdash;&nbsp; Transportista</td>" +
@@ -1141,7 +1141,7 @@ function _guiasGenerar(){
     ".transp{border:2px solid #555;font-size:11px;margin-top:8px;font-weight:600}" +
     ".transp table{width:100%;border-collapse:collapse}" +
     ".transp td{padding:5px 6px;border-bottom:1px solid #ccc;font-weight:600}" +
-    ".firmas-wrap{page-break-inside:avoid}" +
+    
     ".sello-box{border:2px dashed #444;border-radius:4px;display:flex;align-items:center;" +
     "justify-content:center;color:#bbb;font-size:10px;height:3.5cm;width:5cm;margin-top:4px}" +
     ".salto{page-break-after:always}" +
@@ -1152,7 +1152,7 @@ function _guiasGenerar(){
     ".pagina:last-child{page-break-after:auto}" +
     "button,.no-print{display:none!important}" +
     "table.items thead{display:table-header-group;-webkit-print-color-adjust:exact;print-color-adjust:exact}" +
-    ".firmas-wrap{page-break-inside:avoid}" +
+    
     "}" +
     "</style></head><body>" +
     paginasHtml +
