@@ -508,7 +508,10 @@ function _tplLineaGuia(l, idx){
     (l.patio ? " &mdash; <b>PATIO</b>" : "") +
     "</div>" +
     "</div>" +
-    "<button onclick=\"_guiasEliminarLinea(" + idx + ")\"" +
+    "<button onclick=\"_guiasEditarLineaCompleta(" + idx + ")\" title=\"Editar\"" +
+    " style=\"background:none;border:none;color:var(--primary);cursor:pointer;font-size:16px;" +
+    "padding:0;line-height:1\">&#9998;</button>" +
+    "<button onclick=\"_guiasEliminarLinea(" + idx + ")\" title=\"Borrar\"" +
     " style=\"background:none;border:none;color:#dc2626;cursor:pointer;font-size:18px;" +
     "padding:0;line-height:1\">&times;</button>" +
     "</div>"
