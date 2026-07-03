@@ -543,6 +543,7 @@ function _guiasPedirEmpaque(cat, desc, um, opciones){
     "<p style=\"font-size:11px;color:var(--muted);margin:0 0 8px\">Va a la caja colectiva del área</p>" +
     "<div style=\"display:flex;gap:6px\">" +
     "<input id=\"gGranelCant\" type=\"number\" min=\"1\" placeholder=\"Cantidad\"" +
+    " onkeydown=\"if(event.key==='Enter'){event.preventDefault();_guiasAGranelModal('" + catEsc + "','" + descEsc + "','" + um + "');}\"" +
     " style=\"flex:1;padding:8px;border:1.5px solid #16a34a;border-radius:8px;font-family:inherit\"/>" +
     "<button onclick=\"_guiasAGranelModal('" + catEsc + "','" + descEsc + "','" + um + "')\"" +
     " style=\"padding:8px 14px;background:#16a34a;color:white;border:none;border-radius:8px;" +
@@ -923,8 +924,8 @@ function _guiasAgruparLineas(lineas, area){
     var l = lineas[i];
     if(l.patio){
       patio.push(l);
-    } else if(l.granel || l.contEmp === 0 || l.contEmp === 1 || l.cant < l.contEmp){
-      // granel explícito, sin empaque definido, o cantidad menor al contenido del empaque
+    } else if(l.granel || l.contEmp === 0){
+      // granel explícito (elegido por el usuario), o sin empaque definido
       granel.push(l);
     } else {
       cajas.push(l);
