@@ -242,19 +242,27 @@ function _guiasBDExportarSemilla(){
   var ordenado = bd.slice().sort(function(a,b){
     return a.cat.localeCompare(b.cat) || (a.cont - b.cont);
   });
-  var codigo = "const _GUIAS_BD_SEED = " + JSON.stringify(ordenado) + ";";
+  var jsonArray = JSON.stringify(ordenado);
+  var codigo = "const _GUIAS_BD_SEED = " + jsonArray + ";";
 
   var modal = document.createElement("div");
   modal.className = "modal on";
   modal.innerHTML =
     "<div class=\"modal-box\" style=\"max-width:700px\">" +
-    "<h3 style=\"margin:0 0 8px\">Semilla de empaques &mdash; código</h3>" +
-    "<p style=\"font-size:12px;color:var(--muted);margin:0 0 10px\">" +
-    ordenado.length + " empaques (incluye tus preferidos &#9733;). Copia este texto y reemplaza la línea " +
-    "<code>const _GUIAS_BD_SEED = ...</code> al inicio de guias.js. Sube el archivo y todos los equipos " +
-    "recibirán estos empaques automáticamente la próxima vez que carguen la página, sin perder lo que ya " +
-    "tengan capturado localmente.</p>" +
-    "<textarea readonly onclick=\"this.select()\" style=\"width:100%;height:220px;font-family:monospace;" +
+    "<h3 style=\"margin:0 0 8px\">Semilla de empaques</h3>" +
+    "<p style=\"font-size:12px;color:var(--muted);margin:0 0 14px\">" +
+    ordenado.length + " empaques capturados en este navegador (incluye tus preferidos &#9733;).</p>" +
+
+    "<div style=\"border:1.5px solid var(--primary);border-radius:10px;padding:14px;margin-bottom:14px;background:#f0f4ff\">" +
+    "<div style=\"font-size:12px;font-weight:700;color:var(--primary);margin-bottom:6px\">Opción rápida: actualizar tu guias.js automáticamente</div>" +
+    "<div style=\"font-size:11px;color:var(--muted);margin-bottom:10px\">Sube tu archivo guias.js actual y te regreso el mismo archivo ya con la semilla sustituida, listo para subir a tu repo.</div>" +
+    "<input type=\"file\" id=\"gSeedJSFile\" accept=\".js\" style=\"display:none\" onchange=\"_guiasBDActualizarArchivoJS(this, " +
+    "'" + jsonArray.replace(/\\/g,"\\\\").replace(/'/g,"\\'").replace(/"/g,"&quot;") + "')\">" +
+    "<button class=\"btn-prim\" onclick=\"document.getElementById('gSeedJSFile').click()\">&#8679; Subir guias.js y generar el actualizado</button>" +
+    "</div>" +
+
+    "<div style=\"font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px\">Opción manual: copiar el código</div>" +
+    "<textarea readonly onclick=\"this.select()\" style=\"width:100%;height:160px;font-family:monospace;" +
     "font-size:11px;padding:8px;border:1.5px solid var(--line);border-radius:8px;box-sizing:border-box\">" +
     codigo.replace(/</g,"&lt;") + "</textarea>" +
     "<div style=\"display:flex;justify-content:flex-end;gap:8px;margin-top:12px\">" +
@@ -262,10 +270,54 @@ function _guiasBDExportarSemilla(){
     "<button class=\"btn-prim\" onclick=\"navigator.clipboard.writeText(this.closest('.modal-box')." +
     "querySelector('textarea').value).then(function(){alert('Copiado al portapapeles.');})." +
     "catch(function(){alert('No se pudo copiar automático — selecciona el texto y usa Ctrl+C.');})\">" +
-    "Copiar</button>" +
+    "Copiar código</button>" +
     "</div></div>";
   document.body.appendChild(modal);
 }
+
+// Busca "const _GUIAS_BD_SEED = [ ... ];" en el texto del archivo y reemplaza el arreglo,
+// contando corchetes para encontrar el cierre exacto sin importar el formato del archivo.
+function _guiasReemplazarSeedEnTexto(texto, nuevoArrayJson){
+  var marcador = "const _GUIAS_BD_SEED = ";
+  var inicio = texto.indexOf(marcador);
+  if(inicio < 0) return null;
+  var posArray = inicio + marcador.length;
+  if(texto[posArray] !== '[') return null;
+  var depth = 0, i = posArray;
+  for(; i < texto.length; i++){
+    if(texto[i] === '[') depth++;
+    else if(texto[i] === ']'){ depth--; if(depth === 0){ i++; break; } }
+  }
+  var finPunto = texto.indexOf(';', i);
+  if(finPunto < 0) return null;
+  return texto.slice(0, posArray) + nuevoArrayJson + texto.slice(finPunto);
+}
+
+function _guiasBDActualizarArchivoJS(input, jsonArray){
+  var file = input.files[0];
+  if(!file) return;
+  input.value = "";
+  var reader = new FileReader();
+  reader.onload = function(e){
+    var texto = e.target.result;
+    var actualizado = _guiasReemplazarSeedEnTexto(texto, jsonArray);
+    if(!actualizado){
+      alert("No encontré la línea \"const _GUIAS_BD_SEED = [...]\" en ese archivo — asegúrate de subir tu guias.js.");
+      return;
+    }
+    var blob = new Blob([actualizado], {type: "text/javascript"});
+    var url  = URL.createObjectURL(blob);
+    var a    = document.createElement("a");
+    a.href   = url;
+    a.download = "guias.js";
+    a.click();
+    URL.revokeObjectURL(url);
+    alert("Listo — se descargó guias.js con la semilla actualizada. Súbelo a tu repositorio para publicarlo.");
+    document.querySelector(".modal")?.remove();
+  };
+  reader.readAsText(file);
+}
+
 
 
 function _guiasGetSeleccionados(){
