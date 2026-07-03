@@ -1056,7 +1056,7 @@ function _guiasGenerar(){
       filasHtml += "<tr><td colspan=\"5\" style=\"text-align:right;padding:5px 6px;font-weight:800;font-size:12px;border-top:2px solid #001E6E\">Total bultos: " + totalBultos + "</td></tr>";
     }
 
-    return "<div class=\"pagina\">" +
+    return "<div class=\"pagina\" style=\"page-break-after:always\">" +
       // ENCABEZADO
       "<div class=\"hdr\">" +
       "<div style=\"display:flex;align-items:center;gap:16px\">" +
@@ -1115,7 +1115,7 @@ function _guiasGenerar(){
   for(var p=0; p<paginas.length; p++){
     var esUltima = (p === paginas.length-1);
     paginasHtml += _htmlPagina(paginas[p], esUltima);
-    if(!esUltima) paginasHtml += "<div class=\"salto\"></div>";
+
   }
 
   var guiaHtml =
@@ -1144,12 +1144,12 @@ function _guiasGenerar(){
     
     ".sello-box{border:2px dashed #444;border-radius:4px;display:flex;align-items:center;" +
     "justify-content:center;color:#bbb;font-size:10px;height:3.5cm;width:5cm;margin-top:4px}" +
-    ".salto{page-break-after:always}" +
+    
     "@page{size:letter;margin:0}" +
     "@media print{" +
     "body{padding:0;margin:0}" +
-    ".pagina{padding:12px;page-break-after:always;page-break-inside:avoid}" +
-    ".pagina:last-child{page-break-after:auto}" +
+    ".pagina{padding:12px;box-sizing:border-box}" +
+    
     "button,.no-print{display:none!important}" +
     "table.items thead{display:table-header-group;-webkit-print-color-adjust:exact;print-color-adjust:exact}" +
     
