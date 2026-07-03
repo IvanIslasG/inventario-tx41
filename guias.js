@@ -495,8 +495,8 @@ function _guiasPedirEmpaque(cat, desc, um, opciones){
   var modal = document.createElement("div");
   modal.className = "modal on";
 
-  var catEsc  = cat.replace(/'/g,"&#39;");
-  var descEsc = desc.replace(/'/g,"&#39;");
+  var catEsc  = cat.replace(/'/g,"&#39;").replace(/"/g,"&quot;");
+  var descEsc = desc.replace(/'/g,"&#39;").replace(/"/g,"&quot;");
   var esPatio = (mat(cat).ubic || "").toLowerCase() === "patio";
 
   // Si es patio — preguntar solo cantidad y agregar directo
