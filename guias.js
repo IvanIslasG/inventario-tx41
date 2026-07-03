@@ -1129,26 +1129,27 @@ function _guiasGenerar(){
     ".empresa{font-size:13px;font-weight:900}.sub{font-size:11px;font-weight:600}" +
     ".folio-box{border:3px solid #000;padding:6px 12px;text-align:right;min-width:160px;font-weight:700}" +
     ".label{font-size:10px;color:#555}" +
-    ".dest{border:2px solid #555;padding:6px 10px;margin-bottom:8px;font-size:11px;font-weight:600}" +
+    ".dest{border:2px solid #555;padding:6px 10px;margin-bottom:6px;font-size:11px;font-weight:600;page-break-inside:avoid}" +
     ".dest table{width:100%;border-collapse:collapse}" +
     ".dest td{padding:2px 4px;vertical-align:top}" +
-    "table.items{width:100%;border-collapse:collapse;margin:8px 0}" +
+    "table.items{width:100%;border-collapse:collapse;margin:6px 0}" +
     "table.items th{background:#001E6E;color:#fff;padding:5px 6px;font-size:11px;font-weight:800;text-align:center;border:2px solid #001E6E}" +
-    "table.items td{border:1.5px solid #999;padding:5px 6px;vertical-align:middle;font-weight:600}" +
+    "table.items td{border:1.5px solid #999;padding:4px 6px;vertical-align:middle;font-weight:600}" +
     ".col-cant{text-align:center;width:60px}.col-emp{width:160px}" +
     ".col-desc{}.col-cat{text-align:center;width:90px;font-weight:800;font-family:monospace}" +
     ".col-tot{text-align:center;width:80px}" +
-    ".transp{border:2px solid #555;font-size:11px;margin-top:8px;font-weight:600}" +
+    ".firmas-wrap{page-break-inside:avoid}" +
+    ".transp{border:2px solid #555;font-size:11px;margin-top:6px;font-weight:600;page-break-inside:avoid}" +
     ".transp table{width:100%;border-collapse:collapse}" +
-    ".transp td{padding:5px 6px;border-bottom:1px solid #ccc;font-weight:600}" +
+    ".transp td{padding:4px 6px;border-bottom:1px solid #ccc;font-weight:600}" +
     
     ".sello-box{border:2px dashed #444;border-radius:4px;display:flex;align-items:center;" +
-    "justify-content:center;color:#bbb;font-size:10px;height:3.5cm;width:5cm;margin-top:4px}" +
+    "justify-content:center;color:#bbb;font-size:10px;height:2.6cm;width:4.5cm;margin-top:4px;page-break-inside:avoid}" +
     
-    "@page{size:letter;margin:10mm 9mm}" +
+    "@page{size:letter;margin:6mm 9mm}" +
     "@media print{" +
     "html,body{padding:0;margin:0;width:100%}" +
-    ".pagina{padding:10px;box-sizing:border-box;border:3px solid #000;margin:0;width:100%;page-break-inside:avoid}" +
+    ".pagina{padding:8px;box-sizing:border-box;border:3px solid #000;margin:0;width:100%;page-break-inside:avoid}" +
     
     "button,.no-print{display:none!important}" +
     "table.items thead{display:table-header-group;-webkit-print-color-adjust:exact;print-color-adjust:exact}" +
