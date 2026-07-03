@@ -940,16 +940,17 @@ function _guiasAgruparLineas(lineas, area){
   return { cajas: cajas, patio: patio, granel: granel };
 }
 
-function _guiasFilasImpresion(lineas, area){
+function _guiasBloquesImpresion(lineas, area){
   var grupos = _guiasAgruparLineas(lineas, area);
-  var filas = [];
   var colectivo = _GUIAS_COLECTIVO[area] || "Material en General";
+  var bloques = [];
 
-  // GRUPO 1: Cajas cerradas
+  // BLOQUE EMPAQUE: cajas cerradas + patio van siempre juntos, nunca se separan entre hojas
+  var bloqueEmpaque = [];
   grupos.cajas.forEach(function(l){
     var nCajas = Math.floor(l.cant / l.contEmp);
     var descEmp = "C/C " + l.contEmp + " " + l.um;
-    filas.push({
+    bloqueEmpaque.push({
       cant:    nCajas,
       um:      descEmp,
       desc:    l.desc,
@@ -959,10 +960,8 @@ function _guiasFilasImpresion(lineas, area){
       patio:   false
     });
   });
-
-  // GRUPO 2: Patio
   grupos.patio.forEach(function(l){
-    filas.push({
+    bloqueEmpaque.push({
       cant:    l.bultos || l.cant,
       um:      l.um,
       desc:    l.desc,
@@ -972,15 +971,15 @@ function _guiasFilasImpresion(lineas, area){
       patio:   true
     });
   });
+  if(bloqueEmpaque.length > 0) bloques.push(bloqueEmpaque);
 
-  // GRUPO 3: Granel (solo si hay)
+  // BLOQUE GRANEL: separador + encabezado colectivo + materiales, siempre juntos
   if(grupos.granel.length > 0){
-    // Renglón en blanco + encabezado colectivo
-    filas.push({ tipo: "separador" });
-    filas.push({ tipo: "colectivo", desc: colectivo });
-
+    var bloqueGranel = [];
+    bloqueGranel.push({ tipo: "separador" });
+    bloqueGranel.push({ tipo: "colectivo", desc: colectivo });
     grupos.granel.forEach(function(l){
-      filas.push({
+      bloqueGranel.push({
         cant:    l.cant,
         um:      l.um,
         desc:    l.desc,
@@ -990,9 +989,10 @@ function _guiasFilasImpresion(lineas, area){
         patio:   false
       });
     });
+    bloques.push(bloqueGranel);
   }
 
-  return filas;
+  return bloques;
 }
 
 // ── PANTALLA 5: Generar guía imprimible ───────────────────────────────────────
@@ -1010,27 +1010,41 @@ function _guiasGenerar(){
   var alm      = _guiaActual.almInfo;
   var hoy      = _guiaActual.fecha ? new Date(_guiaActual.fecha+"T12:00:00") : new Date();
   var fechaStr = hoy.toLocaleDateString("es-MX",{day:"2-digit",month:"2-digit",year:"numeric"});
-  var totalBultos = 0;
-  var _gruposBultos = _guiasAgruparLineas(_guiaActual.lineas, _guiaActual.area);
-  _gruposBultos.cajas.forEach(function(l){ totalBultos += Math.floor(l.cant/l.contEmp); });
-  _gruposBultos.patio.forEach(function(l){ totalBultos += l.bultos || 1; });
-  if(_gruposBultos.granel.length > 0) totalBultos += 1;
+  var totalMateriales = 0;
+  _guiaActual.lineas.forEach(function(l){ totalMateriales += Number(l.cant) || 0; });
 
-  // Calcular todas las filas de impresión
-  var _filas = _guiasFilasImpresion(_guiaActual.lineas, _guiaActual.area);
+  // Calcular los bloques de impresión (empaque = cajas+patio juntos; granel aparte)
+  var _bloques = _guiasBloquesImpresion(_guiaActual.lineas, _guiaActual.area);
 
-  // Dividir filas en páginas de 20 filas máximo
+  // Paginar por BLOQUES: un bloque nunca se separa entre hojas si cabe completo en una página
   var FILAS_POR_PAGINA = 24;
   var paginas = [];
   var paginaActual = [];
-  for(var fi=0; fi<_filas.length; fi++){
-    paginaActual.push(_filas[fi]);
-    if(paginaActual.length >= FILAS_POR_PAGINA && fi < _filas.length-1){
-      paginas.push(paginaActual);
-      paginaActual = [];
+  _bloques.forEach(function(bloque){
+    if(bloque.length > FILAS_POR_PAGINA){
+      // Bloque más grande que una hoja completa: excepción, se reparte forzosamente
+      var idx = 0;
+      while(idx < bloque.length){
+        var espacio = FILAS_POR_PAGINA - paginaActual.length;
+        if(espacio <= 0){
+          paginas.push(paginaActual);
+          paginaActual = [];
+          espacio = FILAS_POR_PAGINA;
+        }
+        var trozo = bloque.slice(idx, idx + espacio);
+        paginaActual = paginaActual.concat(trozo);
+        idx += trozo.length;
+      }
+    } else {
+      if(paginaActual.length > 0 && paginaActual.length + bloque.length > FILAS_POR_PAGINA){
+        // No cabe completo en lo que queda de la hoja: pasa entero a la siguiente
+        paginas.push(paginaActual);
+        paginaActual = [];
+      }
+      paginaActual = paginaActual.concat(bloque);
     }
-  }
-  paginas.push(paginaActual);
+  });
+  if(paginaActual.length > 0 || paginas.length === 0) paginas.push(paginaActual);
 
   // Función que genera el HTML de una página completa
   function _htmlPagina(filasPag, esFinalPag){
@@ -1051,9 +1065,9 @@ function _guiasGenerar(){
           "<td class=\"col-cat\">" + f.cat + "</td><td class=\"col-tot\">" + f.total + "</td></tr>";
       }
     }
-    // Total bultos solo en última página
+    // Total de materiales (HLog) solo en última página
     if(esFinalPag){
-      filasHtml += "<tr><td colspan=\"5\" style=\"text-align:right;padding:5px 6px;font-weight:800;font-size:12px;border-top:2px solid #001E6E\">Total bultos: " + totalBultos + "</td></tr>";
+      filasHtml += "<tr><td colspan=\"5\" style=\"text-align:right;padding:5px 6px;font-weight:800;font-size:12px;border-top:2px solid #001E6E\">HLog: " + totalMateriales + "</td></tr>";
     }
 
     return "<div class=\"pagina\" style=\"page-break-after:always\">" +
