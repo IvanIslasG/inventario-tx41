@@ -1145,10 +1145,10 @@ function _guiasGenerar(){
     ".sello-box{border:2px dashed #444;border-radius:4px;display:flex;align-items:center;" +
     "justify-content:center;color:#bbb;font-size:10px;height:3.5cm;width:5cm;margin-top:4px}" +
     
-    "@page{size:letter;margin:0}" +
+    "@page{size:letter;margin:10mm 9mm}" +
     "@media print{" +
-    "body{padding:0;margin:0}" +
-    ".pagina{padding:16px;box-sizing:border-box;border:8px solid #000;margin:8px}" +
+    "html,body{padding:0;margin:0;width:100%}" +
+    ".pagina{padding:10px;box-sizing:border-box;border:3px solid #000;margin:0;width:100%;page-break-inside:avoid}" +
     
     "button,.no-print{display:none!important}" +
     "table.items thead{display:table-header-group;-webkit-print-color-adjust:exact;print-color-adjust:exact}" +
