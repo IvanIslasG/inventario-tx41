@@ -1055,17 +1055,17 @@ function _guiasGenerar(){
     "<!DOCTYPE html><html lang=\"es\"><head><meta charset=\"UTF-8\">" +
     "<title>Guía " + _guiaActual.area + " No." + _guiaActual.folio + " &mdash; D041</title>" +
     "<style>" +
-    "body{font-family:Arial,sans-serif;font-size:11px;margin:0;padding:12px;color:#000}" +
+    "body{font-family:Arial,sans-serif;font-size:11px;margin:0;padding:12px;color:#000;font-weight:500}" +
     "h1{font-size:13px;margin:0}.hdr{display:grid;grid-template-columns:1fr auto;gap:12px;margin-bottom:8px}" +
-    ".empresa{font-size:13px;font-weight:bold}.sub{font-size:11px}" +
-    ".folio-box{border:2px solid #000;padding:6px 12px;text-align:right;min-width:160px}" +
+    ".empresa{font-size:13px;font-weight:900}.sub{font-size:11px;font-weight:600}" +
+    ".folio-box{border:3px solid #000;padding:6px 12px;text-align:right;min-width:160px;font-weight:700}" +
     ".folio-box .label{font-size:10px;color:#555}.folio-box .num{font-size:16px;font-weight:bold}" +
-    ".dest{border:1px solid #aaa;padding:6px 10px;margin-bottom:8px;font-size:11px}" +
+    ".dest{border:2px solid #555;padding:6px 10px;margin-bottom:8px;font-size:11px;font-weight:600}" +
     ".dest table{width:100%;border-collapse:collapse}" +
     ".dest td{padding:2px 4px;vertical-align:top}" +
     "table.items{width:100%;border-collapse:collapse;margin:8px 0}" +
-    "table.items th{background:#001E6E;color:#fff;padding:5px 6px;font-size:10px;text-align:center;border:1px solid #001E6E}" +
-    "table.items td{border:1px solid #ccc;padding:4px 6px;vertical-align:middle}" +
+    "table.items th{background:#001E6E;color:#fff;padding:5px 6px;font-size:11px;font-weight:800;text-align:center;border:2px solid #001E6E}" +
+    "table.items td{border:1.5px solid #999;padding:5px 6px;vertical-align:middle;font-weight:600}" +
     ".col-cant{text-align:center;width:60px}.col-emp{width:160px}" +
     ".col-desc{}.col-cat{text-align:center;width:90px;font-weight:bold;font-family:monospace}" +
     ".col-tot{text-align:center;width:80px}" +
@@ -1073,7 +1073,7 @@ function _guiasGenerar(){
     ".firma-box{border-top:2px solid #000;padding-top:10px;font-size:11px;min-height:160px;padding-bottom:10px}" +
     ".transp{border:1px solid #aaa;padding:6px;font-size:11px;margin-top:8px}" +
     ".transp table{width:100%;border-collapse:collapse}" +
-    ".transp td{padding:3px 6px;border-bottom:1px solid #eee}" +
+    ".transp td{padding:5px 6px;border-bottom:1px solid #ccc;font-weight:600}" +
     ".sello-box{border:1.5px solid #999;height:90px;border-radius:6px;display:flex;align-items:center;" +
     "justify-content:center;color:#bbb;font-size:10px;height:3.5cm;width:5cm;margin-top:4px}" +
     "@page{size:letter;margin:1.5cm 1cm 1cm 1cm}" +
