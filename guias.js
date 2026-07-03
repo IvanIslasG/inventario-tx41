@@ -1075,7 +1075,7 @@ function _guiasGenerar(){
     ".transp table{width:100%;border-collapse:collapse}" +
     ".transp td{padding:3px 6px;border-bottom:1px solid #eee}" +
     ".sello-box{border:1.5px solid #999;height:90px;border-radius:6px;display:flex;align-items:center;" +
-    "justify-content:center;color:#bbb;font-size:10px;margin-top:8px}" +
+    "justify-content:center;color:#bbb;font-size:10px;height:3cm;width:4cm;margin-top:4px}" +
     "@media print{body{padding:0}button{display:none}}" +
     "</style></head><body>" +
 
@@ -1131,18 +1131,20 @@ function _guiasGenerar(){
     "<td><b>Tipo de vehículo:</b></td><td>" + (_guiaActual.tipoVeh||"") + "</td></tr>" +
     "<tr><td></td><td></td>" +
     "<td><b>Placas:</b></td><td>" + (_guiaActual.placas||"") + "</td></tr>" +
-    "</table></div>" +
-
-    // Firmas
+    "</table>" +
+    // Firmas pegadas al fondo del recuadro transp
     "<div class=\"firmas\">" +
-    "<div>" +
-    "<div class=\"firma-box\">Nombre y firma &nbsp;&mdash;&nbsp; " + (_guiaActual.generador||"Capturista SAP") + "</div>" +
-    "<div style=\"font-size:10px;margin-top:4px\">Fecha de embarque: " + fechaStr + "</div>" +
+    "<div class=\"firma-box\">" +
+    "Nombre y firma &nbsp;&mdash;&nbsp; " + (_guiaActual.generador||"Capturista SAP") + "<br>" +
+    "<span style=\"font-size:10px;color:#555\">Fecha de embarque: " + fechaStr + "</span>" +
     "</div>" +
-    "<div>" +
-    "<div class=\"firma-box\">Fecha y firma &nbsp;&mdash;&nbsp; Transportista</div>" +
+    "<div class=\"firma-box\" style=\"display:flex;flex-direction:column\">" +
+    "<span>Fecha y firma &nbsp;&mdash;&nbsp; Transportista</span>" +
+    "</div>" +
+    "</div></div>" +
+    // Sello fuera del recuadro, abajo a la derecha
+    "<div style=\"display:flex;justify-content:flex-end;margin-top:8px\">" +
     "<div class=\"sello-box\">Sello</div>" +
-    "</div>" +
     "</div>" +
 
     "<div style=\"text-align:center;font-size:9px;color:#999;margin-top:8px\">" +
