@@ -1075,7 +1075,7 @@ function _guiasGenerar(){
     ".transp table{width:100%;border-collapse:collapse}" +
     ".transp td{padding:3px 6px;border-bottom:1px solid #eee}" +
     ".sello-box{border:1.5px solid #999;height:90px;border-radius:6px;display:flex;align-items:center;" +
-    "justify-content:center;color:#bbb;font-size:10px;height:3cm;width:4cm;margin-top:4px}" +
+    "justify-content:center;color:#bbb;font-size:10px;height:3cm;width:5cm;margin-top:4px;border-style:dashed}" +
     "@media print{body{padding:0}button{display:none}}" +
     "</style></head><body>" +
 
