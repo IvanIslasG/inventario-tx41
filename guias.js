@@ -1020,7 +1020,7 @@ function _guiasGenerar(){
   var _filas = _guiasFilasImpresion(_guiaActual.lineas, _guiaActual.area);
 
   // Dividir filas en páginas de 20 filas máximo
-  var FILAS_POR_PAGINA = 12;
+  var FILAS_POR_PAGINA = 17;
   var paginas = [];
   var paginaActual = [];
   for(var fi=0; fi<_filas.length; fi++){
