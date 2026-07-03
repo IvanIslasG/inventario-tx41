@@ -1020,7 +1020,7 @@ function _guiasGenerar(){
   var _filas = _guiasFilasImpresion(_guiaActual.lineas, _guiaActual.area);
 
   // Dividir filas en páginas de 20 filas máximo
-  var FILAS_POR_PAGINA = 17;
+  var FILAS_POR_PAGINA = 20;
   var paginas = [];
   var paginaActual = [];
   for(var fi=0; fi<_filas.length; fi++){
@@ -1148,7 +1148,7 @@ function _guiasGenerar(){
     "@page{size:letter;margin:0}" +
     "@media print{" +
     "body{padding:0;margin:0}" +
-    ".pagina{padding:12px;box-sizing:border-box}" +
+    ".pagina{padding:16px;box-sizing:border-box;border:8px solid #000;margin:8px}" +
     
     "button,.no-print{display:none!important}" +
     "table.items thead{display:table-header-group;-webkit-print-color-adjust:exact;print-color-adjust:exact}" +
