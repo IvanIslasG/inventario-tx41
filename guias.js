@@ -187,8 +187,10 @@ function modGuias(){
       items.forEach(function(item){
         var g=item.g, i=item.i;
         histHtml +=
-          "<div style=\"display:flex;align-items:center;gap:10px;padding:10px 14px;" +
+          "<div style=\"display:flex;align-items:center;gap:8px;padding:10px 14px;" +
           "background:white;border:1px solid var(--line);border-radius:10px\">" +
+          "<input type=\"checkbox\" class=\"guia-chk\" data-idx=\"" + i + "\"" +
+          " onchange=\"_guiasToggleExportBtn()\" style=\"width:15px;height:15px;cursor:pointer;flex-shrink:0\">" +
           "<div style=\"flex:1;cursor:pointer\" onclick=\"_guiasAbrirHistorial(" + i + ")\">" +
           "<div style=\"font-size:13px;font-weight:700\">No. " + g.folio + " &mdash; " + (g.destino||'') + "</div>" +
           "<div style=\"font-size:11px;color:var(--muted)\">" + (g.fecha||'') + " &middot; " + (g.lineas||0) + " materiales</div>" +
@@ -1067,12 +1069,12 @@ function _guiasGenerar(){
     ".col-cant{text-align:center;width:60px}.col-emp{width:160px}" +
     ".col-desc{}.col-cat{text-align:center;width:90px;font-weight:bold;font-family:monospace}" +
     ".col-tot{text-align:center;width:80px}" +
-    ".firmas{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}" +
-    ".firma-box{border-top:1px solid #000;padding-top:4px;font-size:10px}" +
+    ".firmas{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}" +
+    ".firma-box{border-top:2px solid #000;padding-top:8px;font-size:11px;min-height:60px}" +
     ".transp{border:1px solid #aaa;padding:6px;font-size:11px;margin-top:8px}" +
     ".transp table{width:100%;border-collapse:collapse}" +
     ".transp td{padding:3px 6px;border-bottom:1px solid #eee}" +
-    ".sello-box{border:1px dashed #999;height:60px;display:flex;align-items:center;" +
+    ".sello-box{border:1.5px solid #999;height:90px;border-radius:6px;display:flex;align-items:center;" +
     "justify-content:center;color:#bbb;font-size:10px;margin-top:8px}" +
     "@media print{body{padding:0}button{display:none}}" +
     "</style></head><body>" +
@@ -1139,7 +1141,7 @@ function _guiasGenerar(){
     "</div>" +
     "<div>" +
     "<div class=\"firma-box\">Fecha y firma &nbsp;&mdash;&nbsp; Transportista</div>" +
-    "<div class=\"sello-box\">SELLO INSTITUCIONAL</div>" +
+    "<div class=\"sello-box\">Sello</div>" +
     "</div>" +
     "</div>" +
 
