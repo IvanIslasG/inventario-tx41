@@ -1069,8 +1069,8 @@ function _guiasGenerar(){
     ".col-cant{text-align:center;width:60px}.col-emp{width:160px}" +
     ".col-desc{}.col-cat{text-align:center;width:90px;font-weight:bold;font-family:monospace}" +
     ".col-tot{text-align:center;width:80px}" +
-    ".firmas{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:24px}" +
-    ".firma-box{border-top:2px solid #000;padding-top:10px;font-size:11px;min-height:100px;padding-bottom:10px}" +
+    ".firmas{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:28px}" +
+    ".firma-box{border-top:2px solid #000;padding-top:10px;font-size:11px;min-height:160px;padding-bottom:10px}" +
     ".transp{border:1px solid #aaa;padding:6px;font-size:11px;margin-top:8px}" +
     ".transp table{width:100%;border-collapse:collapse}" +
     ".transp td{padding:3px 6px;border-bottom:1px solid #eee}" +
