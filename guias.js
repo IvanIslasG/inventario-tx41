@@ -1020,7 +1020,7 @@ function _guiasGenerar(){
   var _filas = _guiasFilasImpresion(_guiaActual.lineas, _guiaActual.area);
 
   // Dividir filas en páginas de 20 filas máximo
-  var FILAS_POR_PAGINA = 20;
+  var FILAS_POR_PAGINA = 24;
   var paginas = [];
   var paginaActual = [];
   for(var fi=0; fi<_filas.length; fi++){
@@ -1090,7 +1090,7 @@ function _guiasGenerar(){
       "<th class=\"col-cat\">Catálogo</th>" +
       "<th class=\"col-tot\">Total</th>" +
       "</tr></thead><tbody>" + filasHtml + "</tbody></table>" +
-      // TRANSPORTE Y FIRMAS
+      // TRANSPORTE Y FIRMAS (bloque unificado: transporte a la izquierda, sello a la derecha)
       "<div class=\"firmas-wrap\">" +
       "<div class=\"transp\"><table>" +
       "<tr><td><b>Surtió:</b></td><td>" + (_guiaActual.surtio||"") + "</td>" +
@@ -1104,9 +1104,8 @@ function _guiasGenerar(){
       "<td colspan=\"2\" style=\"padding:6px 4px;font-size:11px;font-weight:700\">Nombre y firma</td>" +
       "<td colspan=\"2\" style=\"padding:6px 4px;font-size:11px;font-weight:700;border-left:1px solid #ccc\">Fecha y firma &nbsp;&mdash;&nbsp; Transportista</td>" +
       "</tr></table></div>" +
-      "<div style=\"display:flex;justify-content:flex-end;margin-top:8px\">" +
       "<div class=\"sello-box\">Sello</div>" +
-      "</div></div>" +
+      "</div>" +
       "</div>";
   }
 
@@ -1138,13 +1137,13 @@ function _guiasGenerar(){
     ".col-cant{text-align:center;width:60px}.col-emp{width:160px}" +
     ".col-desc{}.col-cat{text-align:center;width:90px;font-weight:800;font-family:monospace}" +
     ".col-tot{text-align:center;width:80px}" +
-    ".firmas-wrap{page-break-inside:avoid}" +
-    ".transp{border:2px solid #555;font-size:11px;margin-top:6px;font-weight:600;page-break-inside:avoid}" +
-    ".transp table{width:100%;border-collapse:collapse}" +
+    ".firmas-wrap{display:flex;align-items:stretch;margin-top:6px;border:2px solid #555;page-break-inside:avoid}" +
+    ".transp{flex:1;font-size:11px;font-weight:600}" +
+    ".transp table{width:100%;height:100%;border-collapse:collapse}" +
     ".transp td{padding:4px 6px;border-bottom:1px solid #ccc;font-weight:600}" +
     
-    ".sello-box{border:2px dashed #444;border-radius:4px;display:flex;align-items:center;" +
-    "justify-content:center;color:#bbb;font-size:10px;height:3.1cm;width:5cm;margin-top:4px;page-break-inside:avoid}" +
+    ".sello-box{border-left:2px dashed #444;display:flex;align-items:center;" +
+    "justify-content:center;color:#bbb;font-size:10px;width:5cm;flex-shrink:0}" +
     
     "@page{size:letter;margin:6mm 9mm}" +
     "@media print{" +
