@@ -1075,8 +1075,17 @@ function _guiasGenerar(){
     ".transp table{width:100%;border-collapse:collapse}" +
     ".transp td{padding:3px 6px;border-bottom:1px solid #eee}" +
     ".sello-box{border:1.5px solid #999;height:90px;border-radius:6px;display:flex;align-items:center;" +
-    "justify-content:center;color:#bbb;font-size:10px;height:3cm;width:5cm;margin-top:4px;border-style:dashed}" +
-    "@media print{body{padding:0}button{display:none}}" +
+    "justify-content:center;color:#bbb;font-size:10px;height:3.5cm;width:5cm;margin-top:4px}" +
+    "@page{size:letter;margin:1.5cm 1cm 1cm 1cm}" +
+    "@media print{" +
+    "body{padding:0;margin:0}" +
+    "button,.no-print{display:none!important}" +
+    "table.items{page-break-inside:auto;width:100%;border-collapse:collapse}" +
+    "table.items tbody tr{page-break-inside:avoid}" +
+    "table.items thead{display:table-header-group;background:#001E6E!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}" +
+    ".transp{page-break-inside:avoid}" +
+    ".firmas-wrap{page-break-inside:avoid}" +
+    "}" +
     "</style></head><body>" +
 
     // Encabezado
@@ -1109,7 +1118,7 @@ function _guiasGenerar(){
     "</table></div>" +
 
     // Tabla de materiales
-    "<table class=\"items\">" +
+    "<table class=\"items\" style=\"page-break-inside:auto\">" +
     "<thead><tr>" +
     "<th class=\"col-cant\">Cantidad</th>" +
     "<th class=\"col-emp\">Unidad de embarque</th>" +
@@ -1122,6 +1131,7 @@ function _guiasGenerar(){
     "</table>" +
 
     // Transporte
+    "<div class=\"firmas-wrap\">" +
     "<div class=\"transp\">" +
     "<table>" +
     "<tr><td><b>Surtió:</b></td><td>" + (_guiaActual.surtio||"") + "</td>" +
@@ -1137,14 +1147,11 @@ function _guiasGenerar(){
     "<td colspan=\"2\" style=\"padding:6px 4px;font-size:11px\">Nombre y firma</td>" +
     "<td colspan=\"2\" style=\"padding:6px 4px;font-size:11px;border-left:1px solid #ccc\">Fecha y firma &nbsp;&mdash;&nbsp; Transportista</td>" +
     "</tr></table></div>" +
-    "<div style=\"display:flex;justify-content:space-between;align-items:flex-end;margin-top:8px\">" +
-    "<div style=\"font-size:10px;color:#555\">Fecha de embarque: " + fechaStr + "</div>" +
+    "<div style=\"display:flex;justify-content:flex-end;margin-top:8px\">" +
     "<div class=\"sello-box\">Sello</div>" +
-    "</div>" +
+    "</div></div>" +
 
-    "<div style=\"text-align:center;font-size:9px;color:#999;margin-top:8px\">" +
-    "Sistema TX41 &middot; D041 Puebla &middot; Generado: " + new Date().toLocaleString("es-MX") +
-    "</div>" +
+
     "<div style=\"margin-top:12px;display:flex;gap:10px\">" +
     "<button onclick=\"window.print()\" style=\"padding:10px 24px;background:#001E6E;" +
     "color:white;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer\">" +
