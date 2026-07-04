@@ -571,6 +571,7 @@ function renderDetalleInv(){
       <label class="chk"><input type="checkbox" id="invCeros" checked> Ocultar sin existencia</label>
       <label class="chk"><input type="checkbox" id="invTras"> Solo con traslado</label>
       <label class="chk"><input type="checkbox" id="invLotes"> Solo con lotes</label>
+      <label class="chk"><input type="checkbox" id="invLotesCeros" checked> Ocultar lotes en 0</label>
       <button class="btn" id="invConteo">🖨 Lista de conteo</button>
       <button class="btn" id="invExport">⬇ Exportar Excel</button>
     </div>
@@ -584,6 +585,7 @@ function renderDetalleInv(){
   $("#invCeros").onchange=pintarInv;
   $("#invTras").onchange=pintarInv;
   $("#invLotes").onchange=pintarInv;
+  $("#invLotesCeros").onchange=pintarInv;
   $("#invExport").onclick=()=> exportarFiltrado();
   $("#invConteo").onclick=()=> imprimirConteo();
   pintarInv();
@@ -624,8 +626,12 @@ function pintarInv(){
       const ex = r.exist===null ? `<span style="color:var(--zero);font-style:italic">—</span>`
                 : `<span class="stk ${stkClass(r.exist)}">${nfmt(r.exist)}</span>`;
       const tr = r.tras>0 ? `<span class="stk tras">${nfmt(r.tras)}</span>` : `<span style="color:var(--zero)">—</span>`;
-      const tieneLotes = r.lotes && r.lotes.length>0;
-      const badge = tieneLotes ? ` <span class="lote-badge" data-lt="${r.cat}">📦 ${r.lotes.length} lote${r.lotes.length>1?'s':''}</span>` : "";
+      const ocultarLotesCeros = $("#invLotesCeros")?.checked;
+      const lotesVisibles = ocultarLotesCeros
+        ? (r.lotes||[]).filter(l=> (l.lib>0) || (l.tras>0))
+        : (r.lotes||[]);
+      const tieneLotes = lotesVisibles.length>0;
+      const badge = tieneLotes ? ` <span class="lote-badge" data-lt="${r.cat}">📦 ${lotesVisibles.length} lote${lotesVisibles.length>1?'s':''}</span>` : "";
       const main = esTodo
         ? `<tr><td class="cat num">${r.cat}</td><td class="desc">${r.desc||"—"}${badge}</td>
              <td><span class="area-tag">${r.area||"—"}</span></td><td>${r.ubic||"—"}</td>
@@ -636,7 +642,7 @@ function pintarInv(){
       const filaLotes = tieneLotes
         ? `<tr class="lotes-row" id="lt-${r.cat}" hidden><td colspan="${ncols}" style="padding:0;background:#fffaf2">
              <table class="lotes-sub"><thead><tr><th>Lote</th><th class="r">Libre</th><th class="r">Traslado</th></tr></thead>
-             <tbody>${r.lotes.map(l=>`<tr><td class="num">${l.lote}</td><td class="r num">${nfmt(l.lib)}</td>
+             <tbody>${lotesVisibles.map(l=>`<tr><td class="num">${l.lote}</td><td class="r num">${nfmt(l.lib)}</td>
                <td class="r num" style="color:var(--low)">${nfmt(l.tras||0)}</td></tr>`).join("")}</tbody></table></td></tr>`
         : "";
       return main+filaLotes;
