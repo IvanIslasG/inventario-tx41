@@ -745,11 +745,11 @@ function _guiasPedirLote(cat, desc, um, lotes){
   var filas = lotesConExistencia.map(function(l){
     var loteEsc = String(l.lote).replace(/'/g,"&#39;").replace(/"/g,"&quot;");
     return "<button onclick=\"_guiasElegirLote('" + catEsc + "','" + descEsc + "','" + um + "','" + loteEsc + "')\"" +
-      " style=\"text-align:left;padding:10px 12px;background:#f0f4ff;" +
-      "border:1.5px solid var(--primary);border-radius:8px;cursor:pointer;" +
-      "font-family:inherit;font-size:12.5px\">" +
+      " style=\"text-align:left;padding:14px 16px;background:#f0f4ff;" +
+      "border:1.5px solid var(--primary);border-radius:10px;cursor:pointer;" +
+      "font-family:inherit;font-size:13px;line-height:1.5\">" +
       "<b>Lote " + l.lote + "</b><br>" +
-      "<span style=\"font-size:11px;color:var(--muted)\">" + nfmt(l.lib||0) + " " + um + " libres" +
+      "<span style=\"font-size:11.5px;color:var(--muted)\">" + nfmt(l.lib||0) + " " + um + " libres" +
       ((l.tras||0) > 0 ? " &middot; " + nfmt(l.tras) + " en traslado" : "") + "</span>" +
       "</button>";
   }).join("");
@@ -757,25 +757,25 @@ function _guiasPedirLote(cat, desc, um, lotes){
   var modal = document.createElement("div");
   modal.className = "modal on";
   modal.innerHTML =
-    "<div class=\"modal-box\">" +
-    "<h3 style=\"margin:0 0 4px\">" + cat + "</h3>" +
-    "<div style=\"font-size:12px;color:var(--muted);margin-bottom:12px\">" + desc + "</div>" +
+    "<div class=\"modal-box\" style=\"max-width:640px;padding:24px\">" +
+    "<h3 style=\"margin:0 0 6px\">" + cat + "</h3>" +
+    "<div style=\"font-size:13px;color:var(--muted);margin-bottom:18px\">" + desc + "</div>" +
     "<div style=\"font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;" +
-    "letter-spacing:.4px;margin-bottom:8px\">Este material lleva lote &mdash; elige de cuál surtir</div>" +
+    "letter-spacing:.4px;margin-bottom:12px\">Este material lleva lote &mdash; elige de cuál surtir</div>" +
     (lotesConExistencia.length > 0 ?
-      "<div style=\"display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin-bottom:10px\">" +
+      "<div style=\"display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:18px\">" +
       filas + "</div>"
-      : "<div style=\"font-size:12px;color:var(--muted);margin-bottom:10px\">No hay lotes con existencia disponible &mdash; usa el campo manual.</div>") +
-    "<div style=\"border-top:1px dashed var(--line);padding-top:10px;margin-top:4px\">" +
+      : "<div style=\"font-size:12px;color:var(--muted);margin-bottom:18px\">No hay lotes con existencia disponible &mdash; usa el campo manual.</div>") +
+    "<div style=\"border-top:1px dashed var(--line);padding-top:16px;margin-top:8px\">" +
     "<label style=\"font-size:11px;color:var(--muted)\">Lote manual (si no aparece en la lista)</label>" +
-    "<div style=\"display:flex;gap:6px;margin-top:4px\">" +
+    "<div style=\"display:flex;gap:8px;margin-top:6px\">" +
     "<input id=\"gLoteManual\" type=\"text\" placeholder=\"Ej. L-4521\"" +
     " onkeydown=\"if(event.key==='Enter'){event.preventDefault();var v=this.value.trim();if(v)_guiasElegirLote('" + catEsc + "','" + descEsc + "','" + um + "',v);}\"" +
-    " style=\"flex:1;padding:8px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit\">" +
+    " style=\"flex:1;padding:10px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit\">" +
     "<button class=\"btn-prim\" onclick=\"var v=document.getElementById('gLoteManual').value.trim();if(v)_guiasElegirLote('" + catEsc + "','" + descEsc + "','" + um + "',v);\">Usar</button>" +
     "</div></div>" +
-    "<div style=\"font-size:11px;color:var(--muted);margin-top:10px\">Si necesitas tomar de más de un lote, agrega este catálogo de nuevo y elige otro lote.</div>" +
-    "<button class=\"btn\" onclick=\"_guiasEditandoLineaIdx=null;this.closest('.modal').remove()\" style=\"width:100%;margin-top:12px\">Cancelar</button>" +
+    "<div style=\"font-size:11.5px;color:var(--muted);margin-top:16px;line-height:1.5\">Si necesitas tomar de más de un lote, agrega este catálogo de nuevo y elige otro lote.</div>" +
+    "<button class=\"btn\" onclick=\"_guiasEditandoLineaIdx=null;this.closest('.modal').remove()\" style=\"width:100%;margin-top:18px;padding:10px\">Cancelar</button>" +
     "</div>";
   document.body.appendChild(modal);
 }
