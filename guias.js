@@ -740,14 +740,17 @@ function _guiasPedirLote(cat, desc, um, lotes){
   var catEsc  = cat.replace(/'/g,"&#39;").replace(/"/g,"&quot;");
   var descEsc = desc.replace(/'/g,"&#39;").replace(/"/g,"&quot;");
 
-  var filas = lotes.map(function(l){
+  var lotesConExistencia = lotes.filter(function(l){ return (l.lib||0) > 0; });
+
+  var filas = lotesConExistencia.map(function(l){
     var loteEsc = String(l.lote).replace(/'/g,"&#39;").replace(/"/g,"&quot;");
     return "<button onclick=\"_guiasElegirLote('" + catEsc + "','" + descEsc + "','" + um + "','" + loteEsc + "')\"" +
-      " style=\"width:100%;text-align:left;padding:10px 14px;background:#f0f4ff;" +
+      " style=\"text-align:left;padding:10px 12px;background:#f0f4ff;" +
       "border:1.5px solid var(--primary);border-radius:8px;cursor:pointer;" +
-      "font-family:inherit;font-size:13px;margin-bottom:6px\">" +
-      "<b>Lote " + l.lote + "</b> &mdash; " + nfmt(l.lib||0) + " " + um + " libres" +
-      ((l.tras||0) > 0 ? " <span style=\"color:var(--muted);font-size:11px\">(" + nfmt(l.tras) + " en traslado)</span>" : "") +
+      "font-family:inherit;font-size:12.5px\">" +
+      "<b>Lote " + l.lote + "</b><br>" +
+      "<span style=\"font-size:11px;color:var(--muted)\">" + nfmt(l.lib||0) + " " + um + " libres" +
+      ((l.tras||0) > 0 ? " &middot; " + nfmt(l.tras) + " en traslado" : "") + "</span>" +
       "</button>";
   }).join("");
 
@@ -759,8 +762,19 @@ function _guiasPedirLote(cat, desc, um, lotes){
     "<div style=\"font-size:12px;color:var(--muted);margin-bottom:12px\">" + desc + "</div>" +
     "<div style=\"font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;" +
     "letter-spacing:.4px;margin-bottom:8px\">Este material lleva lote &mdash; elige de cuál surtir</div>" +
-    filas +
-    "<div style=\"font-size:11px;color:var(--muted);margin-top:6px\">Si necesitas tomar de más de un lote, agrega este catálogo de nuevo y elige otro lote.</div>" +
+    (lotesConExistencia.length > 0 ?
+      "<div style=\"display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin-bottom:10px\">" +
+      filas + "</div>"
+      : "<div style=\"font-size:12px;color:var(--muted);margin-bottom:10px\">No hay lotes con existencia disponible &mdash; usa el campo manual.</div>") +
+    "<div style=\"border-top:1px dashed var(--line);padding-top:10px;margin-top:4px\">" +
+    "<label style=\"font-size:11px;color:var(--muted)\">Lote manual (si no aparece en la lista)</label>" +
+    "<div style=\"display:flex;gap:6px;margin-top:4px\">" +
+    "<input id=\"gLoteManual\" type=\"text\" placeholder=\"Ej. L-4521\"" +
+    " onkeydown=\"if(event.key==='Enter'){event.preventDefault();var v=this.value.trim();if(v)_guiasElegirLote('" + catEsc + "','" + descEsc + "','" + um + "',v);}\"" +
+    " style=\"flex:1;padding:8px;border:1.5px solid var(--line);border-radius:8px;font-family:inherit\">" +
+    "<button class=\"btn-prim\" onclick=\"var v=document.getElementById('gLoteManual').value.trim();if(v)_guiasElegirLote('" + catEsc + "','" + descEsc + "','" + um + "',v);\">Usar</button>" +
+    "</div></div>" +
+    "<div style=\"font-size:11px;color:var(--muted);margin-top:10px\">Si necesitas tomar de más de un lote, agrega este catálogo de nuevo y elige otro lote.</div>" +
     "<button class=\"btn\" onclick=\"_guiasEditandoLineaIdx=null;this.closest('.modal').remove()\" style=\"width:100%;margin-top:12px\">Cancelar</button>" +
     "</div>";
   document.body.appendChild(modal);
