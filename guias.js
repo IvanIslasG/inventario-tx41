@@ -127,6 +127,21 @@ function _guiasAlmInfo(sigla){
 var _guiaActual = null; // { destino, area, folio, fecha, lineas:[], transporte:'' }
 var _guiaEditandoOriginal = null; // { folio, area } de la guía que se está editando desde el historial, o null si es nueva
 var _guiasEditandoLineaIdx = null; // índice de línea que se está reemplazando (edición desde Revisión), o null
+var _guiasLoteActual = null; // lote elegido para la línea que se está capturando (materiales con lote real), o null
+
+// Lotes reales (excluye el lote "NUEVO", que significa sin lote/no aplica)
+function _guiasLotesReales(cat){
+  try{
+    if(typeof lotesDe !== "function") return [];
+    return lotesDe(cat).filter(function(l){ return (l.lote||"").toUpperCase() !== "NUEVO"; });
+  }catch(e){ return []; }
+}
+
+// ¿El material pertenece al área de Cables? (para forzar tipo "Bobina")
+function _guiasEsCable(cat){
+  try{ return (mat(cat).area || "").toLowerCase() === "cables"; }catch(e){ return false; }
+}
+
 var _guiasORPendiente = null; // { rows, hdrIdx, iCat, iXS } de un OR importado desde la pantalla de Datos, pendiente de aplicar a las líneas
 
 // Si estamos en la pantalla de Revisión, guarda lo ya escrito en los campos de firma
@@ -677,6 +692,7 @@ function _tplLineaGuia(l, idx){
     l.cant + " " + l.um + " &mdash; " + l.bultos + " " + l.tipoEmp +
     (l.contEmp > 1 ? " de " + l.contEmp + " " + l.um : "") +
     (l.patio ? " &mdash; <b>PATIO</b>" : "") +
+    (l.lote ? " &mdash; <b>Lote " + l.lote + "</b>" : "") +
     "</div>" +
     "</div>" +
     "<button onclick=\"_guiasEditarLineaCompleta(" + idx + ")\" title=\"Editar\"" +
@@ -720,6 +736,42 @@ function _guiasCatConfirmar(){
   _guiasPedirEmpaque(cat, desc, um, opciones);
 }
 
+function _guiasPedirLote(cat, desc, um, lotes){
+  var catEsc  = cat.replace(/'/g,"&#39;").replace(/"/g,"&quot;");
+  var descEsc = desc.replace(/'/g,"&#39;").replace(/"/g,"&quot;");
+
+  var filas = lotes.map(function(l){
+    var loteEsc = String(l.lote).replace(/'/g,"&#39;").replace(/"/g,"&quot;");
+    return "<button onclick=\"_guiasElegirLote('" + catEsc + "','" + descEsc + "','" + um + "','" + loteEsc + "')\"" +
+      " style=\"width:100%;text-align:left;padding:10px 14px;background:#f0f4ff;" +
+      "border:1.5px solid var(--primary);border-radius:8px;cursor:pointer;" +
+      "font-family:inherit;font-size:13px;margin-bottom:6px\">" +
+      "<b>Lote " + l.lote + "</b> &mdash; " + nfmt(l.lib||0) + " " + um + " libres" +
+      ((l.tras||0) > 0 ? " <span style=\"color:var(--muted);font-size:11px\">(" + nfmt(l.tras) + " en traslado)</span>" : "") +
+      "</button>";
+  }).join("");
+
+  var modal = document.createElement("div");
+  modal.className = "modal on";
+  modal.innerHTML =
+    "<div class=\"modal-box\">" +
+    "<h3 style=\"margin:0 0 4px\">" + cat + "</h3>" +
+    "<div style=\"font-size:12px;color:var(--muted);margin-bottom:12px\">" + desc + "</div>" +
+    "<div style=\"font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;" +
+    "letter-spacing:.4px;margin-bottom:8px\">Este material lleva lote &mdash; elige de cuál surtir</div>" +
+    filas +
+    "<div style=\"font-size:11px;color:var(--muted);margin-top:6px\">Si necesitas tomar de más de un lote, agrega este catálogo de nuevo y elige otro lote.</div>" +
+    "<button class=\"btn\" onclick=\"_guiasEditandoLineaIdx=null;this.closest('.modal').remove()\" style=\"width:100%;margin-top:12px\">Cancelar</button>" +
+    "</div>";
+  document.body.appendChild(modal);
+}
+
+function _guiasElegirLote(cat, desc, um, lote){
+  document.querySelector(".modal")?.remove();
+  _guiasLoteActual = lote;
+  _guiasPedirEmpaque(cat, desc, um, _guiasBDOpciones(cat));
+}
+
 function _guiasPedirEmpaque(cat, desc, um, opciones){
   var modal = document.createElement("div");
   modal.className = "modal on";
@@ -744,6 +796,14 @@ function _guiasPedirEmpaque(cat, desc, um, opciones){
     _guiasRefrescarVista();
     return;
   }
+
+  // Si el material lleva lote real y aún no se ha elegido uno — pedirlo primero
+  var lotesReales = _guiasLotesReales(cat);
+  if(lotesReales.length > 0 && _guiasLoteActual === null){
+    _guiasPedirLote(cat, desc, um, lotesReales);
+    return;
+  }
+  var esCable = _guiasEsCable(cat);
 
   // Botones de empaques conocidos
   var btnsConocidos = "";
@@ -791,6 +851,13 @@ function _guiasPedirEmpaque(cat, desc, um, opciones){
     "</div>";
 
   // Columna derecha — nuevo empaque (desplegable)
+  var tipoInputHtml = esCable
+    ? "<input id=\"gEmpTipo\" type=\"text\" value=\"Bobina\" readonly" +
+      " style=\"width:100%;padding:8px;border:1.5px solid var(--line);border-radius:8px;" +
+      "font-family:inherit;margin-top:3px;background:#f3f4f6;color:var(--muted)\">"
+    : "<input id=\"gEmpTipo\" type=\"text\" value=\"Caja\" placeholder=\"Caja, Costal...\"" +
+      " style=\"width:100%;padding:8px;border:1.5px solid var(--line);border-radius:8px;" +
+      "font-family:inherit;margin-top:3px\">";
   var derechaHtml =
     "<div style=\"flex:1;min-width:0;padding:16px;border-left:1px solid var(--line)\">" +
     "<details" + (opciones.length === 0 ? " open" : "") + ">" +
@@ -800,9 +867,7 @@ function _guiasPedirEmpaque(cat, desc, um, opciones){
     "</summary>" +
     "<div style=\"margin-top:10px;display:flex;flex-direction:column;gap:8px\">" +
     "<div><label style=\"font-size:11px;color:var(--muted)\">Tipo de empaque</label>" +
-    "<input id=\"gEmpTipo\" type=\"text\" value=\"Caja\" placeholder=\"Caja, Costal...\"" +
-    " style=\"width:100%;padding:8px;border:1.5px solid var(--line);border-radius:8px;" +
-    "font-family:inherit;margin-top:3px\"></div>" +
+    tipoInputHtml + "</div>" +
     "<div><label style=\"font-size:11px;color:var(--muted)\">Contenido por empaque</label>" +
     "<input id=\"gEmpCont\" type=\"number\" min=\"1\" value=\"1\"" +
     " style=\"width:100%;padding:8px;border:1.5px solid var(--line);border-radius:8px;" +
@@ -819,6 +884,11 @@ function _guiasPedirEmpaque(cat, desc, um, opciones){
     "<div style=\"padding:16px 20px;border-bottom:1px solid var(--line)\">" +
     "<h3 style=\"margin:0 0 4px\">Empaque &mdash; " + cat + "</h3>" +
     "<div style=\"font-size:12px;color:var(--muted)\">" + desc + "</div>" +
+    (_guiasLoteActual !== null ?
+      "<div style=\"font-size:12px;color:#f59e0b;font-weight:700;margin-top:4px\">Lote: " + _guiasLoteActual +
+      " <button onclick=\"_guiasLoteActual=null;this.closest('.modal').remove();_guiasPedirEmpaque('" + catEsc + "','" + descEsc + "','" + um + "'," + "_guiasBDOpciones('" + catEsc + "'))\" " +
+      "style=\"background:none;border:none;color:var(--muted);font-size:11px;text-decoration:underline;cursor:pointer;margin-left:6px\">cambiar</button></div>"
+      : "") +
     "</div>" +
     "<div style=\"display:flex;align-items:stretch\">" +
     izqHtml +
@@ -826,7 +896,7 @@ function _guiasPedirEmpaque(cat, desc, um, opciones){
     "</div>" +
     "<div style=\"padding:12px 20px;border-top:1px solid var(--line);display:flex;" +
     "justify-content:space-between;align-items:center\">" +
-    "<button class=\"btn\" onclick=\"_guiasEditandoLineaIdx=null;this.closest('.modal').remove()\">Cancelar</button>" +
+    "<button class=\"btn\" onclick=\"_guiasEditandoLineaIdx=null;_guiasLoteActual=null;this.closest('.modal').remove()\">Cancelar</button>" +
     "<button class=\"btn-prim\" onclick=\"_guiasConfirmarEmpaque('" + catEsc + "','" + descEsc + "','" + um + "')\">Agregar empaque</button>" +
     "</div></div>";
 
@@ -851,6 +921,7 @@ function _guiasSeleccionarEmpaque(cat, desc, um, tipo, cont){
     // División automática: cajas cerradas + granel (la línea vieja, si aplica, se limpia dentro de _guiasAgregarLineaSilente)
     _guiasAgregarLineaSilente(cat, desc, um, tipo, cont, nCajas * cont, false);
     _guiasAgregarLineaSilente(cat, desc, um, "Granel", 0, residuo, true);
+    _guiasLoteActual = null; // ya se usó, limpiar para la próxima captura
     _limpiarCatInput();
     _guiasRefrescarVista();
   } else {
@@ -907,6 +978,7 @@ function _guiasConfirmarEmpaque(cat, desc, um){
     // La línea vieja, si aplica, se limpia dentro de _guiasAgregarLineaSilente
     _guiasAgregarLineaSilente(cat, desc, um, tipo, cont, nCajas * cont, false);
     _guiasAgregarLineaSilente(cat, desc, um, "Granel", 0, residuo, true);
+    _guiasLoteActual = null; // ya se usó, limpiar para la próxima captura
     _limpiarCatInput();
     _guiasRefrescarVista();
   } else {
@@ -925,21 +997,26 @@ function _guiasAgregarLineaSilente(cat, desc, um, tipoEmp, contEmp, cant, esGran
   // Agrega sin limpiar input ni refrescar (para llamadas múltiples)
   if(_guiasEditandoLineaIdx !== null){ _guiaActual.lineas.splice(_guiasEditandoLineaIdx, 1); _guiasEditandoLineaIdx = null; }
   var bultos = contEmp > 1 ? Math.floor(cant / contEmp) : cant;
-  _guiaActual.lineas.push({
+  var linea = {
     cat: cat, desc: desc, um: um,
     cant: cant, tipoEmp: tipoEmp, contEmp: contEmp,
     bultos: bultos, patio: false, granel: esGranel || false
-  });
+  };
+  if(_guiasLoteActual !== null) linea.lote = _guiasLoteActual;
+  _guiaActual.lineas.push(linea);
 }
 
 function _guiasAgregarLinea(cat, desc, um, tipoEmp, contEmp, cant, esGranel){
   if(_guiasEditandoLineaIdx !== null){ _guiaActual.lineas.splice(_guiasEditandoLineaIdx, 1); _guiasEditandoLineaIdx = null; }
   var bultos = contEmp > 1 ? Math.ceil(cant / contEmp) : cant;
-  _guiaActual.lineas.push({
+  var linea = {
     cat: cat, desc: desc, um: um,
     cant: cant, tipoEmp: tipoEmp, contEmp: contEmp,
     bultos: bultos, patio: false, granel: esGranel || false
-  });
+  };
+  if(_guiasLoteActual !== null) linea.lote = _guiasLoteActual;
+  _guiaActual.lineas.push(linea);
+  _guiasLoteActual = null; // ya se usó, limpiar para la próxima captura
   // Limpiar input y cerrar modal
   _limpiarCatInput();
   document.querySelector(".modal")?.remove();
@@ -1100,6 +1177,18 @@ function _guiasImportarFilasOR(rows, hdrIdx, iCat, iXS){
       continue;
     }
 
+    var lotesRealesMat = _guiasLotesReales(cat);
+    if(lotesRealesMat.length > 0){
+      // Lleva lote real — no se puede adivinar de cuál lote surtir, se marca para asignarlo con el lápiz
+      _guiaActual.lineas.push({
+        cat: cat, desc: m.desc||cat, um: m.um||"PZ", cant: xs,
+        tipoEmp: (_guiasEsCable(cat) ? "Bobina" : "?"), contEmp: 0,
+        bultos: xs, patio: false, granel: false, revisar: true, loteRequerido: true
+      });
+      importados++;
+      continue;
+    }
+
     var opciones = _guiasBDOpciones(cat);
     var antesLen = _guiaActual.lineas.length;
 
@@ -1168,6 +1257,10 @@ function _guiasRevision(){
     alert("Hay materiales con empaque pendiente (?). Defínelos antes de continuar.");
     return;
   }
+  if(_guiaActual.lineas.some(function(l){ return l.loteRequerido; })){
+    alert("Hay materiales que llevan lote y aún no se ha elegido de cuál surtir. Corrígelos con el lápiz antes de continuar.");
+    return;
+  }
 
   var _gruposBultos = _guiasAgruparLineas(_guiaActual.lineas, _guiaActual.area);
   var totalBultos = 0;
@@ -1178,7 +1271,7 @@ function _guiasRevision(){
   var filasHtml = "";
   for(var i=0; i<_guiaActual.lineas.length; i++){
     var l = _guiaActual.lineas[i];
-    var descEmp = l.bultos + " " + l.tipoEmp + (l.contEmp>1?" de "+l.contEmp+" "+l.um:"");
+    var descEmp = l.bultos + " " + l.tipoEmp + (l.contEmp>1?" de "+l.contEmp+" "+l.um:"") + (l.lote?" — Lote "+l.lote:"");
     filasHtml +=
       "<tr style=\"border-bottom:1px solid var(--lite,#f4f6fb)\">" +
       "<td style=\"padding:6px 8px;font-size:12px;font-weight:700;font-family:monospace;" +
@@ -1309,6 +1402,12 @@ function _guiasAgruparLineas(lineas, area){
   return { cajas: cajas, patio: patio, granel: granel };
 }
 
+// Abreviatura del tipo de empaque para el impreso (C/C para Caja, como ya se usaba; nuevo para los demás)
+function _guiasAbrevTipo(tipo){
+  var map = { "Caja": "C/C", "Bobina": "Bob c/" };
+  return map[tipo] || (tipo + " c/");
+}
+
 function _guiasBloquesImpresion(lineas, area){
   var grupos = _guiasAgruparLineas(lineas, area);
   var colectivo = _GUIAS_COLECTIVO[area] || "Material en General";
@@ -1318,7 +1417,8 @@ function _guiasBloquesImpresion(lineas, area){
   var bloqueEmpaque = [];
   grupos.cajas.forEach(function(l){
     var nCajas = Math.floor(l.cant / l.contEmp);
-    var descEmp = "C/C " + l.contEmp + " " + l.um;
+    var descEmp = _guiasAbrevTipo(l.tipoEmp) + " " + l.contEmp + " " + l.um;
+    if(l.lote) descEmp += " " + l.lote;
     bloqueEmpaque.push({
       cant:    nCajas,
       um:      descEmp,
@@ -1351,7 +1451,7 @@ function _guiasBloquesImpresion(lineas, area){
       bloqueGranel.push({
         cant:    l.cant,
         um:      l.um,
-        desc:    l.desc,
+        desc:    l.desc + (l.lote ? " — Lote " + l.lote : ""),
         cat:     l.cat,
         total:   l.cant + " " + l.um,
         tipo:    "granel",
@@ -1366,6 +1466,14 @@ function _guiasBloquesImpresion(lineas, area){
 
 // ── PANTALLA 5: Generar guía imprimible ───────────────────────────────────────
 function _guiasGenerar(){
+  var faltanLote = _guiaActual.lineas.filter(function(l){ return l.loteRequerido; });
+  if(faltanLote.length > 0){
+    alert("Hay " + faltanLote.length + " material(es) que llevan lote y aún no se ha elegido de cuál surtir " +
+      "(marcados \"REVISAR\" con ? en la lista). Corrígelos con el lápiz antes de generar la guía.\n\n" +
+      "Catálogos pendientes: " + faltanLote.map(function(l){ return l.cat; }).join(", "));
+    return;
+  }
+
   // Capturar datos de firma
   _guiaActual.pedido     = document.getElementById("gPedido")?.value.trim() || "0";
   _guiaActual.siatel     = document.getElementById("gSiatel")?.value.trim() || "0";
