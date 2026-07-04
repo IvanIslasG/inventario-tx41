@@ -747,6 +747,7 @@ function imprimirConteo(){
   };
 }
 function _generarImpresion(grupos, ubis){
+  const ocultarLotesCeros = $("#invLotesCeros")?.checked;
   const hoy=new Date().toLocaleDateString('es-MX',{day:'2-digit',month:'long',year:'numeric'});
   const label=invSel===TODO?"TODO EL INVENTARIO":invSel.toUpperCase();
   const pa=$("#printArea"); pa.innerHTML="";
@@ -768,14 +769,17 @@ function _generarImpresion(grupos, ubis){
         <th style="width:56px;text-align:center">Físico</th>
       </tr></thead><tbody>
         ${lista.map(m=>{
+          const lotesVisibles = ocultarLotesCeros
+            ? (m.lotes||[]).filter(l=> (l.lib>0) || (l.tras>0))
+            : (m.lotes||[]);
           const base=`<tr>
             <td style="font-family:monospace">${m.cat}</td>
-            <td>${m.desc||"—"}${m.lotes&&m.lotes.length?` <span style="font-size:7.5pt;color:#9a5a00">[${m.lotes.length} lote${m.lotes.length>1?'s':''}]</span>`:""}</td>
+            <td>${m.desc||"—"}${lotesVisibles.length?` <span style="font-size:7.5pt;color:#9a5a00">[${lotesVisibles.length} lote${lotesVisibles.length>1?'s':''}]</span>`:""}</td>
             <td style="text-align:center">${m.um||"—"}</td>
             <td style="text-align:center">${m.exist===null?"—":nfmt(m.exist)}</td>
             <td style="text-align:center">${m.tras>0?nfmt(m.tras):"—"}</td>
             <td class="col-fis">&nbsp;</td></tr>`;
-          const subs=(m.lotes&&m.lotes.length)? m.lotes.map(l=>`<tr style="background:#fffaf2">
+          const subs=lotesVisibles.length? lotesVisibles.map(l=>`<tr style="background:#fffaf2">
             <td style="font-family:monospace;font-size:7.5pt;padding-left:16px;color:#9a5a00">↳ ${l.lote}</td>
             <td style="font-size:7.5pt;color:#777;font-style:italic">Lote</td><td></td>
             <td style="text-align:center;font-size:7.5pt">${nfmt(l.lib)}</td>
