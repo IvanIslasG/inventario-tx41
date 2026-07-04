@@ -744,7 +744,7 @@ function _guiasPedirLote(cat, desc, um, lotes){
 
   var filas = lotesConExistencia.map(function(l){
     var loteEsc = String(l.lote).replace(/'/g,"&#39;").replace(/"/g,"&quot;");
-    return "<button onclick=\"_guiasElegirLote('" + catEsc + "','" + descEsc + "','" + um + "','" + loteEsc + "')\"" +
+    return "<button onclick=\"_guiasElegirLoteConocido('" + catEsc + "','" + descEsc + "','" + um + "','" + loteEsc + "'," + (l.lib||0) + ")\"" +
       " style=\"text-align:left;padding:14px 16px;background:#f0f4ff;" +
       "border:1.5px solid var(--primary);border-radius:10px;cursor:pointer;" +
       "font-family:inherit;font-size:13px;line-height:1.5\">" +
@@ -784,6 +784,20 @@ function _guiasElegirLote(cat, desc, um, lote){
   document.querySelector(".modal")?.remove();
   _guiasLoteActual = lote;
   _guiasPedirEmpaque(cat, desc, um, _guiasBDOpciones(cat));
+}
+
+// Lote conocido con existencia — se toma completo, sin preguntar cantidad (el cable no se recorta)
+function _guiasElegirLoteConocido(cat, desc, um, lote, libre){
+  document.querySelector(".modal")?.remove();
+  if(_guiasEditandoLineaIdx !== null){ _guiaActual.lineas.splice(_guiasEditandoLineaIdx, 1); _guiasEditandoLineaIdx = null; }
+  var esCable = _guiasEsCable(cat);
+  _guiaActual.lineas.push({
+    cat: cat, desc: desc, um: um,
+    cant: libre, tipoEmp: esCable ? "Bobina" : "Caja", contEmp: libre,
+    bultos: 1, patio: false, granel: false, lote: lote
+  });
+  _limpiarCatInput();
+  _guiasRefrescarVista();
 }
 
 function _guiasPedirEmpaque(cat, desc, um, opciones){
