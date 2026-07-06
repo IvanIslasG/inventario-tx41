@@ -158,6 +158,7 @@ function _guiasCapturarFirmasRevisionSiActiva(){
   _guiaActual.operador   = document.getElementById("gOperador")?.value || "";
   _guiaActual.tipoVeh    = document.getElementById("gTipoVeh")?.value || "";
   _guiaActual.placas     = document.getElementById("gPlacas")?.value || "";
+  _guiaActual.observaciones = document.getElementById("gObservaciones")?.value || "";
 }
 
 // Refresca la vista correcta según en qué pantalla estemos (Revisión o Captura de materiales)
@@ -1405,6 +1406,14 @@ function _guiasRevision(){
     _tplCampoFirma("gOperador", "Operador", _guiaActual.operador) +
     _tplCampoFirma("gTipoVeh", "Tipo de vehículo", _guiaActual.tipoVeh) +
     _tplCampoFirma("gPlacas", "Placas", _guiaActual.placas) +
+    "<div style=\"grid-column:1/-1\">" +
+    "<label style=\"font-size:11px;color:var(--muted);display:block;margin-bottom:4px\">" +
+    "Observaciones (opcional &mdash; detalles del embarque o destino)</label>" +
+    "<textarea id=\"gObservaciones\" rows=\"2\" placeholder=\"Ej. Entregar en horario matutino, avisar al llegar, etc.\"" +
+    " style=\"width:100%;padding:8px 12px;border:1.5px solid var(--line);border-radius:8px;" +
+    "font-family:inherit;font-size:13px;resize:vertical;box-sizing:border-box\">" +
+    _escAttr(_guiaActual.observaciones||"").replace(/</g,"&lt;") + "</textarea>" +
+    "</div>" +
     "</div></div>" +
 
     "<button onclick=\"_guiasGenerar()\"" +
@@ -1560,6 +1569,7 @@ function _guiasGenerar(){
   _guiaActual.operador   = document.getElementById("gOperador")?.value || "";
   _guiaActual.tipoVeh    = document.getElementById("gTipoVeh")?.value || "";
   _guiaActual.placas     = document.getElementById("gPlacas")?.value || "";
+  _guiaActual.observaciones = document.getElementById("gObservaciones")?.value || "";
 
   var alm      = _guiaActual.almInfo;
   var hoy      = _guiaActual.fecha ? new Date(_guiaActual.fecha+"T12:00:00") : new Date();
@@ -1658,6 +1668,12 @@ function _guiasGenerar(){
       "<th class=\"col-cat\">Catálogo</th>" +
       "<th class=\"col-tot\">Total</th>" +
       "</tr></thead><tbody>" + filasHtml + "</tbody></table>" +
+      // OBSERVACIONES (solo en la última página, solo si hay texto)
+      (esFinalPag && _guiaActual.observaciones ?
+        "<div class=\"observaciones-box\">" +
+        "<div class=\"obs-label\">Observaciones</div>" +
+        "<div class=\"obs-texto\">" + _escAttr(_guiaActual.observaciones).replace(/\n/g,"<br>") + "</div>" +
+        "</div>" : "") +
       // TRANSPORTE Y FIRMAS (bloque unificado: transporte a la izquierda, sello a la derecha)
       "<div class=\"firmas-wrap\">" +
       "<div class=\"transp\"><table>" +
@@ -1705,6 +1721,9 @@ function _guiasGenerar(){
     ".col-cant{text-align:center;width:60px}.col-emp{width:160px}" +
     ".col-desc{}.col-cat{text-align:center;width:90px;font-weight:800;font-family:monospace}" +
     ".col-tot{text-align:center;width:80px}" +
+    ".observaciones-box{border:1.5px solid #999;border-radius:4px;padding:6px 10px;margin-top:6px;page-break-inside:avoid}" +
+    ".obs-label{font-size:9px;font-weight:800;color:#666;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px}" +
+    ".obs-texto{font-size:11px;line-height:1.4}" +
     ".firmas-wrap{display:flex;align-items:stretch;margin-top:6px;border:2px solid #555;page-break-inside:avoid}" +
     ".transp{flex:1;font-size:11px;font-weight:600}" +
     ".transp table{width:100%;height:100%;border-collapse:collapse}" +
