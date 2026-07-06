@@ -344,9 +344,20 @@ function _guiasGetSeleccionados(){
 
 function _guiasToggleExportBtn(){
   var n = document.querySelectorAll(".guia-chk:checked").length;
-  var btn = document.getElementById("btnExportSel");
-  if(btn) btn.disabled = n === 0;
-  if(btn) btn.textContent = n > 0 ? "Exportar seleccionadas (" + n + ")" : "Exportar seleccionadas";
+  var btnExp = document.getElementById("btnExportSel");
+  if(btnExp){ btnExp.disabled = n === 0; btnExp.textContent = n > 0 ? "Exportar seleccionadas (" + n + ")" : "Exportar seleccionadas"; }
+  var btnDel = document.getElementById("btnBorrarSel");
+  if(btnDel){ btnDel.disabled = n === 0; btnDel.textContent = n > 0 ? "Borrar seleccionadas (" + n + ")" : "Borrar seleccionadas"; }
+}
+
+function _guiasBorrarSeleccionadas(){
+  var indices = _guiasGetSeleccionados();
+  if(indices.length === 0) return;
+  if(!confirm("¿Borrar " + indices.length + " guía" + (indices.length>1?"s":"") + " seleccionada" + (indices.length>1?"s":"") + "?\n\nEsta acción no se puede deshacer.")) return;
+  var hist = _guiasHistCargar();
+  indices.sort(function(a,b){ return b-a; }).forEach(function(idx){ hist.splice(idx, 1); });
+  _guiasHistGuardar(hist);
+  modGuias();
 }
 
 // ── PANTALLA 1: Menú principal ────────────────────────────────────────────────
@@ -408,6 +419,12 @@ function modGuias(){
     " style=\"flex:1;padding:9px;background:white;border:1.5px solid var(--line);border-radius:10px;" +
     "font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;color:var(--primary);\">" +
     "Exportar seleccionadas</button>" +
+    "<button id=\"btnBorrarSel\" disabled onclick=\"_guiasBorrarSeleccionadas()\"" +
+    " style=\"flex:1;padding:9px;background:white;border:1.5px solid var(--line);border-radius:10px;" +
+    "font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;color:#dc2626;\">" +
+    "Borrar seleccionadas</button>" +
+    "</div>" +
+    "<div style=\"display:flex;gap:8px;margin-bottom:20px\">" +
     "<button onclick=\"_guiasExportarTodo()\"" +
     " style=\"flex:1;padding:9px;background:white;border:1.5px solid var(--line);border-radius:10px;" +
     "font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;color:var(--primary)\">" +
