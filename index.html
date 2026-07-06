@@ -167,6 +167,18 @@
                   background:var(--primary);color:#fff;border:0;border-radius:7px}
   .area-card .exp:hover{background:var(--primary-d)}
   .area-card .cnt{position:absolute;top:14px;right:14px;font-size:11px;font-weight:700;color:var(--accent)}
+  .alm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+  .alm-card{position:relative;background:var(--surface);border:1.5px solid var(--line);border-radius:12px;
+             padding:14px 14px;cursor:pointer;transition:.12s;text-align:left}
+  .alm-card:hover{border-color:var(--primary);transform:translateY(-2px);box-shadow:0 6px 18px rgba(10,78,163,.12)}
+  .alm-card .alm-code{font-size:14px;font-weight:800;font-family:monospace;letter-spacing:.3px}
+  .alm-card .alm-name{font-size:11.5px;color:var(--muted);margin-top:3px;line-height:1.3}
+  .alm-card.alm-dist{background:linear-gradient(135deg,#eaf1fb,#dce9fb);border-color:var(--primary);
+             box-shadow:0 2px 10px rgba(10,78,163,.15);grid-column:1/-1}
+  .alm-card.alm-dist .alm-code{color:var(--primary);font-size:16px}
+  .alm-card.alm-dist .alm-name{color:var(--primary-d,var(--primary));font-weight:600}
+  .alm-badge{position:absolute;top:10px;right:12px;font-size:9.5px;font-weight:800;text-transform:uppercase;
+             letter-spacing:.4px;color:#fff;background:var(--primary);padding:3px 8px;border-radius:8px}
   /* filtros checkbox */
   .chk{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);font-weight:600;cursor:pointer;white-space:nowrap}
   .chk input{width:15px;height:15px;accent-color:var(--primary)}
@@ -430,6 +442,7 @@ function abrirModulo(id){
   $("#backBtn").onclick=mostrarMenu;
   $("#menuView").hidden=true; $("#moduleView").hidden=false;
   window.scrollTo(0,0);
+  if(id==="inventario"){ invAlmacenSel=null; invSel=null; }
   // OR usa todo el ancho; el resto respeta max-width
   document.querySelector("main").classList.toggle("fullwidth", id==="or");
   ({inventario:modInventario, analisis:modAnalisis, directorio:modDirectorio, or:modOR, conteo:modConteo, config:modConfig, guias:modGuias}[id])();
@@ -465,7 +478,7 @@ function renderMenu(){
   const nDist = Object.values(DB.existencias).filter(e=>DIST() in e).length;
   const nRec = almList().filter(a=>a.recurrente).length;
   const cards=[
-    {id:"inventario", t:"Existencias", d:"Existencias del almacén distribuidor (D041) por área.", s:`${nfmt(nDist)} materiales en D041`},
+    {id:"inventario", t:"Existencias", d:"Consulta existencias de D041 o cualquier almacén de la red, por área.", s:`${nfmt(nDist)} materiales en D041`},
     {id:"analisis", t:"Análisis", d:"Existencias por almacén y por catálogo, todos los centros.", s:`${conEx.size} almacenes con existencia`},
     {id:"directorio", t:"Directorio", d:"Claves y nombres de centros y almacenes.", s:`${nRec} recurrentes · ${almList().length} totales`},
     {id:"or", t:"Orden de Reabasto", d:"Generar OR por almacén auxiliar con cálculo automático.", s:""},
@@ -487,6 +500,7 @@ function renderMenu(){
 const AREA_ICON={Herramientas:"🔧",Misceláneos:"🔩",Papelería:"📄",Cables:"🔌","Ropa y Calzado":"👔",Baja:"📦"};
 const TODO="__TODO__";
 let invSel=null, invSort={col:"exist",dir:-1};
+let invAlmacenSel=null; // almacén elegido para consultar (null = aún no se ha elegido en esta sesión)
 
 // existencia del distribuidor para un catálogo (null si no aparece)
 function existDist(cat){ const e=DB.existencias[cat]; return e && DIST() in e ? e[DIST()] : null; }
@@ -495,30 +509,81 @@ function trasDist(cat){ const t=DB.traslados&&DB.traslados[cat]; return t && DIS
 // lotes reales del distribuidor (lista, vacío si no hay)
 function lotesDe(cat){ return (DB.lotes&&DB.lotes[cat])||[]; }
 
-// Construye filas desde el MAESTRO para un área (o TODO). Incluye materiales sin existencia (exist=null).
+// existencia/traslado en CUALQUIER almacén de la red (no solo el distribuidor)
+function existEnAlm(cat, alm){ const e=DB.existencias[cat]; return e && alm in e ? e[alm] : null; }
+function trasEnAlm(cat, alm){ const t=DB.traslados&&DB.traslados[cat]; return t && alm in t ? t[alm] : 0; }
+
+// Construye filas desde el MAESTRO para un área (o TODO), sobre el almacén seleccionado.
+// Incluye materiales sin existencia (exist=null). Ubicación y lotes solo aplican al distribuidor D041.
 function matsArea(area){
+  const alm = invAlmacenSel || DIST();
+  const esDist = alm === DIST();
   const out=[];
   for(const [cat,m] of Object.entries(DB.materiales)){
     if(area!==TODO && (m.area||"")!==area) continue;
-    out.push({cat,desc:m.desc||"",um:m.um||"",area:m.area||"Sin clasificar",ubic:m.ubic||"",
-              exist:existDist(cat),tras:trasDist(cat),lotes:lotesDe(cat)});
+    out.push({cat,desc:m.desc||"",um:m.um||"",area:m.area||"Sin clasificar",ubic: esDist ? (m.ubic||"") : "",
+              exist:existEnAlm(cat,alm),tras:trasEnAlm(cat,alm),lotes: esDist ? lotesDe(cat) : []});
   }
   return out;
 }
 
 function modInventario(){
+  if(invAlmacenSel===null) return renderSelectorAlmacen();
   if(invSel===null) return renderAreasInv();
   return renderDetalleInv();
 }
 
+/* ---- Pantalla de selección de almacén ---- */
+function renderSelectorAlmacen(){
+  $("#backBtn").onclick=mostrarMenu;
+  const codigos=Object.keys(DB.directorio.almacenes||{}).sort();
+  const sinDist=codigos.filter(c=>c!==DIST());
+  const ordenados=[DIST(), ...sinDist];
+
+  const cards=ordenados.map(c=>{
+    const info=DB.directorio.almacenes[c]||{};
+    const esDist=c===DIST();
+    return `<div class="alm-card ${esDist?'alm-dist':''}" data-alm="${c}">
+      ${esDist?'<span class="alm-badge">Distribuidor</span>':''}
+      <div class="alm-code">${c}</div>
+      <div class="alm-name">${info.desc||c}</div>
+    </div>`;
+  }).join("");
+
+  $("#moduleView").innerHTML=`
+    <div class="menu-h" style="margin-bottom:14px">
+      <h1>Existencias</h1>
+      <p>¿Qué almacén quieres consultar?</p>
+    </div>
+    <div class="controls" style="margin-bottom:16px">
+      <input type="search" id="almSearch" placeholder="Buscar almacén por clave o nombre…" style="width:100%">
+    </div>
+    <div class="alm-grid" id="almGrid">${cards}</div>`;
+
+  $("#almSearch").oninput=()=>{
+    const q=($("#almSearch").value||"").trim().toLowerCase();
+    $("#almGrid").querySelectorAll(".alm-card").forEach(el=>{
+      const c=el.dataset.alm, info=DB.directorio.almacenes[c]||{};
+      const match=!q || c.toLowerCase().includes(q) || (info.desc||"").toLowerCase().includes(q);
+      el.style.display=match?"":"none";
+    });
+  };
+  $("#almGrid").querySelectorAll(".alm-card").forEach(el=>{
+    el.onclick=()=>{ invAlmacenSel=el.dataset.alm; invSel=null; invSort={col:"exist",dir:-1}; modInventario(); window.scrollTo(0,0); };
+  });
+}
+
 /* ---- Pantalla de tarjetas de área ---- */
 function renderAreasInv(){
-  $("#backBtn").onclick=mostrarMenu;
-  // conteos por área: total en maestro y con existencia en D041
+  $("#backBtn").onclick=()=>{ invAlmacenSel=null; modInventario(); window.scrollTo(0,0); };
+  const alm=invAlmacenSel||DIST();
+  const esDist=alm===DIST();
+  const almInfo=DB.directorio.almacenes[alm]||{};
+  // conteos por área: total en maestro y con existencia en el almacén seleccionado
   const tot={}, conx={};
   for(const [cat,m] of Object.entries(DB.materiales)){
     const a=m.area||"Sin clasificar"; tot[a]=(tot[a]||0)+1;
-    if(existDist(cat)!==null) conx[a]=(conx[a]||0)+1;
+    if(existEnAlm(cat,alm)!==null) conx[a]=(conx[a]||0)+1;
   }
   const totalConx=Object.values(conx).reduce((s,n)=>s+n,0);
   const totalMaestro=Object.keys(DB.materiales).length;
@@ -531,9 +596,10 @@ function renderAreasInv(){
       <button class="exp" data-exp="${a}">⬇ Excel</button>
     </div>`).join("");
   $("#moduleView").innerHTML=`
+    <button class="linkish" id="invCambiarAlm" style="margin-bottom:10px">‹ Cambiar almacén</button>
     <div class="menu-h" style="margin-bottom:14px">
-      <h1>Existencias · D041 PUEBLA</h1>
-      <p>Existencias del almacén distribuidor. Elige un área para consultar, contar o exportar.</p>
+      <h1>Existencias · ${alm}${esDist?" (Distribuidor)":""}</h1>
+      <p>${almInfo.desc||alm}. Elige un área para consultar, contar o exportar.</p>
     </div>
     <div class="area-grid">
       ${cards}
@@ -545,6 +611,7 @@ function renderAreasInv(){
         <button class="exp" data-exp="${TODO}">⬇ Exportar…</button>
       </div>
     </div>`;
+  $("#invCambiarAlm").onclick=()=>{ invAlmacenSel=null; modInventario(); window.scrollTo(0,0); };
   // abrir detalle
   $("#moduleView").querySelectorAll(".area-card").forEach(c=> c.onclick=()=>{ invSel=c.dataset.a; invSort={col:"exist",dir:-1}; renderDetalleInv(); window.scrollTo(0,0); });
   // export rápido por tarjeta
@@ -576,7 +643,7 @@ function renderDetalleInv(){
       <button class="btn" id="invExport">⬇ Exportar Excel</button>
     </div>
     <div class="panel"><div class="panel-head">
-      <h2>${esTodo?"📊 ":AREA_ICON[invSel]?AREA_ICON[invSel]+" ":""}${label} <span class="pill dist">D041</span></h2>
+      <h2>${esTodo?"📊 ":AREA_ICON[invSel]?AREA_ICON[invSel]+" ":""}${label} <span class="pill dist">${invAlmacenSel||DIST()}</span></h2>
       <span class="pill" id="invCount"></span></div>
       <div class="scroll"><table id="invTable"></table></div></div>`;
   $("#invVolver").onclick=()=>{ invSel=null; modInventario(); window.scrollTo(0,0); };
@@ -615,12 +682,14 @@ function filasInv(){
 }
 function pintarInv(){
   const esTodo=invSel===TODO, rows=filasInv();
+  const esDist=(invAlmacenSel||DIST())===DIST();
   const conx=rows.filter(r=>r.exist!==null&&r.exist>0).length;
   $("#invCount").textContent=`${nfmt(rows.length)} materiales · ${nfmt(conx)} con existencia`;
+  const colUbic = esDist ? `<th data-c="ubic">Ubicación</th>` : "";
   const cols=esTodo
-    ? `<th data-c="cat">Catálogo</th><th data-c="desc">Descripción</th><th data-c="area">Área</th><th data-c="ubic">Ubicación</th><th data-c="exist" class="r">Existencia</th><th data-c="tras" class="r">Traslado</th>`
-    : `<th data-c="cat">Catálogo</th><th data-c="desc">Descripción</th><th data-c="um">U.M.</th><th data-c="ubic">Ubicación</th><th data-c="exist" class="r">Existencia</th><th data-c="tras" class="r">Traslado</th>`;
-  const ncols = esTodo?6:6;
+    ? `<th data-c="cat">Catálogo</th><th data-c="desc">Descripción</th><th data-c="area">Área</th>${colUbic}<th data-c="exist" class="r">Existencia</th><th data-c="tras" class="r">Traslado</th>`
+    : `<th data-c="cat">Catálogo</th><th data-c="desc">Descripción</th><th data-c="um">U.M.</th>${colUbic}<th data-c="exist" class="r">Existencia</th><th data-c="tras" class="r">Traslado</th>`;
+  const ncols = esDist?6:5;
   $("#invTable").innerHTML=`<thead><tr>${cols}</tr></thead><tbody>${
     rows.length? rows.map(r=>{
       const ex = r.exist===null ? `<span style="color:var(--zero);font-style:italic">—</span>`
@@ -632,12 +701,13 @@ function pintarInv(){
         : (r.lotes||[]);
       const tieneLotes = lotesVisibles.length>0;
       const badge = tieneLotes ? ` <span class="lote-badge" data-lt="${r.cat}">📦 ${lotesVisibles.length} lote${lotesVisibles.length>1?'s':''}</span>` : "";
+      const tdUbic = esDist ? `<td>${r.ubic||"—"}</td>` : "";
       const main = esTodo
         ? `<tr><td class="cat num">${r.cat}</td><td class="desc">${r.desc||"—"}${badge}</td>
-             <td><span class="area-tag">${r.area||"—"}</span></td><td>${r.ubic||"—"}</td>
+             <td><span class="area-tag">${r.area||"—"}</span></td>${tdUbic}
              <td class="r">${ex} <small style="color:var(--muted)">${r.um}</small></td><td class="r">${tr}</td></tr>`
         : `<tr><td class="cat num">${r.cat}</td><td class="desc">${r.desc||"—"}${badge}</td>
-             <td>${r.um||"—"}</td><td>${r.ubic||"—"}</td>
+             <td>${r.um||"—"}</td>${tdUbic}
              <td class="r">${ex} <small style="color:var(--muted)">${r.um}</small></td><td class="r">${tr}</td></tr>`;
       const filaLotes = tieneLotes
         ? `<tr class="lotes-row" id="lt-${r.cat}" hidden><td colspan="${ncols}" style="padding:0;background:#fffaf2">
@@ -646,7 +716,7 @@ function pintarInv(){
                <td class="r num" style="color:var(--low)">${nfmt(l.tras||0)}</td></tr>`).join("")}</tbody></table></td></tr>`
         : "";
       return main+filaLotes;
-    }).join("") : `<tr><td colspan="6" class="empty">Sin coincidencias.</td></tr>`}</tbody>`;
+    }).join("") : `<tr><td colspan="${ncols}" class="empty">Sin coincidencias.</td></tr>`}</tbody>`;
   $("#invTable").querySelectorAll("th[data-c]").forEach(th=> th.onclick=()=>{
     const c=th.dataset.c; invSort={col:c,dir:invSort.col===c?-invSort.dir:(c==="exist"||c==="tras"?-1:1)}; pintarInv(); });
   $("#invTable").querySelectorAll(".lote-badge").forEach(b=> b.onclick=()=>{
