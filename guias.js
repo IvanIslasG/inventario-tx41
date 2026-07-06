@@ -1738,6 +1738,16 @@ function _guiasGenerar(){
   _guiaEditandoOriginal = null;
 }
 
+function _guiasBorrarHistorial(idx){
+  var hist = _guiasHistCargar();
+  var g = hist[idx];
+  if(!g) return;
+  if(!confirm("¿Borrar la guía No. " + g.folio + " — " + (g.destino||'') + "?\n\nEsta acción no se puede deshacer.")) return;
+  hist.splice(idx, 1);
+  _guiasHistGuardar(hist);
+  modGuias();
+}
+
 function _guiasAbrirHistorial(idx){
   var hist = _guiasHistCargar();
   var g = hist[idx];
