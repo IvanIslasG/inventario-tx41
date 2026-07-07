@@ -1674,20 +1674,22 @@ function _guiasGenerar(){
         "<div class=\"obs-label\">Observaciones</div>" +
         "<div class=\"obs-texto\">" + _escAttr(_guiaActual.observaciones).replace(/\n/g,"<br>") + "</div>" +
         "</div>" : "") +
-      // TRANSPORTE Y FIRMAS (bloque unificado: transporte a la izquierda, sello a la derecha)
+      // TRANSPORTE Y FIRMAS (transporte | Surtió con espacio de firma | Sello)
       "<div class=\"firmas-wrap\">" +
       "<div class=\"transp\"><table>" +
-      "<tr><td><b>Surtió:</b></td><td>" + (_guiaActual.surtio||"") + "</td>" +
-      "<td><b>Línea de transporte:</b></td><td>" + (_guiaActual.transporte||"") + "</td></tr>" +
-      "<tr><td></td><td></td><td><b>Operador:</b></td><td>" + (_guiaActual.operador||"") + "</td></tr>" +
-      "<tr><td></td><td></td><td><b>Tipo de vehículo:</b></td><td>" + (_guiaActual.tipoVeh||"") + "</td></tr>" +
-      "<tr><td></td><td></td><td><b>Placas:</b></td><td>" + (_guiaActual.placas||"") + "</td></tr>" +
+      "<tr><td><b>Línea de transporte:</b></td><td>" + (_guiaActual.transporte||"") + "</td></tr>" +
+      "<tr><td><b>Operador:</b></td><td>" + (_guiaActual.operador||"") + "</td></tr>" +
+      "<tr><td><b>Tipo de vehículo:</b></td><td>" + (_guiaActual.tipoVeh||"") + "</td></tr>" +
+      "<tr><td><b>Placas:</b></td><td>" + (_guiaActual.placas||"") + "</td></tr>" +
       "</table></div>" +
+      "<div class=\"surtio-col\">" +
+      "<div class=\"surtio-label\"><b>Surtió:</b> " + (_guiaActual.surtio||"") + "</div>" +
+      "<div class=\"surtio-firma-espacio\"></div>" +
+      "</div>" +
       "<div class=\"sello-box\">Sello</div>" +
       "</div>" +
       "<table class=\"firma-linea\">" +
-      "<tr><td style=\"padding:16px 6px 4px;font-size:11px;font-weight:700;border-top:2px solid #000\">Nombre y firma &mdash; Surtió</td></tr>" +
-      "<tr><td style=\"padding:16px 6px 4px;font-size:11px;font-weight:700;border-top:1px solid #999\">Fecha y firma &mdash; Transportista</td></tr>" +
+      "<tr><td style=\"padding:16px 6px 4px;font-size:11px;font-weight:700;border-top:2px solid #000\">Fecha y firma &mdash; Transportista</td></tr>" +
       "</table>" +
       "</div>";
   }
@@ -1730,8 +1732,11 @@ function _guiasGenerar(){
     ".transp table{width:100%;height:100%;border-collapse:collapse}" +
     ".transp td{padding:4px 6px;border-bottom:1px solid #ccc;font-weight:600}" +
     
+    ".surtio-col{flex:1;border-left:1px solid #999;padding:6px 10px;display:flex;flex-direction:column;font-size:11px}" +
+    ".surtio-firma-espacio{flex:1}" +
+    
     ".sello-box{border-left:2px dashed #444;display:flex;align-items:center;" +
-    "justify-content:center;color:#bbb;font-size:10px;width:5cm;flex-shrink:0}" +
+    "justify-content:center;color:#e2e2e2;font-size:9px;width:5cm;flex-shrink:0}" +
     
     "@page{size:letter;margin:6mm 9mm}" +
     "@media print{" +
