@@ -1581,7 +1581,7 @@ function _guiasGenerar(){
   var _bloques = _guiasBloquesImpresion(_guiaActual.lineas, _guiaActual.area);
 
   // Paginar por BLOQUES: un bloque nunca se separa entre hojas si cabe completo en una página
-  var FILAS_POR_PAGINA = 24;
+  var FILAS_POR_PAGINA = 22;
   var paginas = [];
   var paginaActual = [];
   _bloques.forEach(function(bloque){
@@ -1682,13 +1682,13 @@ function _guiasGenerar(){
       "<tr><td></td><td></td><td><b>Operador:</b></td><td>" + (_guiaActual.operador||"") + "</td></tr>" +
       "<tr><td></td><td></td><td><b>Tipo de vehículo:</b></td><td>" + (_guiaActual.tipoVeh||"") + "</td></tr>" +
       "<tr><td></td><td></td><td><b>Placas:</b></td><td>" + (_guiaActual.placas||"") + "</td></tr>" +
-      
-      "<tr style=\"border-top:2px solid #000\">" +
-      "<td colspan=\"2\" style=\"padding:22px 4px 6px;font-size:11px;font-weight:700;vertical-align:bottom\">Nombre y firma</td>" +
-      "<td colspan=\"2\" style=\"padding:22px 4px 6px;font-size:11px;font-weight:700;vertical-align:bottom;border-left:1px solid #ccc\">Fecha y firma &nbsp;&mdash;&nbsp; Transportista</td>" +
-      "</tr></table></div>" +
+      "</table></div>" +
       "<div class=\"sello-box\">Sello</div>" +
       "</div>" +
+      "<table class=\"firma-linea\">" +
+      "<tr><td style=\"padding:16px 6px 4px;font-size:11px;font-weight:700;border-top:2px solid #000\">Nombre y firma &mdash; Surtió</td></tr>" +
+      "<tr><td style=\"padding:16px 6px 4px;font-size:11px;font-weight:700;border-top:1px solid #999\">Fecha y firma &mdash; Transportista</td></tr>" +
+      "</table>" +
       "</div>";
   }
 
@@ -1724,6 +1724,8 @@ function _guiasGenerar(){
     ".obs-label{font-size:9px;font-weight:800;color:#666;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px}" +
     ".obs-texto{font-size:11px;line-height:1.4}" +
     ".firmas-wrap{display:flex;align-items:stretch;margin-top:6px;border:2px solid #555;page-break-inside:avoid}" +
+    ".firma-linea{width:100%;border-collapse:collapse;page-break-inside:avoid}" +
+    ".firma-linea td{border-left:2px solid #555;border-right:2px solid #555;border-bottom:2px solid #555}" +
     ".transp{flex:1;font-size:11px;font-weight:600}" +
     ".transp table{width:100%;height:100%;border-collapse:collapse}" +
     ".transp td{padding:4px 6px;border-bottom:1px solid #ccc;font-weight:600}" +
