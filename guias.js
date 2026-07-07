@@ -1697,8 +1697,8 @@ function _guiasGenerar(){
       "<tr><td><b>Placas:</b></td><td>" + (_guiaActual.placas||"") + "</td></tr>" +
       "</table></div>" +
       "<div class=\"surtio-col\">" +
-      "<div class=\"surtio-label\"><b>Surtió:</b> " + (_guiaActual.surtio||"") + "</div>" +
       "<div class=\"surtio-firma-espacio\"></div>" +
+      "<div class=\"surtio-label\">Nombre y Firma quien surtió: <b>" + (_guiaActual.surtio||"") + "</b></div>" +
       "</div>" +
       "<div class=\"sello-box\">Sello</div>" +
       "</div>" +
@@ -1750,9 +1750,10 @@ function _guiasGenerar(){
     
     ".surtio-col{flex:1;border-left:1px solid #999;padding:6px 10px;display:flex;flex-direction:column;font-size:11px}" +
     ".surtio-firma-espacio{flex:1}" +
+    ".surtio-label{border-top:1.5px solid #000;padding-top:3px;font-weight:600}" +
     
     ".sello-box{border-left:2px dashed #444;display:flex;align-items:center;" +
-    "justify-content:center;color:#e2e2e2;font-size:9px;width:5cm;flex-shrink:0}" +
+    "justify-content:center;color:#e2e2e2;font-size:9px;width:5cm;height:3.5cm;flex-shrink:0}" +
     
     "@page{size:letter;margin:6mm 9mm}" +
     "@media print{" +
