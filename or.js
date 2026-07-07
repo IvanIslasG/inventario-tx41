@@ -375,12 +375,30 @@ function _orNGRender(){
     _orNGIniciado = true;
   }
 
+  // ¿Qué nombres genéricos tienen al menos un catálogo que necesita surtido? (mismo umbral que el resto del módulo)
+  var necesitaMaterial = new Set();
+  var todasFilas = calcularOR();
+  for(var k=0; k<todasFilas.length; k++){
+    var fr = todasFilas[k];
+    if(fArea && fr.area !== fArea) continue;
+    if(fr.calcSurtir > 0.5) necesitaMaterial.add(fr.ng || "SIN SUSTITUTO");
+  }
+
+  // Los que necesitan surtido van primero, para no tener que buscarlos entre los demás
+  lista.sort(function(a,b){
+    var na=necesitaMaterial.has(a), nb=necesitaMaterial.has(b);
+    if(na!==nb) return na?-1:1;
+    return a.localeCompare(b);
+  });
+
   function pintar(containerId){
     var el = document.getElementById(containerId);
     if(!el) return;
     el.innerHTML = "";
     for(var j=0; j<lista.length; j++){
       var ng = lista[j];
+      var necesita = necesitaMaterial.has(ng);
+
       var label = document.createElement("label");
       label.style.display = "flex";
       label.style.alignItems = "center";
@@ -389,6 +407,10 @@ function _orNGRender(){
       label.style.cursor = "pointer";
       label.style.borderRadius = "7px";
       label.style.fontSize = "12px";
+      if(necesita){
+        label.style.background = "#fff1e6";
+        label.style.borderLeft = "3px solid #e8590c";
+      }
 
       var input = document.createElement("input");
       input.type = "checkbox";
@@ -401,9 +423,19 @@ function _orNGRender(){
 
       var span = document.createElement("span");
       span.textContent = ng;
+      if(necesita){ span.style.fontWeight = "700"; span.style.color = "#a8390f"; }
 
       label.appendChild(input);
       label.appendChild(span);
+      if(necesita){
+        var dot = document.createElement("span");
+        dot.textContent = "●";
+        dot.title = "Tiene material por surtir";
+        dot.style.color = "#e8590c";
+        dot.style.fontSize = "9px";
+        dot.style.marginLeft = "auto";
+        label.appendChild(dot);
+      }
       el.appendChild(label);
     }
   }
