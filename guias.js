@@ -501,8 +501,8 @@ function _guiasNueva(){
     // Folio
     "<div style=\"margin-bottom:16px\">" +
     "<label style=\"font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;" +
-    "letter-spacing:.4px;display:block;margin-bottom:6px\">No. de Guía (folio)</label>" +
-    "<input id=\"gFolio\" type=\"number\" min=\"1\" placeholder=\"Ej. 47\"" +
+    "letter-spacing:.4px;display:block;margin-bottom:6px\">No. de Guía</label>" +
+    "<input id=\"gFolio\" type=\"number\" min=\"1\"" +
     (editando ? " value=\"" + _escAttr(_guiaActual.folio) + "\"" : "") +
     " style=\"width:100%;padding:10px 14px;border:1.5px solid var(--line);border-radius:10px;" +
     "font-size:16px;font-weight:700;font-family:inherit;color:var(--primary)\">" +
@@ -539,7 +539,7 @@ function _guiasNueva(){
     "<div style=\"margin-bottom:24px\">" +
     "<label style=\"font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;" +
     "letter-spacing:.4px;display:block;margin-bottom:6px\">Línea de transporte (opcional)</label>" +
-    "<input id=\"gTransporte\" type=\"text\" placeholder=\"Ej. ESTAFETA, DHL, Transporte propio\"" +
+    "<input id=\"gTransporte\" type=\"text\" placeholder=\"DHL, Transporte\"" +
     (editando && _guiaActual.transporte ? " value=\"" + _escAttr(_guiaActual.transporte) + "\"" : "") +
     " style=\"width:100%;padding:10px 14px;border:1.5px solid var(--line);border-radius:10px;" +
     "font-size:14px;font-family:inherit\">" +
@@ -1611,7 +1611,7 @@ function _guiasGenerar(){
   if(paginaActual.length > 0 || paginas.length === 0) paginas.push(paginaActual);
 
   // Función que genera el HTML de una página completa
-  function _htmlPagina(filasPag, esFinalPag){
+  function _htmlPagina(filasPag, esFinalPag, esPrimeraPag){
     var filasHtml = "";
     for(var fi=0; fi<filasPag.length; fi++){
       var f = filasPag[fi];
@@ -1659,6 +1659,12 @@ function _guiasGenerar(){
       "<tr><td><b>Atiende:</b></td><td>" + (alm.atiende||"") + "</td><td><b>C.P.:</b></td><td>" + (alm.cp||"") + "</td></tr>" +
       "<tr><td><b>Domicilio:</b></td><td colspan=\"3\">" + (alm.domicilio||"") + " &nbsp; " + (alm.ciudad||"") + "</td></tr>" +
       "</table></div>" +
+      // OBSERVACIONES (solo en la primera página, solo si hay texto)
+      (esPrimeraPag && _guiaActual.observaciones ?
+        "<div class=\"observaciones-box\">" +
+        "<div class=\"obs-label\">&#9888; Observaciones</div>" +
+        "<div class=\"obs-texto\">" + _escAttr(_guiaActual.observaciones).replace(/\n/g,"<br>") + "</div>" +
+        "</div>" : "") +
       // TABLA DE MATERIALES
       "<table class=\"items\">" +
       "<thead><tr>" +
@@ -1668,12 +1674,6 @@ function _guiasGenerar(){
       "<th class=\"col-cat\">Catálogo</th>" +
       "<th class=\"col-tot\">Total</th>" +
       "</tr></thead><tbody>" + filasHtml + "</tbody></table>" +
-      // OBSERVACIONES (solo en la última página, solo si hay texto)
-      (esFinalPag && _guiaActual.observaciones ?
-        "<div class=\"observaciones-box\">" +
-        "<div class=\"obs-label\">Observaciones</div>" +
-        "<div class=\"obs-texto\">" + _escAttr(_guiaActual.observaciones).replace(/\n/g,"<br>") + "</div>" +
-        "</div>" : "") +
       // TRANSPORTE Y FIRMAS (transporte | Surtió con espacio de firma | Sello)
       "<div class=\"firmas-wrap\">" +
       "<div class=\"transp\"><table>" +
@@ -1698,7 +1698,8 @@ function _guiasGenerar(){
   var paginasHtml = "";
   for(var p=0; p<paginas.length; p++){
     var esUltima = (p === paginas.length-1);
-    paginasHtml += _htmlPagina(paginas[p], esUltima);
+    var esPrimera = (p === 0);
+    paginasHtml += _htmlPagina(paginas[p], esUltima, esPrimera);
 
   }
 
@@ -1722,9 +1723,10 @@ function _guiasGenerar(){
     ".col-cant{text-align:center;width:60px}.col-emp{width:160px}" +
     ".col-desc{}.col-cat{text-align:center;width:90px;font-weight:800;font-family:monospace}" +
     ".col-tot{text-align:center;width:80px}" +
-    ".observaciones-box{border:1.5px solid #999;border-radius:4px;padding:6px 10px;margin-top:6px;page-break-inside:avoid}" +
-    ".obs-label{font-size:9px;font-weight:800;color:#666;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px}" +
-    ".obs-texto{font-size:11px;line-height:1.4}" +
+    ".observaciones-box{border:2px solid #c0392b;border-radius:4px;padding:8px 12px;margin:6px 0 8px;" +
+    "background:#fff5f0;page-break-inside:avoid}" +
+    ".obs-label{font-size:11px;font-weight:800;color:#c0392b;text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px}" +
+    ".obs-texto{font-size:13px;font-weight:700;line-height:1.4;color:#000}" +
     ".firmas-wrap{display:flex;align-items:stretch;margin-top:6px;border:2px solid #555;page-break-inside:avoid}" +
     ".firma-linea{width:100%;border-collapse:collapse;page-break-inside:avoid}" +
     ".firma-linea td{border-left:2px solid #555;border-right:2px solid #555;border-bottom:2px solid #555}" +
