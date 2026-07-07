@@ -93,6 +93,16 @@ function _guiasTogglePreferido(cat, desc, um, cont){
   _guiasPedirEmpaque(cat, desc, um, _guiasBDOpciones(cat));
 }
 
+// Borra un empaque conocido (cat+contenido) de la memoria (localStorage)
+function _guiasBDBorrarOpcion(cat, desc, um, cont){
+  if(!confirm("¿Borrar este empaque de la memoria?\n\n" + cat + " — empaque de " + cont + " " + um + "\n\nYa no se propondrá para este catálogo.")) return;
+  var bd = _guiasBDCargar();
+  var idx = bd.findIndex(function(e){ return e.cat === cat && e.cont === cont; });
+  if(idx >= 0){ bd.splice(idx, 1); _guiasBDGuardar(bd); }
+  document.querySelector(".modal")?.remove();
+  _guiasPedirEmpaque(cat, desc, um, _guiasBDOpciones(cat));
+}
+
 // ── Historial de guías ────────────────────────────────────────────────────────
 function _guiasHistCargar(){
   try{ return JSON.parse(localStorage.getItem(_GUIAS_LS_HIST)||"[]"); }catch(e){ return []; }
@@ -913,6 +923,10 @@ function _guiasPedirEmpaque(cat, desc, um, opciones){
       " title=\"" + (op.preferido ? "Preferido — siempre se propondrá primero" : "Marcar como preferido") + "\"" +
       " style=\"background:none;border:none;cursor:pointer;font-size:20px;line-height:1;" +
       "color:" + (op.preferido ? "#f59e0b" : "#ccc") + ";flex-shrink:0\">" + estrella + "</button>" +
+      "<button onclick=\"_guiasBDBorrarOpcion('" + catEsc + "','" + descEsc + "','" + um + "'," + op.cont + ")\"" +
+      " title=\"Borrar este empaque de la memoria\"" +
+      " style=\"background:none;border:none;cursor:pointer;font-size:18px;line-height:1;" +
+      "color:#dc2626;flex-shrink:0\">&times;</button>" +
       "</div>";
   }
 
