@@ -1680,13 +1680,12 @@ function _guiasGenerar(){
       "<tr><td><b>Surtió:</b></td><td>" + (_guiaActual.surtio||"") + "</td>" +
       "<td><b>Línea de transporte:</b></td><td>" + (_guiaActual.transporte||"") + "</td></tr>" +
       "<tr><td></td><td></td><td><b>Operador:</b></td><td>" + (_guiaActual.operador||"") + "</td></tr>" +
-      "<tr><td><b>Recibe:</b></td><td style=\"min-width:160px\">&nbsp;</td>" +
-      "<td><b>Tipo de vehículo:</b></td><td>" + (_guiaActual.tipoVeh||"") + "</td></tr>" +
+      "<tr><td></td><td></td><td><b>Tipo de vehículo:</b></td><td>" + (_guiaActual.tipoVeh||"") + "</td></tr>" +
       "<tr><td></td><td></td><td><b>Placas:</b></td><td>" + (_guiaActual.placas||"") + "</td></tr>" +
       
       "<tr style=\"border-top:2px solid #000\">" +
-      "<td colspan=\"2\" style=\"padding:6px 4px;font-size:11px;font-weight:700\">Nombre y firma</td>" +
-      "<td colspan=\"2\" style=\"padding:6px 4px;font-size:11px;font-weight:700;border-left:1px solid #ccc\">Fecha y firma &nbsp;&mdash;&nbsp; Transportista</td>" +
+      "<td colspan=\"2\" style=\"padding:22px 4px 6px;font-size:11px;font-weight:700;vertical-align:bottom\">Nombre y firma</td>" +
+      "<td colspan=\"2\" style=\"padding:22px 4px 6px;font-size:11px;font-weight:700;vertical-align:bottom;border-left:1px solid #ccc\">Fecha y firma &nbsp;&mdash;&nbsp; Transportista</td>" +
       "</tr></table></div>" +
       "<div class=\"sello-box\">Sello</div>" +
       "</div>" +
