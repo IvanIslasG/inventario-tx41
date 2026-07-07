@@ -1581,7 +1581,7 @@ function _guiasGenerar(){
   var _bloques = _guiasBloquesImpresion(_guiaActual.lineas, _guiaActual.area);
 
   // Paginar por BLOQUES: un bloque nunca se separa entre hojas si cabe completo en una página
-  var FILAS_POR_PAGINA = 22;
+  var FILAS_POR_PAGINA = 21;
   var paginas = [];
   var paginaActual = [];
   _bloques.forEach(function(bloque){
@@ -1689,7 +1689,7 @@ function _guiasGenerar(){
       "<div class=\"sello-box\">Sello</div>" +
       "</div>" +
       "<table class=\"firma-linea\">" +
-      "<tr><td style=\"padding:16px 6px 4px;font-size:11px;font-weight:700;border-top:2px solid #000\">Fecha y firma &mdash; Transportista</td></tr>" +
+      "<tr><td style=\"padding:32px 6px 5px;font-size:11px;font-weight:700;border-top:2px solid #000\">Fecha y firma &mdash; Transportista</td></tr>" +
       "</table>" +
       "</div>";
   }
