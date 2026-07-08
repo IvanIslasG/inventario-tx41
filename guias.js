@@ -585,16 +585,6 @@ function _guiasNueva(){
     "font-size:14px;font-family:inherit;box-sizing:border-box\">" +
     "</div>" +
 
-    // Transporte
-    "<div style=\"margin-bottom:24px\">" +
-    "<label style=\"font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;" +
-    "letter-spacing:.4px;display:block;margin-bottom:6px\">Línea de transporte (opcional)</label>" +
-    "<input id=\"gTransporte\" type=\"text\" placeholder=\"DHL, Transporte\"" +
-    (editando && _guiaActual.transporte ? " value=\"" + _escAttr(_guiaActual.transporte) + "\"" : "") +
-    " style=\"width:100%;padding:10px 14px;border:1.5px solid var(--line);border-radius:10px;" +
-    "font-size:14px;font-family:inherit;box-sizing:border-box\">" +
-    "</div>" +
-
     // Botón continuar
     "<button type=\"submit\"" +
     " style=\"width:100%;padding:14px;background:var(--primary);color:white;border:none;" +
@@ -714,7 +704,6 @@ function _guiasContinuarMateriales(){
   var raw = document.getElementById("gDestino").value.trim();
   var destino = raw.split(" ")[0].split("—")[0].trim().toUpperCase();
   var fecha   = document.getElementById("gFecha").value;
-  var transp  = document.getElementById("gTransporte").value.trim();
 
   if(!folio){ alert("Ingresa el número de guía."); return; }
   if(!destino){ alert("Selecciona el almacén destino."); return; }
@@ -723,7 +712,8 @@ function _guiasContinuarMateriales(){
   var previa = _guiaActual; // si venimos de editar, aquí ya hay materiales y otros datos capturados
   _guiaActual = {
     area: area, folio: parseInt(folio), destino: destino,
-    almInfo: almInfo, fecha: fecha, transporte: transp,
+    almInfo: almInfo, fecha: fecha,
+    transporte: previa ? previa.transporte : '',
     lineas: previa ? previa.lineas : [],
     surtio:    previa ? previa.surtio    : '',
     operador:  previa ? previa.operador  : '',
@@ -1462,7 +1452,7 @@ function _guiasProcesarTablaPegada(desdeNueva){
     return;
   }
 
-  document.querySelector(".modal")?.remove();
+  document.querySelectorAll(".modal").forEach(function(m){ m.remove(); });
 
   if(desdeNueva){
     _guiasORPendiente = { rows: rows, hdrIdx: det.hdrIdx, iCat: det.iCat, iXS: det.iXS };
