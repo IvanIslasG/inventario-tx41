@@ -756,7 +756,7 @@ function _tplLineaGuia(l, idx){
     l.cant + " " + l.um + " &mdash; " + l.bultos + " " + l.tipoEmp +
     (l.contEmp > 1 ? " de " + l.contEmp + " " + l.um : "") +
     (l.patio ? " &mdash; <b>PATIO</b>" : "") +
-    (l.lote ? " &mdash; <b>Lote " + l.lote + "</b>" : "") +
+    (l.lote ? " &mdash; <b>L - " + l.lote + "</b>" : "") +
     "</div>" +
     "</div>" +
     "<button onclick=\"_guiasEditarLineaCompleta(" + idx + ")\" title=\"Editar\"" +
@@ -1562,7 +1562,7 @@ function _guiasRevision(){
   var filasHtml = "";
   for(var i=0; i<_guiaActual.lineas.length; i++){
     var l = _guiaActual.lineas[i];
-    var descEmp = l.bultos + " " + l.tipoEmp + (l.contEmp>1?" de "+l.contEmp+" "+l.um:"") + (l.lote?" — Lote "+l.lote:"");
+    var descEmp = l.bultos + " " + l.tipoEmp + (l.contEmp>1?" de "+l.contEmp+" "+l.um:"") + (l.lote?" — L - "+l.lote:"");
     filasHtml +=
       "<tr style=\"border-bottom:1px solid var(--lite,#f4f6fb)\">" +
       "<td style=\"padding:6px 8px;font-size:12px;font-weight:700;font-family:monospace;" +
@@ -1716,7 +1716,7 @@ function _guiasBloquesImpresion(lineas, area){
   grupos.cajas.forEach(function(l){
     var nCajas = Math.floor(l.cant / l.contEmp);
     var descEmp = _guiasAbrevTipo(l.tipoEmp) + " " + l.contEmp + " " + l.um;
-    if(l.lote) descEmp += " " + l.lote;
+    if(l.lote) descEmp += " L - " + l.lote;
     bloqueEmpaque.push({
       cant:    nCajas,
       um:      descEmp,
@@ -1749,7 +1749,7 @@ function _guiasBloquesImpresion(lineas, area){
       bloqueGranel.push({
         cant:    l.cant,
         um:      l.um,
-        desc:    l.desc + (l.lote ? " — Lote " + l.lote : ""),
+        desc:    l.desc + (l.lote ? " — L - " + l.lote : ""),
         cat:     l.cat,
         total:   l.cant + " " + l.um,
         tipo:    "granel",
