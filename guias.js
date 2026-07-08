@@ -651,10 +651,11 @@ function _guiasContinuarMateriales(){
     _guiasORPendiente = null;
     _guiasCapturaMateriales();
     if(res.paraRevisar > 0){
+      _guiasToast(res.importados + " materiales guardados &mdash; " + res.paraRevisar + " por revisar", "warn");
       alert(res.importados + " materiales importados.\n\n" + res.paraRevisar +
         " se marcaron con \"Revisar\" (empaque ambiguo o desconocido). El sistema propuso lo más probable, pero conviene confirmarlo con el lápiz antes de generar la guía.");
     } else {
-      alert(res.importados + " materiales importados correctamente.");
+      _guiasToast(res.importados + " materiales procesados y guardados correctamente", "ok");
     }
     return;
   }
@@ -1207,6 +1208,7 @@ function _guiasProcesarORDesdeNueva(input){
 
       // Guardar filas de materiales para aplicarlas en cuanto se cree la guía (falta el folio)
       _guiasORPendiente = { rows: rows, hdrIdx: hdrIdx, iCat: iCat, iXS: iXS };
+      _guiasToast("Archivo procesado y guardado &mdash; se importará al continuar", "ok");
 
       var msg = detectado.length ? detectado.join("\n") : "No se detectaron Área/Destino/Fecha en el archivo — verifica esos campos manualmente.";
       alert("Datos detectados del OR:\n\n" + msg + "\n\nLos materiales se importarán al continuar. Completa el número de guía (folio) y continúa.");
@@ -1306,6 +1308,37 @@ function _guiasAbrirPegarTabla(desdeNueva){
   setTimeout(function(){ document.getElementById("gPasteArea")?.focus(); }, 50);
 }
 
+// Aviso visual (toast) que confirma claramente que algo se procesó/guardó — no bloquea como alert()
+function _guiasToast(mensaje, tipo){
+  document.querySelectorAll(".guias-toast").forEach(function(t){ t.remove(); }); // solo uno a la vez
+  var colores = {
+    ok:  { bg: "#16a34a", icono: "&#10003;" },
+    warn:{ bg: "#ea580c", icono: "&#9888;"  }
+  };
+  var c = colores[tipo] || colores.ok;
+  var toast = document.createElement("div");
+  toast.className = "guias-toast";
+  toast.style.cssText =
+    "position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:9999;" +
+    "background:" + c.bg + ";color:white;padding:14px 22px;border-radius:12px;" +
+    "font-family:inherit;font-size:14px;font-weight:700;box-shadow:0 8px 24px rgba(0,0,0,.25);" +
+    "display:flex;align-items:center;gap:10px;max-width:90vw;text-align:left;" +
+    "animation:guiasToastIn .25s ease-out";
+  toast.innerHTML = "<span style=\"font-size:18px\">" + c.icono + "</span><span>" + mensaje + "</span>";
+  if(!document.getElementById("guiasToastStyle")){
+    var style = document.createElement("style");
+    style.id = "guiasToastStyle";
+    style.textContent = "@keyframes guiasToastIn{from{opacity:0;transform:translate(-50%,-12px)}to{opacity:1;transform:translate(-50%,0)}}";
+    document.head.appendChild(style);
+  }
+  document.body.appendChild(toast);
+  setTimeout(function(){
+    toast.style.transition = "opacity .3s";
+    toast.style.opacity = "0";
+    setTimeout(function(){ toast.remove(); }, 300);
+  }, 3800);
+}
+
 function _guiasProcesarTablaPegada(desdeNueva){
   var area = document.getElementById("gPasteArea");
   if(!area) return;
@@ -1344,16 +1377,16 @@ function _guiasProcesarTablaPegada(desdeNueva){
 
   if(desdeNueva){
     _guiasORPendiente = { rows: rows, hdrIdx: det.hdrIdx, iCat: det.iCat, iXS: det.iXS };
-    alert("Tabla detectada correctamente. Los materiales se importarán en cuanto continúes. " +
-      "Completa el número de guía y el resto de los datos.");
+    _guiasToast("Tabla procesada y guardada &mdash; se importará al continuar", "ok");
   } else {
     var res = _guiasImportarFilasOR(rows, det.hdrIdx, det.iCat, det.iXS);
     _guiasRefrescarLineas();
     if(res.paraRevisar > 0){
+      _guiasToast(res.importados + " materiales guardados &mdash; " + res.paraRevisar + " por revisar", "warn");
       alert(res.importados + " materiales importados.\n\n" + res.paraRevisar +
         " se marcaron con \"Revisar\" (empaque ambiguo, desconocido, o requiere lote). Confírmalos con el lápiz antes de generar la guía.");
     } else {
-      alert(res.importados + " materiales importados correctamente.");
+      _guiasToast(res.importados + " materiales procesados y guardados correctamente", "ok");
     }
   }
 }
@@ -1497,10 +1530,11 @@ function _guiasProcesarOR(input){
       var res = _guiasImportarFilasOR(rows, hdrIdx, iCat, iXS);
       _guiasRefrescarLineas();
       if(res.paraRevisar > 0){
+        _guiasToast(res.importados + " materiales guardados &mdash; " + res.paraRevisar + " por revisar", "warn");
         alert(res.importados + " materiales importados.\n\n" + res.paraRevisar +
           " se marcaron con \"Revisar\" (empaque ambiguo o desconocido). El sistema propuso lo más probable, pero conviene confirmarlo con el lápiz antes de generar la guía.");
       } else {
-        alert(res.importados + " materiales importados correctamente.");
+        _guiasToast(res.importados + " materiales procesados y guardados correctamente", "ok");
       }
     });
   };
