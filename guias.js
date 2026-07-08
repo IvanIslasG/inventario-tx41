@@ -1274,7 +1274,8 @@ function _guiasDetectarSinHeader(rows){
       var v = String(r[c]||"").trim();
       if(!v) return;
       total++;
-      if(/^\d+(\.\d+)?$/.test(v.replace(/[,\s]/g,""))) numericos++;
+      // Acepta "4000", "4,000" o "4,000 PZAS"/"100 M" (número al inicio, seguido opcionalmente de texto/unidad)
+      if(/^\d[\d,.\s]*(\s+[a-záéíóúñ.]+)?$/i.test(v)) numericos++;
     });
     var score = total > 0 ? numericos/total : 0;
     if(score > mejorScore){ mejorScore = score; mejorCol = c; }
