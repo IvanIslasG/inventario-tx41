@@ -1221,19 +1221,67 @@ function _guiasProcesarORDesdeNueva(input){
 function _guiasDetectarHeaderYColumnas(rows){
   var hdrIdx = -1;
   for(var i=0; i<rows.length; i++){
-    if(rows[i].some(function(c){ return String(c||"").toUpperCase().includes("CATALOGO") || String(c||"").toUpperCase().includes("CATÁLOGO"); })){
+    if(rows[i].some(function(c){
+      var u = String(c||"").toUpperCase();
+      return u.includes("CATALOGO") || u.includes("CATÁLOGO") || u.trim() === "MATERIAL";
+    })){
       hdrIdx = i; break;
     }
   }
-  if(hdrIdx < 0) return null;
-  var hdrs = rows[hdrIdx].map(function(h){ return String(h||"").toLowerCase(); });
-  var iCat = hdrs.findIndex(function(h){ return h.includes("cat"); });
+  if(hdrIdx < 0) return _guiasDetectarSinHeader(rows);
+  var hdrs = rows[hdrIdx].map(function(h){ return String(h||"").toLowerCase().trim(); });
+  var iCat = hdrs.findIndex(function(h){ return h.includes("cat") || h === "material"; });
+  if(iCat < 0) return _guiasDetectarSinHeader(rows);
   var iXS  = hdrs.findIndex(function(h){
     return h.includes("surtir") || h.includes("cantidad") || h.includes("piezas") ||
-           h.includes("pzas") || h.includes("pza") || /^cant\.?$/.test(h.trim()) || h.includes("qty");
+           h.includes("pzas") || h.includes("pza") || /^cant\.?$/.test(h) || h.includes("qty");
   });
-  if(iCat < 0 || iXS < 0) return null;
+  if(iXS < 0){
+    // Sin encabezado reconocible de cantidad (p.ej. el jefe pone el código del almacén destino,
+    // como "TX8I") — por convención esa columna suele ser la última de la tabla.
+    var iDesc = hdrs.findIndex(function(h){ return h.includes("desc"); });
+    var candidatos = [];
+    for(var c=0; c<hdrs.length; c++){ if(c!==iCat && c!==iDesc && hdrs[c]!=="") candidatos.push(c); }
+    if(candidatos.length > 0) iXS = candidatos[candidatos.length-1];
+  }
+  if(iXS < 0) return null;
   return { hdrIdx: hdrIdx, iCat: iCat, iXS: iXS };
+}
+
+// Cuando no hay ninguna fila de encabezado reconocible (el jefe no puso títulos a las columnas):
+// se asume que la primera columna es el catálogo, y se busca cuál otra columna es "casi toda numérica"
+// para tratarla como la cantidad.
+function _guiasDetectarSinHeader(rows){
+  if(!rows || rows.length === 0) return null;
+  var ncols = Math.max.apply(null, rows.map(function(r){ return r.length; }));
+  if(ncols < 2) return null;
+  var muestra = rows.slice(0, Math.min(rows.length, 20));
+
+  // La columna 0 debe parecer catálogo: casi todas las filas con algo numérico (típico de claves SAP)
+  var col0Num = 0, col0Total = 0;
+  muestra.forEach(function(r){
+    var v = String(r[0]||"").trim();
+    if(!v) return;
+    col0Total++;
+    if(/^\d+$/.test(v.replace(/[,\s]/g,""))) col0Num++;
+  });
+  if(col0Total === 0 || (col0Num/col0Total) < 0.7) return null; // la col. 0 no parece catálogo — mejor no adivinar
+
+  var mejorCol = -1, mejorScore = -1;
+  for(var c=1; c<ncols; c++){
+    var numericos = 0, total = 0;
+    muestra.forEach(function(r){
+      var v = String(r[c]||"").trim();
+      if(!v) return;
+      total++;
+      if(/^\d+(\.\d+)?$/.test(v.replace(/[,\s]/g,""))) numericos++;
+    });
+    var score = total > 0 ? numericos/total : 0;
+    if(score > mejorScore){ mejorScore = score; mejorCol = c; }
+  }
+  if(mejorCol < 0 || mejorScore < 0.6) return null; // ninguna columna se ve suficientemente numérica
+
+  return { hdrIdx: -1, iCat: 0, iXS: mejorCol };
 }
 
 // ── Pegar tabla copiada de un correo ──────────────────────────────────────────
@@ -1369,7 +1417,7 @@ function _guiasImportarFilasOR(rows, hdrIdx, iCat, iXS){
   for(var r=hdrIdx+1; r<rows.length; r++){
     var row = rows[r];
     var cat = String(row[iCat]||"").trim();
-    var xs  = parseInt(row[iXS]||0);
+    var xs  = parseInt(String(row[iXS]||0).replace(/[,\s]/g,""));
     if(!cat || !xs || xs <= 0) continue;
     var m = mat(cat);
     var esPatioMat = (m.ubic || "").toLowerCase() === "patio";
