@@ -486,6 +486,10 @@ function modGuias(){
 }
 
 // ── PANTALLA 2: Nueva guía — datos de cabecera ────────────────────────────────
+var _guiasDestinoLista = [];      // [{sigla, nombre}] — se llena al construir la pantalla
+var _guiasDestinoFiltrados = [];
+var _guiasDestinoHighlight = -1;
+
 function _guiasNueva(){
   var editando = !!_guiaActual; // si ya hay una guía en curso, estamos editando/regresando a Datos
 
@@ -500,31 +504,33 @@ function _guiasNueva(){
     return "<option value=\"" + a + "\"" + sel + ">" + a + "</option>";
   }).join("");
 
-  // Almacenes para el select de destino (del directorio DB)
+  // Almacenes para el autocompletado de destino (del directorio DB)
   var almsDb = Object.keys(DB.directorio?.almacenes||{}).sort();
-  var almsHtml = almsDb.map(function(k){
+  _guiasDestinoLista = almsDb.map(function(k){
     var info = _guiasAlmInfo(k);
-    return "<option value=\"" + k + "\">" + k + " &mdash; " + info.nombre + "</option>";
-  }).join("");
+    return { sigla: k, nombre: info.nombre || "" };
+  });
 
   $("#moduleView").innerHTML =
     "<div style=\"max-width:560px;margin:0 auto;padding:24px 16px\">" +
     "<div style=\"display:flex;align-items:center;gap:12px;margin-bottom:24px\">" +
-    "<button onclick=\"modGuias()\" style=\"background:none;border:1.5px solid var(--line);" +
+    "<button type=\"button\" onclick=\"modGuias()\" style=\"background:none;border:1.5px solid var(--line);" +
     "border-radius:8px;padding:6px 14px;cursor:pointer;font-size:13px;font-family:inherit;" +
     "color:var(--muted)\">&lsaquo; Cancelar</button>" +
     "<h2 style=\"margin:0;font-size:18px\">" + (editando ? "Editar guía" : "Nueva guía") + "</h2>" +
     "</div>" +
 
+    "<form id=\"gNuevaForm\" onsubmit=\"event.preventDefault();_guiasContinuarMateriales();return false;\">" +
+
     (editando ? "" :
     "<div style=\"margin-bottom:20px;display:flex;flex-direction:column;gap:6px\">" +
-    "<button onclick=\"_guiasCargarORDesdeNueva()\"" +
+    "<button type=\"button\" onclick=\"_guiasCargarORDesdeNueva()\"" +
     " style=\"width:100%;padding:10px;background:white;border:1.5px solid var(--line);" +
     "border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;" +
     "color:var(--primary)\">&#8679; Importar desde OR (Excel) &mdash; autocompleta Área, Destino y Fecha</button>" +
     "<input type=\"file\" id=\"gORFileNueva\" accept=\".xlsx\" style=\"display:none\"" +
     " onchange=\"_guiasProcesarORDesdeNueva(this)\">" +
-    "<button onclick=\"_guiasAbrirPegarTabla(true)\"" +
+    "<button type=\"button\" onclick=\"_guiasAbrirPegarTabla(true)\"" +
     " style=\"width:100%;padding:10px;background:white;border:1.5px solid var(--line);" +
     "border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;" +
     "color:var(--primary)\">&#128203; Pegar tabla de un correo</button>" +
@@ -545,19 +551,23 @@ function _guiasNueva(){
     "<input id=\"gFolio\" type=\"number\" min=\"1\"" +
     (editando ? " value=\"" + _escAttr(_guiaActual.folio) + "\"" : "") +
     " style=\"width:100%;padding:10px 14px;border:1.5px solid var(--line);border-radius:10px;" +
-    "font-size:16px;font-weight:700;font-family:inherit;color:var(--primary)\">" +
+    "font-size:16px;font-weight:700;font-family:inherit;color:var(--primary);box-sizing:border-box\">" +
     "</div>" +
 
-    // Destino
-    "<div style=\"margin-bottom:16px\">" +
+    // Destino (autocompletado propio, con navegación por teclado)
+    "<div style=\"margin-bottom:16px;position:relative\">" +
     "<label style=\"font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;" +
     "letter-spacing:.4px;display:block;margin-bottom:6px\">Destino</label>" +
-    "<input id=\"gDestino\" list=\"gDestinoList\" placeholder=\"Escribe o selecciona almacén...\"" +
+    "<input id=\"gDestino\" autocomplete=\"off\" placeholder=\"Escribe o selecciona almacén...\"" +
     (editando ? " value=\"" + _escAttr(_guiaActual.destino) + "\"" : "") +
-    " oninput=\"_guiasActualizarDestinatario()\"" +
+    " oninput=\"_guiasDestinoInput()\" onfocus=\"_guiasDestinoInput()\"" +
+    " onkeydown=\"_guiasDestinoKeydown(event)\"" +
+    " onblur=\"setTimeout(function(){ var c=document.getElementById('gDestinoSugerencias'); if(c) c.style.display='none'; },150)\"" +
     " style=\"width:100%;padding:10px 14px;border:1.5px solid var(--line);" +
-    "border-radius:10px;font-size:14px;font-family:inherit\">" +
-    "<datalist id=\"gDestinoList\">" + almsHtml + "</datalist>" +
+    "border-radius:10px;font-size:14px;font-family:inherit;box-sizing:border-box\">" +
+    "<div id=\"gDestinoSugerencias\" style=\"position:absolute;left:0;right:0;top:100%;margin-top:2px;" +
+    "background:white;border:1.5px solid var(--line);border-radius:10px;max-height:220px;overflow-y:auto;" +
+    "z-index:50;display:none;box-shadow:0 8px 20px rgba(0,0,0,.12)\"></div>" +
     "</div>" +
 
     // Info destinatario (se llena automático)
@@ -572,7 +582,7 @@ function _guiasNueva(){
     "<input id=\"gFecha\" type=\"date\"" +
     (editando && _guiaActual.fecha ? " value=\"" + _escAttr(_guiaActual.fecha) + "\"" : "") +
     " style=\"width:100%;padding:10px 14px;border:1.5px solid var(--line);border-radius:10px;" +
-    "font-size:14px;font-family:inherit\">" +
+    "font-size:14px;font-family:inherit;box-sizing:border-box\">" +
     "</div>" +
 
     // Transporte
@@ -582,14 +592,15 @@ function _guiasNueva(){
     "<input id=\"gTransporte\" type=\"text\" placeholder=\"DHL, Transporte\"" +
     (editando && _guiaActual.transporte ? " value=\"" + _escAttr(_guiaActual.transporte) + "\"" : "") +
     " style=\"width:100%;padding:10px 14px;border:1.5px solid var(--line);border-radius:10px;" +
-    "font-size:14px;font-family:inherit\">" +
+    "font-size:14px;font-family:inherit;box-sizing:border-box\">" +
     "</div>" +
 
     // Botón continuar
-    "<button onclick=\"_guiasContinuarMateriales()\"" +
+    "<button type=\"submit\"" +
     " style=\"width:100%;padding:14px;background:var(--primary);color:white;border:none;" +
     "border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit\">" +
     (editando ? "Continuar &rarr; Materiales" : "Continuar &rarr; Capturar materiales") + "</button>" +
+    "</form>" +
     "</div>";
 
   if(editando){
@@ -601,6 +612,83 @@ function _guiasNueva(){
     var mm = String(hoy.getMonth()+1).padStart(2,'0');
     var dd = String(hoy.getDate()).padStart(2,'0');
     document.getElementById("gFecha").value = yyyy+"-"+mm+"-"+dd;
+  }
+}
+
+function _guiasDestinoInput(){
+  var inp = document.getElementById("gDestino");
+  if(!inp) return;
+  var q = inp.value.trim().toLowerCase();
+  _guiasDestinoFiltrados = _guiasDestinoLista.filter(function(a){
+    return !q || a.sigla.toLowerCase().includes(q) || a.nombre.toLowerCase().includes(q);
+  }).slice(0, 30);
+  _guiasDestinoHighlight = -1;
+  _guiasDestinoRenderSugerencias();
+  _guiasActualizarDestinatario();
+}
+
+function _guiasDestinoRenderSugerencias(){
+  var cont = document.getElementById("gDestinoSugerencias");
+  if(!cont) return;
+  if(_guiasDestinoFiltrados.length === 0){ cont.style.display = "none"; cont.innerHTML = ""; return; }
+  cont.innerHTML = _guiasDestinoFiltrados.map(function(a, idx){
+    var resaltado = idx === _guiasDestinoHighlight;
+    return "<div data-idx=\"" + idx + "\" onmousedown=\"event.preventDefault();_guiasDestinoElegir(" + idx + ")\"" +
+      " style=\"padding:9px 14px;cursor:pointer;font-size:13px;" +
+      (resaltado ? "background:var(--primary);color:white" : "background:white;color:inherit") + "\">" +
+      "<b>" + a.sigla + "</b> &mdash; " + a.nombre + "</div>";
+  }).join("");
+  cont.style.display = "block";
+  if(_guiasDestinoHighlight >= 0){
+    var activo = cont.querySelector("[data-idx=\"" + _guiasDestinoHighlight + "\"]");
+    if(activo) activo.scrollIntoView({block:"nearest"});
+  }
+}
+
+function _guiasDestinoElegir(idx){
+  var a = _guiasDestinoFiltrados[idx];
+  if(!a) return;
+  var inp = document.getElementById("gDestino");
+  inp.value = a.sigla;
+  var cont = document.getElementById("gDestinoSugerencias");
+  if(cont) cont.style.display = "none";
+  _guiasActualizarDestinatario();
+}
+
+function _guiasDestinoKeydown(ev){
+  var cont = document.getElementById("gDestinoSugerencias");
+  var visible = !!(cont && cont.style.display !== "none" && _guiasDestinoFiltrados.length > 0);
+
+  if(ev.key === "ArrowDown"){
+    ev.preventDefault();
+    if(!visible){ _guiasDestinoInput(); return; }
+    _guiasDestinoHighlight = Math.min(_guiasDestinoHighlight + 1, _guiasDestinoFiltrados.length - 1);
+    _guiasDestinoRenderSugerencias();
+    return;
+  }
+  if(ev.key === "ArrowUp"){
+    ev.preventDefault();
+    if(!visible) return;
+    _guiasDestinoHighlight = Math.max(_guiasDestinoHighlight - 1, 0);
+    _guiasDestinoRenderSugerencias();
+    return;
+  }
+  if(ev.key === "Enter"){
+    if(visible){
+      ev.preventDefault();
+      _guiasDestinoElegir(_guiasDestinoHighlight >= 0 ? _guiasDestinoHighlight : 0);
+    }
+    // Si no hay sugerencias visibles, se deja pasar el Enter para que el formulario continúe.
+    return;
+  }
+  if(ev.key === "Tab"){
+    if(visible){
+      _guiasDestinoElegir(_guiasDestinoHighlight >= 0 ? _guiasDestinoHighlight : 0);
+    }
+    return; // no se bloquea: el Tab sigue avanzando al siguiente campo
+  }
+  if(ev.key === "Escape"){
+    if(cont) cont.style.display = "none";
   }
 }
 
@@ -1010,6 +1098,7 @@ function _guiasPedirEmpaque(cat, desc, um, opciones){
     "font-family:inherit;margin-top:3px\"></div>" +
     "<div><label style=\"font-size:11px;color:var(--muted)\">Cantidad total</label>" +
     "<input id=\"gEmpCant\" type=\"number\" min=\"1\" value=\"\"" +
+    " onkeydown=\"if(event.key==='Enter'){event.preventDefault();_guiasConfirmarEmpaque('" + catEsc + "','" + descEsc + "','" + um + "');}\"" +
     " style=\"width:100%;padding:8px;border:1.5px solid var(--line);border-radius:8px;" +
     "font-family:inherit;font-size:15px;font-weight:700;color:var(--primary);margin-top:3px\"></div>" +
     "</div></details>" +
@@ -1542,6 +1631,54 @@ function _guiasProcesarOR(input){
 }
 
 // ── PANTALLA 4: Revisión y datos de firma ─────────────────────────────────────
+// ── Transportes base conocidos (tarjetas de captura rápida) ───────────────────
+var _GUIAS_TRANSPORTES_BASE = [
+  { linea: "Mora", vehiculos: [
+    { tipo: "Torton", placas: "76-AP-4X", operadores: ["Osvaldo Lara Juárez"] }
+  ]},
+  { linea: "Santana", vehiculos: [
+    { tipo: "Torton", placas: "004-DX-7", operadores: ["Ángel Ramírez Alpízar", "Gustavo Ramírez", "Alejandro Galán"] },
+    { tipo: "Plana",  placas: "660-AR-2", operadores: ["Ángel Ramírez Alpízar", "Gustavo Ramírez", "Alejandro Galán"] }
+  ]}
+];
+
+function _guiasElegirTransporteBase(linea, tipo, placas, operador){
+  var f = function(id, val){ var el = document.getElementById(id); if(el) el.value = val; };
+  f("gTransporteRev", linea);
+  f("gTipoVeh", tipo);
+  f("gPlacas", placas);
+  f("gOperador", operador);
+}
+
+function _guiasTarjetasTransporteHtml(){
+  var html = "";
+  _GUIAS_TRANSPORTES_BASE.forEach(function(t){
+    t.vehiculos.forEach(function(v){
+      var unOperador = v.operadores.length === 1;
+      html +=
+        "<div style=\"border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;" +
+        "background:#fafbff;min-width:170px;flex:1\">" +
+        "<div style=\"font-size:12px;font-weight:800;color:var(--primary)\">" + t.linea + " &mdash; " + v.tipo + "</div>" +
+        "<div style=\"font-size:11px;color:var(--muted);font-family:monospace;margin-bottom:6px\">" + v.placas + "</div>" +
+        (unOperador ?
+          "<button type=\"button\" onclick=\"_guiasElegirTransporteBase('" + t.linea + "','" + v.tipo + "','" + v.placas + "','" + v.operadores[0] + "')\"" +
+          " style=\"width:100%;padding:6px;background:var(--primary);color:white;border:none;" +
+          "border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit\">Usar &mdash; " + v.operadores[0] + "</button>"
+          :
+          "<div style=\"font-size:10px;color:var(--muted);margin-bottom:3px\">Operador:</div>" +
+          "<div style=\"display:flex;flex-wrap:wrap;gap:4px\">" +
+          v.operadores.map(function(op){
+            return "<button type=\"button\" onclick=\"_guiasElegirTransporteBase('" + t.linea + "','" + v.tipo + "','" + v.placas + "','" + op + "')\"" +
+              " style=\"padding:5px 9px;background:white;border:1.5px solid var(--primary);color:var(--primary);" +
+              "border-radius:7px;font-size:10.5px;font-weight:600;cursor:pointer;font-family:inherit\">" + op + "</button>";
+          }).join("") +
+          "</div>") +
+        "</div>";
+    });
+  });
+  return html;
+}
+
 function _guiasRevision(){
   if(_guiaActual.lineas.length === 0){ alert("No hay materiales capturados."); return; }
   if(_guiaActual.lineas.some(function(l){ return l.pendiente; })){
@@ -1610,6 +1747,8 @@ function _guiasRevision(){
     "padding:16px;margin-bottom:20px\">" +
     "<div style=\"font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;" +
     "letter-spacing:.4px;margin-bottom:12px\">Datos para la guía</div>" +
+    "<div style=\"font-size:10.5px;color:var(--muted);margin-bottom:6px\">Transporte conocido &mdash; toca para llenar automático</div>" +
+    "<div style=\"display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px\">" + _guiasTarjetasTransporteHtml() + "</div>" +
     "<div style=\"display:grid;grid-template-columns:1fr 1fr;gap:12px\">" +
     _tplCampoFirma("gPedido", "No. Pedido", _guiaActual.pedido || "0") +
     _tplCampoFirma("gSiatel", "Siatel", _guiaActual.siatel || "0") +
