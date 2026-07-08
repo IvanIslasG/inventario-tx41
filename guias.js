@@ -9,6 +9,20 @@ const _GUIAS_ALM_SEED = {"D041": {"nombre": "ALMACEN DISTRIBUIDOR PUEBLA", "atie
 const _GUIAS_LS_BD    = "guias_bd_empaques_v1";
 const _GUIAS_LS_HIST  = "guias_historial_v1";
 
+// Semilla de tarimas conocidas: cat + tipo de contenedor + cuántos contenedores por tarima + contenido c/u
+const _GUIAS_TARIMA_SEED = [
+  {cat:"1054521", um:"M",   subTipo:"Bobina", subCant:60,  subCont:500, freq:1},
+  {cat:"1054521", um:"M",   subTipo:"Bobina", subCant:48,  subCont:500, freq:1},
+  {cat:"1001221", um:"M",   subTipo:"Rollo",  subCant:72,  subCont:300, freq:1},
+  {cat:"1036187", um:"PZA", subTipo:"Caja",   subCant:117, subCont:1,   freq:1},
+  {cat:"1036187", um:"PZA", subTipo:"Caja",   subCant:153, subCont:1,   freq:1},
+  {cat:"1036188", um:"PZA", subTipo:"Caja",   subCant:117, subCont:1,   freq:1},
+  {cat:"1036188", um:"PZA", subTipo:"Caja",   subCant:153, subCont:1,   freq:1},
+  {cat:"1039312", um:"PZA", subTipo:"Caja",   subCant:117, subCont:1,   freq:1},
+  {cat:"1039312", um:"PZA", subTipo:"Caja",   subCant:153, subCont:1,   freq:1}
+];
+const _GUIAS_LS_TARIMA = "guias_bd_tarimas_v1";
+
 // ── Cargar/guardar BD de empaques ────────────────────────────────────────────
 var _guiasBDSeedMerged = false;
 function _guiasBDCargar(){
@@ -103,6 +117,121 @@ function _guiasBDBorrarOpcion(cat, desc, um, cont){
   _guiasPedirEmpaque(cat, desc, um, _guiasBDOpciones(cat));
 }
 
+// ── Cargar/guardar BD de tarimas (mismo patrón que la BD de empaques) ─────────
+var _guiasTarimaSeedMerged = false;
+function _guiasTarimaBDCargar(){
+  var bd = null;
+  try{
+    const raw = localStorage.getItem(_GUIAS_LS_TARIMA);
+    if(raw) bd = JSON.parse(raw);
+  }catch(e){}
+
+  if(bd === null){
+    bd = JSON.parse(JSON.stringify(_GUIAS_TARIMA_SEED));
+    _guiasTarimaBDGuardar(bd);
+    _guiasTarimaSeedMerged = true;
+    return bd;
+  }
+
+  if(!_guiasTarimaSeedMerged){
+    var cambio = false;
+    _GUIAS_TARIMA_SEED.forEach(function(se){
+      var yaExiste = bd.some(function(e){
+        return e.cat === se.cat && e.subTipo === se.subTipo && e.subCant === se.subCant && e.subCont === se.subCont;
+      });
+      if(!yaExiste){ bd.push(JSON.parse(JSON.stringify(se))); cambio = true; }
+    });
+    if(cambio) _guiasTarimaBDGuardar(bd);
+    _guiasTarimaSeedMerged = true;
+  }
+  return bd;
+}
+
+function _guiasTarimaBDGuardar(bd){
+  try{ localStorage.setItem(_GUIAS_LS_TARIMA, JSON.stringify(bd)); }catch(e){}
+}
+
+function _guiasTarimaBDActualizar(cat, subTipo, subCant, subCont, um){
+  var bd = _guiasTarimaBDCargar();
+  var idx = bd.findIndex(function(e){
+    return e.cat === cat && e.subTipo === subTipo && e.subCant === subCant && e.subCont === subCont;
+  });
+  if(idx >= 0){ bd[idx].freq = (bd[idx].freq || 1) + 1; }
+  else{ bd.push({cat: cat, um: um || '', subTipo: subTipo, subCant: subCant, subCont: subCont, freq: 1}); }
+  _guiasTarimaBDGuardar(bd);
+}
+
+function _guiasTarimaOpciones(cat){
+  var bd = _guiasTarimaBDCargar();
+  return bd.filter(function(e){ return e.cat === cat; })
+           .sort(function(a,b){
+             var pa = a.preferido ? 1 : 0, pb = b.preferido ? 1 : 0;
+             if(pa !== pb) return pb - pa;
+             return (b.freq||0)-(a.freq||0);
+           });
+}
+
+function _guiasTarimaBDMarcarPreferido(cat, subTipo, subCant, subCont){
+  var bd = _guiasTarimaBDCargar();
+  bd.forEach(function(e){
+    if(e.cat === cat) e.preferido = (e.subTipo === subTipo && e.subCant === subCant && e.subCont === subCont);
+  });
+  _guiasTarimaBDGuardar(bd);
+}
+
+function _guiasTarimaTogglePreferido(cat, desc, um, subTipo, subCant, subCont){
+  _guiasTarimaBDMarcarPreferido(cat, subTipo, subCant, subCont);
+  document.querySelector(".modal")?.remove();
+  _guiasPedirEmpaque(cat, desc, um, _guiasBDOpciones(cat));
+}
+
+function _guiasTarimaBorrarOpcion(cat, desc, um, subTipo, subCant, subCont){
+  if(!confirm("¿Borrar esta tarima de la memoria?\n\nTarima de " + subCant + " " + subTipo + " c/ " + subCont + " " + um + "\n\nYa no se propondrá para este catálogo.")) return;
+  var bd = _guiasTarimaBDCargar();
+  var idx = bd.findIndex(function(e){
+    return e.cat === cat && e.subTipo === subTipo && e.subCant === subCant && e.subCont === subCont;
+  });
+  if(idx >= 0){ bd.splice(idx, 1); _guiasTarimaBDGuardar(bd); }
+  document.querySelector(".modal")?.remove();
+  _guiasPedirEmpaque(cat, desc, um, _guiasBDOpciones(cat));
+}
+
+// Agrega una línea de tarima (contenedor anidado: N tarimas de X contenedores de Y c/u)
+function _guiasAgregarLineaTarima(cat, desc, um, subTipo, subCant, subCont, numTarimas){
+  if(_guiasEditandoLineaIdx !== null){ _guiaActual.lineas.splice(_guiasEditandoLineaIdx, 1); _guiasEditandoLineaIdx = null; }
+  var contEmp = subCant * subCont; // cantidad total que representa una tarima
+  var cant = numTarimas * contEmp;
+  _guiaActual.lineas.push({
+    cat: cat, desc: desc, um: um,
+    cant: cant, tipoEmp: "Tarima", contEmp: contEmp,
+    bultos: numTarimas, patio: false, granel: false,
+    tarimaSubTipo: subTipo, tarimaSubCant: subCant, tarimaSubCont: subCont
+  });
+  _limpiarCatInput();
+  document.querySelector(".modal")?.remove();
+  _guiasRefrescarVista();
+}
+
+function _guiasSeleccionarTarima(cat, desc, um, subTipo, subCant, subCont){
+  var num = prompt("¿Cuántas tarimas de " + subCant + " " + subTipo + " c/ " + subCont + " " + um + " van?", "1");
+  if(!num || isNaN(num) || parseInt(num) < 1) return;
+  _guiasTarimaBDActualizar(cat, subTipo, subCant, subCont, um);
+  _guiasAgregarLineaTarima(cat, desc, um, subTipo, subCant, subCont, parseInt(num));
+}
+
+function _guiasConfirmarTarimaNueva(cat, desc, um){
+  var subTipo = (document.getElementById("gTarimaTipo")?.value || "").trim();
+  var subCant = parseInt(document.getElementById("gTarimaSubCant")?.value || "0");
+  var subCont = parseInt(document.getElementById("gTarimaSubCont")?.value || "0");
+  var numTarimas = parseInt(document.getElementById("gTarimaNum")?.value || "0");
+  if(!subTipo){ alert("Indica el tipo de contenedor (Caja, Bobina, Rollo...)."); return; }
+  if(!subCant || subCant < 1){ alert("Indica cuántos contenedores lleva cada tarima."); return; }
+  if(!subCont || subCont < 1){ alert("Indica el contenido de cada contenedor."); return; }
+  if(!numTarimas || numTarimas < 1){ alert("Indica cuántas tarimas van."); return; }
+  _guiasTarimaBDActualizar(cat, subTipo, subCant, subCont, um);
+  _guiasAgregarLineaTarima(cat, desc, um, subTipo, subCant, subCont, numTarimas);
+}
+
 // ── Historial de guías ────────────────────────────────────────────────────────
 function _guiasHistCargar(){
   try{ return JSON.parse(localStorage.getItem(_GUIAS_LS_HIST)||"[]"); }catch(e){ return []; }
@@ -152,6 +281,18 @@ function _guiasEsCable(cat){
     var m = mat(cat);
     return (m.area || "").toLowerCase() === "cables" && (m.um || "").trim().toLowerCase() === "m";
   }catch(e){ return false; }
+}
+
+// Excepciones de tipo de empaque por catálogo: algunos cables no van en Bobina sino en otro contenedor.
+var _GUIAS_TIPO_EXCEPCIONES = {
+  "1001221": "Rollo"
+};
+
+// Tipo de empaque forzado para un catálogo (excepción específica, o "Bobina" si es cable en metros), o null si es libre
+function _guiasTipoForzado(cat){
+  if(_GUIAS_TIPO_EXCEPCIONES[cat]) return _GUIAS_TIPO_EXCEPCIONES[cat];
+  if(_guiasEsCable(cat)) return "Bobina";
+  return null;
 }
 
 var _guiasORPendiente = null; // { rows, hdrIdx, iCat, iXS } de un OR importado desde la pantalla de Datos, pendiente de aplicar a las líneas
@@ -585,6 +726,16 @@ function _guiasNueva(){
     "font-size:14px;font-family:inherit;box-sizing:border-box\">" +
     "</div>" +
 
+    // Transporte
+    "<div style=\"margin-bottom:24px\">" +
+    "<label style=\"font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;" +
+    "letter-spacing:.4px;display:block;margin-bottom:6px\">Línea de transporte (opcional)</label>" +
+    "<input id=\"gTransporte\" type=\"text\" placeholder=\"DHL, Transporte\"" +
+    (editando && _guiaActual.transporte ? " value=\"" + _escAttr(_guiaActual.transporte) + "\"" : "") +
+    " style=\"width:100%;padding:10px 14px;border:1.5px solid var(--line);border-radius:10px;" +
+    "font-size:14px;font-family:inherit;box-sizing:border-box\">" +
+    "</div>" +
+
     // Botón continuar
     "<button type=\"submit\"" +
     " style=\"width:100%;padding:14px;background:var(--primary);color:white;border:none;" +
@@ -704,6 +855,7 @@ function _guiasContinuarMateriales(){
   var raw = document.getElementById("gDestino").value.trim();
   var destino = raw.split(" ")[0].split("—")[0].trim().toUpperCase();
   var fecha   = document.getElementById("gFecha").value;
+  var transp  = document.getElementById("gTransporte").value.trim();
 
   if(!folio){ alert("Ingresa el número de guía."); return; }
   if(!destino){ alert("Selecciona el almacén destino."); return; }
@@ -712,8 +864,7 @@ function _guiasContinuarMateriales(){
   var previa = _guiaActual; // si venimos de editar, aquí ya hay materiales y otros datos capturados
   _guiaActual = {
     area: area, folio: parseInt(folio), destino: destino,
-    almInfo: almInfo, fecha: fecha,
-    transporte: previa ? previa.transporte : '',
+    almInfo: almInfo, fecha: fecha, transporte: transp,
     lineas: previa ? previa.lineas : [],
     surtio:    previa ? previa.surtio    : '',
     operador:  previa ? previa.operador  : '',
@@ -832,7 +983,8 @@ function _tplLineaGuia(l, idx){
     "<div style=\"font-size:12px;color:var(--text);margin:2px 0\">" + l.desc + "</div>" +
     "<div style=\"font-size:11px;color:var(--muted)\">" +
     l.cant + " " + l.um + " &mdash; " + l.bultos + " " + l.tipoEmp +
-    (l.contEmp > 1 ? " de " + l.contEmp + " " + l.um : "") +
+    (l.tipoEmp === "Tarima" ? " (" + l.tarimaSubCant + " " + l.tarimaSubTipo + " c/ " + l.tarimaSubCont + " " + l.um + ")"
+      : l.contEmp > 1 ? " de " + l.contEmp + " " + l.um : "") +
     (l.patio ? " &mdash; <b>PATIO</b>" : "") +
     (l.lote ? " &mdash; <b>L - " + l.lote + "</b>" : "") +
     "</div>" +
@@ -963,7 +1115,7 @@ function _guiasAgregarLoteManualASeleccion(cat, desc, um){
 
 // Agrega una línea por cada bobina seleccionada, completa (sin recortar), de un solo golpe
 function _guiasConfirmarLotesSeleccionados(cat, desc, um){
-  var esCable = _guiasEsCable(cat);
+  var tipoLote = _guiasTipoForzado(cat) || "Caja";
   var seleccion = _guiasLotesSeleccionados.slice();
   _guiasLotesSeleccionados = [];
   document.querySelector(".modal")?.remove();
@@ -973,7 +1125,7 @@ function _guiasConfirmarLotesSeleccionados(cat, desc, um){
   seleccion.forEach(function(s){
     _guiaActual.lineas.push({
       cat: cat, desc: desc, um: um,
-      cant: s.libre, tipoEmp: esCable ? "Bobina" : "Caja", contEmp: s.libre,
+      cant: s.libre, tipoEmp: tipoLote, contEmp: s.libre,
       bultos: 1, patio: false, granel: false, lote: s.lote
     });
   });
@@ -1013,7 +1165,7 @@ function _guiasPedirEmpaque(cat, desc, um, opciones){
     _guiasPedirLote(cat, desc, um, lotesReales);
     return;
   }
-  var esCable = _guiasEsCable(cat);
+  var tipoForzado = _guiasTipoForzado(cat);
 
   // Botones de empaques conocidos
   var btnsConocidos = "";
@@ -1042,13 +1194,45 @@ function _guiasPedirEmpaque(cat, desc, um, opciones){
       "</div>";
   }
 
-  // Columna izquierda — conocidos + granel
+  // Botones de tarimas conocidas para este catálogo
+  var tarimasCat = _guiasTarimaOpciones(cat);
+  var btnsTarimas = "";
+  for(var ti=0; ti<tarimasCat.length; ti++){
+    var tp = tarimasCat[ti];
+    var estrellaT = tp.preferido ? "&#9733;" : "&#9734;";
+    btnsTarimas +=
+      "<div style=\"display:flex;align-items:center;gap:4px;margin-bottom:6px\">" +
+      "<button onclick=\"_guiasSeleccionarTarima('" + catEsc + "','" + descEsc + "','" + um + "','" +
+      tp.subTipo + "'," + tp.subCant + "," + tp.subCont + ")\"" +
+      " style=\"flex:1;text-align:left;padding:10px 14px;background:#fdf4e7;" +
+      "border:1.5px solid #b8722a;border-radius:8px;cursor:pointer;" +
+      "font-family:inherit;font-size:13px\">" +
+      "<b>Tarima</b> de " + tp.subCant + " " + tp.subTipo + " c/ " + tp.subCont + " " + um +
+      (tp.preferido ? " <span style=\"color:#f59e0b;font-size:10px;font-weight:700\">PREFERIDA</span>" : "") +
+      "</button>" +
+      "<button onclick=\"_guiasTarimaTogglePreferido('" + catEsc + "','" + descEsc + "','" + um + "','" + tp.subTipo + "'," + tp.subCant + "," + tp.subCont + ")\"" +
+      " title=\"" + (tp.preferido ? "Preferida — siempre se propondrá primero" : "Marcar como preferida") + "\"" +
+      " style=\"background:none;border:none;cursor:pointer;font-size:20px;line-height:1;" +
+      "color:" + (tp.preferido ? "#f59e0b" : "#ccc") + ";flex-shrink:0\">" + estrellaT + "</button>" +
+      "<button onclick=\"_guiasTarimaBorrarOpcion('" + catEsc + "','" + descEsc + "','" + um + "','" + tp.subTipo + "'," + tp.subCant + "," + tp.subCont + ")\"" +
+      " title=\"Borrar esta tarima de la memoria\"" +
+      " style=\"background:none;border:none;cursor:pointer;font-size:18px;line-height:1;" +
+      "color:#dc2626;flex-shrink:0\">&times;</button>" +
+      "</div>";
+  }
+
+  // Columna izquierda — conocidos + tarimas + granel
   var izqHtml =
     "<div style=\"flex:1;min-width:0;padding:16px\">" +
     (opciones.length > 0 ?
       "<div style=\"font-size:11px;font-weight:700;color:var(--primary);text-transform:uppercase;" +
       "letter-spacing:.4px;margin-bottom:10px\">&#10003; Conocidos</div>" +
       btnsConocidos +
+      "<div style=\"border-top:1px dashed var(--line);margin-top:12px;padding-top:12px\">" : "") +
+    (tarimasCat.length > 0 ?
+      "<div style=\"font-size:11px;font-weight:700;color:#b8722a;text-transform:uppercase;" +
+      "letter-spacing:.4px;margin-bottom:10px\">&#128717; Tarimas conocidas</div>" +
+      btnsTarimas +
       "<div style=\"border-top:1px dashed var(--line);margin-top:12px;padding-top:12px\">" : "") +
     "<div style=\"font-size:11px;font-weight:700;color:#16a34a;text-transform:uppercase;" +
     "letter-spacing:.4px;margin-bottom:6px\">&#9744; A granel</div>" +
@@ -1062,14 +1246,22 @@ function _guiasPedirEmpaque(cat, desc, um, opciones){
     "font-weight:700;cursor:pointer;font-family:inherit\">Granel</button>" +
     "</div>" +
     (opciones.length > 0 ? "</div>" : "") +
+    (tarimasCat.length > 0 ? "</div>" : "") +
     "</div>";
 
-  // Columna derecha — nuevo empaque (desplegable)
-  var tipoInputHtml = esCable
-    ? "<input id=\"gEmpTipo\" type=\"text\" value=\"Bobina\" readonly" +
+  // Columna derecha — nuevo empaque + nueva tarima (desplegables)
+  var tipoInputHtml = tipoForzado
+    ? "<input id=\"gEmpTipo\" type=\"text\" value=\"" + tipoForzado + "\" readonly" +
       " style=\"width:100%;padding:8px;border:1.5px solid var(--line);border-radius:8px;" +
       "font-family:inherit;margin-top:3px;background:#f3f4f6;color:var(--muted)\">"
     : "<input id=\"gEmpTipo\" type=\"text\" value=\"Caja\" placeholder=\"Caja, Costal...\"" +
+      " style=\"width:100%;padding:8px;border:1.5px solid var(--line);border-radius:8px;" +
+      "font-family:inherit;margin-top:3px\">";
+  var tipoTarimaInputHtml = tipoForzado
+    ? "<input id=\"gTarimaTipo\" type=\"text\" value=\"" + tipoForzado + "\" readonly" +
+      " style=\"width:100%;padding:8px;border:1.5px solid var(--line);border-radius:8px;" +
+      "font-family:inherit;margin-top:3px;background:#f3f4f6;color:var(--muted)\">"
+    : "<input id=\"gTarimaTipo\" type=\"text\" value=\"Caja\" placeholder=\"Caja, Bobina, Rollo...\"" +
       " style=\"width:100%;padding:8px;border:1.5px solid var(--line);border-radius:8px;" +
       "font-family:inherit;margin-top:3px\">";
   var derechaHtml =
@@ -1091,6 +1283,31 @@ function _guiasPedirEmpaque(cat, desc, um, opciones){
     " onkeydown=\"if(event.key==='Enter'){event.preventDefault();_guiasConfirmarEmpaque('" + catEsc + "','" + descEsc + "','" + um + "');}\"" +
     " style=\"width:100%;padding:8px;border:1.5px solid var(--line);border-radius:8px;" +
     "font-family:inherit;font-size:15px;font-weight:700;color:var(--primary);margin-top:3px\"></div>" +
+    "</div></details>" +
+    "<details style=\"margin-top:14px;border-top:1px dashed var(--line);padding-top:12px\">" +
+    "<summary style=\"font-size:11px;font-weight:700;color:#b8722a;text-transform:uppercase;" +
+    "letter-spacing:.4px;cursor:pointer;padding:4px 0;list-style:none\">+ Nueva tarima</summary>" +
+    "<div style=\"margin-top:10px;display:flex;flex-direction:column;gap:8px\">" +
+    "<div><label style=\"font-size:11px;color:var(--muted)\">Tipo de contenedor por tarima</label>" +
+    tipoTarimaInputHtml + "</div>" +
+    "<div style=\"display:flex;gap:8px\">" +
+    "<div style=\"flex:1\"><label style=\"font-size:11px;color:var(--muted)\">Contenedores por tarima</label>" +
+    "<input id=\"gTarimaSubCant\" type=\"number\" min=\"1\" placeholder=\"Ej. 60\"" +
+    " style=\"width:100%;padding:8px;border:1.5px solid var(--line);border-radius:8px;" +
+    "font-family:inherit;margin-top:3px\"></div>" +
+    "<div style=\"flex:1\"><label style=\"font-size:11px;color:var(--muted)\">Contenido c/u (" + um + ")</label>" +
+    "<input id=\"gTarimaSubCont\" type=\"number\" min=\"1\" placeholder=\"Ej. 500\"" +
+    " style=\"width:100%;padding:8px;border:1.5px solid var(--line);border-radius:8px;" +
+    "font-family:inherit;margin-top:3px\"></div>" +
+    "</div>" +
+    "<div><label style=\"font-size:11px;color:var(--muted)\">Cuántas tarimas van</label>" +
+    "<input id=\"gTarimaNum\" type=\"number\" min=\"1\" value=\"1\"" +
+    " onkeydown=\"if(event.key==='Enter'){event.preventDefault();_guiasConfirmarTarimaNueva('" + catEsc + "','" + descEsc + "','" + um + "');}\"" +
+    " style=\"width:100%;padding:8px;border:1.5px solid var(--line);border-radius:8px;" +
+    "font-family:inherit;font-size:15px;font-weight:700;color:#b8722a;margin-top:3px\"></div>" +
+    "<button onclick=\"_guiasConfirmarTarimaNueva('" + catEsc + "','" + descEsc + "','" + um + "')\"" +
+    " style=\"width:100%;padding:9px;background:#b8722a;color:white;border:none;border-radius:8px;" +
+    "font-weight:700;cursor:pointer;font-family:inherit;font-size:12.5px\">Agregar tarima</button>" +
     "</div></details>" +
     "</div>";
 
@@ -1452,7 +1669,7 @@ function _guiasProcesarTablaPegada(desdeNueva){
     return;
   }
 
-  document.querySelectorAll(".modal").forEach(function(m){ m.remove(); });
+  document.querySelector(".modal")?.remove();
 
   if(desdeNueva){
     _guiasORPendiente = { rows: rows, hdrIdx: det.hdrIdx, iCat: det.iCat, iXS: det.iXS };
@@ -1653,7 +1870,7 @@ function _guiasTarjetasTransporteHtml(){
         (unOperador ?
           "<button type=\"button\" onclick=\"_guiasElegirTransporteBase('" + t.linea + "','" + v.tipo + "','" + v.placas + "','" + v.operadores[0] + "')\"" +
           " style=\"width:100%;padding:6px;background:var(--primary);color:white;border:none;" +
-          "border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit\">" + v.operadores[0] + "</button>"
+          "border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit\">Usar &mdash; " + v.operadores[0] + "</button>"
           :
           "<div style=\"font-size:10px;color:var(--muted);margin-bottom:3px\">Operador:</div>" +
           "<div style=\"display:flex;flex-wrap:wrap;gap:4px\">" +
@@ -1689,7 +1906,9 @@ function _guiasRevision(){
   var filasHtml = "";
   for(var i=0; i<_guiaActual.lineas.length; i++){
     var l = _guiaActual.lineas[i];
-    var descEmp = l.bultos + " " + l.tipoEmp + (l.contEmp>1?" de "+l.contEmp+" "+l.um:"") + (l.lote?" — L - "+l.lote:"");
+    var descEmp = l.bultos + " " + l.tipoEmp +
+      (l.tipoEmp === "Tarima" ? " (" + l.tarimaSubCant + " " + l.tarimaSubTipo + " c/ " + l.tarimaSubCont + " " + l.um + ")"
+        : l.contEmp>1?" de "+l.contEmp+" "+l.um:"") + (l.lote?" — L - "+l.lote:"");
     filasHtml +=
       "<tr style=\"border-bottom:1px solid var(--lite,#f4f6fb)\">" +
       "<td style=\"padding:6px 8px;font-size:12px;font-weight:700;font-family:monospace;" +
@@ -1844,7 +2063,12 @@ function _guiasBloquesImpresion(lineas, area){
   var bloqueEmpaque = [];
   grupos.cajas.forEach(function(l){
     var nCajas = Math.floor(l.cant / l.contEmp);
-    var descEmp = _guiasAbrevTipo(l.tipoEmp) + " " + l.contEmp + " " + l.um;
+    var descEmp;
+    if(l.tipoEmp === "Tarima"){
+      descEmp = "Tarima de " + l.tarimaSubCant + " " + l.tarimaSubTipo + " c/ " + l.tarimaSubCont + " " + l.um;
+    } else {
+      descEmp = _guiasAbrevTipo(l.tipoEmp) + " " + l.contEmp + " " + l.um;
+    }
     if(l.lote) descEmp += " L - " + l.lote;
     bloqueEmpaque.push({
       cant:    nCajas,
