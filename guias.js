@@ -517,13 +517,17 @@ function _guiasNueva(){
     "</div>" +
 
     (editando ? "" :
-    "<div style=\"margin-bottom:20px\">" +
+    "<div style=\"margin-bottom:20px;display:flex;flex-direction:column;gap:6px\">" +
     "<button onclick=\"_guiasCargarORDesdeNueva()\"" +
     " style=\"width:100%;padding:10px;background:white;border:1.5px solid var(--line);" +
     "border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;" +
     "color:var(--primary)\">&#8679; Importar desde OR (Excel) &mdash; autocompleta Área, Destino y Fecha</button>" +
     "<input type=\"file\" id=\"gORFileNueva\" accept=\".xlsx\" style=\"display:none\"" +
     " onchange=\"_guiasProcesarORDesdeNueva(this)\">" +
+    "<button onclick=\"_guiasAbrirPegarTabla(true)\"" +
+    " style=\"width:100%;padding:10px;background:white;border:1.5px solid var(--line);" +
+    "border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;" +
+    "color:var(--primary)\">&#128203; Pegar tabla de un correo</button>" +
     "</div>") +
 
     // Área
@@ -713,6 +717,10 @@ function _guiasCapturaMateriales(){
     "color:var(--primary)\">&#8679; Importar desde OR (Excel)</button>" +
     "<input type=\"file\" id=\"gORFile\" accept=\".xlsx\" style=\"display:none\"" +
     " onchange=\"_guiasProcesarOR(this)\">" +
+    "<button onclick=\"_guiasAbrirPegarTabla(false)\"" +
+    " style=\"flex:1;padding:10px;background:white;border:1.5px solid var(--line);" +
+    "border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;" +
+    "color:var(--primary)\">&#128203; Pegar tabla de un correo</button>" +
     "</div>" +
 
     // Lista de líneas capturadas
@@ -1208,6 +1216,99 @@ function _guiasProcesarORDesdeNueva(input){
 }
 
 // Lee el archivo y regresa {rows, hdrIdx, iCat, iXS} o null (con alert) si no se pudo interpretar
+// Detecta la fila de encabezados y las columnas de Catálogo/Cantidad en un arreglo de filas (rows).
+// Se usa tanto para el Excel de OR como para tablas pegadas desde correo.
+function _guiasDetectarHeaderYColumnas(rows){
+  var hdrIdx = -1;
+  for(var i=0; i<rows.length; i++){
+    if(rows[i].some(function(c){ return String(c||"").toUpperCase().includes("CATALOGO") || String(c||"").toUpperCase().includes("CATÁLOGO"); })){
+      hdrIdx = i; break;
+    }
+  }
+  if(hdrIdx < 0) return null;
+  var hdrs = rows[hdrIdx].map(function(h){ return String(h||"").toLowerCase(); });
+  var iCat = hdrs.findIndex(function(h){ return h.includes("cat"); });
+  var iXS  = hdrs.findIndex(function(h){
+    return h.includes("surtir") || h.includes("cantidad") || h.includes("piezas") ||
+           h.includes("pzas") || h.includes("pza") || /^cant\.?$/.test(h.trim()) || h.includes("qty");
+  });
+  if(iCat < 0 || iXS < 0) return null;
+  return { hdrIdx: hdrIdx, iCat: iCat, iXS: iXS };
+}
+
+// ── Pegar tabla copiada de un correo ──────────────────────────────────────────
+function _guiasAbrirPegarTabla(desdeNueva){
+  var modal = document.createElement("div");
+  modal.className = "modal on";
+  modal.innerHTML =
+    "<div class=\"modal-box\" style=\"max-width:640px\">" +
+    "<h3 style=\"margin:0 0 6px\">Pegar tabla del correo</h3>" +
+    "<p style=\"font-size:12px;color:var(--muted);margin:0 0 12px\">" +
+    "Copia la tabla completa desde el correo (incluyendo el encabezado con Catálogo y Cantidad), " +
+    "y pégala aquí abajo con Ctrl+V.</p>" +
+    "<div id=\"gPasteArea\" contenteditable=\"true\"" +
+    " style=\"min-height:160px;max-height:320px;overflow:auto;border:1.5px dashed var(--line);" +
+    "border-radius:8px;padding:12px;font-size:12px\"></div>" +
+    "<div style=\"display:flex;justify-content:flex-end;gap:8px;margin-top:14px\">" +
+    "<button class=\"btn\" onclick=\"this.closest('.modal').remove()\">Cancelar</button>" +
+    "<button class=\"btn-prim\" onclick=\"_guiasProcesarTablaPegada(" + (desdeNueva?"true":"false") + ")\">Procesar tabla</button>" +
+    "</div></div>";
+  document.body.appendChild(modal);
+  setTimeout(function(){ document.getElementById("gPasteArea")?.focus(); }, 50);
+}
+
+function _guiasProcesarTablaPegada(desdeNueva){
+  var area = document.getElementById("gPasteArea");
+  if(!area) return;
+  var rows = [];
+  var tabla = area.querySelector("table");
+  if(tabla){
+    tabla.querySelectorAll("tr").forEach(function(tr){
+      var celdas = Array.prototype.map.call(tr.querySelectorAll("td,th"), function(td){ return td.innerText.trim(); });
+      if(celdas.length) rows.push(celdas);
+    });
+  }
+  if(rows.length < 2){
+    // Sin tabla HTML (o vacía) — intentar como texto plano tabulado / con columnas alineadas por espacios
+    rows = [];
+    var texto = area.innerText || "";
+    texto.split(/\n/).forEach(function(linea){
+      linea = linea.replace(/\s+$/,"");
+      if(!linea.trim()) return;
+      var celdas = linea.indexOf("\t") >= 0 ? linea.split("\t") : linea.split(/\s{2,}/);
+      rows.push(celdas.map(function(c){ return c.trim(); }));
+    });
+  }
+  if(rows.length < 2){
+    alert("No se detectó una tabla válida. Copia la tabla completa del correo, incluyendo los encabezados.");
+    return;
+  }
+
+  var det = _guiasDetectarHeaderYColumnas(rows);
+  if(!det){
+    alert("No pude identificar las columnas de Catálogo y Cantidad en lo que pegaste. " +
+      "Verifica que la tabla tenga encabezados como \"Catálogo\" y \"Cantidad\" (o \"X Surtir\", \"Piezas\", etc.).");
+    return;
+  }
+
+  document.querySelector(".modal")?.remove();
+
+  if(desdeNueva){
+    _guiasORPendiente = { rows: rows, hdrIdx: det.hdrIdx, iCat: det.iCat, iXS: det.iXS };
+    alert("Tabla detectada correctamente. Los materiales se importarán en cuanto continúes. " +
+      "Completa el número de guía y el resto de los datos.");
+  } else {
+    var res = _guiasImportarFilasOR(rows, det.hdrIdx, det.iCat, det.iXS);
+    _guiasRefrescarLineas();
+    if(res.paraRevisar > 0){
+      alert(res.importados + " materiales importados.\n\n" + res.paraRevisar +
+        " se marcaron con \"Revisar\" (empaque ambiguo, desconocido, o requiere lote). Confírmalos con el lápiz antes de generar la guía.");
+    } else {
+      alert(res.importados + " materiales importados correctamente.");
+    }
+  }
+}
+
 function _guiasLeerFilasOR(data, cb){
   try{
     var wb = XLSX.read(data, {type:"array"});
@@ -1216,19 +1317,9 @@ function _guiasLeerFilasOR(data, cb){
     if(!sheetName){ alert("No se encontró hoja de datos en el archivo."); return; }
     var ws = wb.Sheets[sheetName];
     var rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:""});
-    // Buscar fila de encabezados
-    var hdrIdx = -1;
-    for(var i=0; i<rows.length; i++){
-      if(rows[i].some(function(c){ return String(c||"").toUpperCase().includes("CATALOGO") || String(c||"").toUpperCase().includes("CATÁLOGO"); })){
-        hdrIdx = i; break;
-      }
-    }
-    if(hdrIdx < 0){ alert("No se encontró columna de Catálogo."); return; }
-    var hdrs = rows[hdrIdx].map(function(h){ return String(h||"").toLowerCase(); });
-    var iCat = hdrs.findIndex(function(h){ return h.includes("cat"); });
-    var iXS  = hdrs.findIndex(function(h){ return h.includes("surtir") || h.includes("x surtir"); });
-    if(iCat < 0 || iXS < 0){ alert("No se encontraron columnas de Catálogo y X Surtir."); return; }
-    cb(rows, hdrIdx, iCat, iXS);
+    var det = _guiasDetectarHeaderYColumnas(rows);
+    if(!det){ alert("No se encontraron las columnas de Catálogo y Cantidad/X Surtir."); return; }
+    cb(rows, det.hdrIdx, det.iCat, det.iXS);
   }catch(err){
     alert("Error al leer el archivo: " + err.message);
   }
