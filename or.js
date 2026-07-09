@@ -8,6 +8,15 @@
 /* ============ ORDEN DE REABASTO ============ */
 let orAlm="", orSort={col:"cat",dir:1}, _orManual={};
 
+// Estados posibles por partida en el OR, con su color de referencia
+const ESTADOS_OR = {
+  pendiente: { label: "Pendiente",  color: "#6b7280", bg: "#f1f2f4" },
+  validado:  { label: "Validado",   color: "#15803d", bg: "#e7f4ec" },
+  parcial:   { label: "Parcial",    color: "#b45309", bg: "#fbf0df" },
+  no_surtir: { label: "No surtir",  color: "#475569", bg: "#e2e8f0" },
+  revisar:   { label: "Revisar",    color: "#c0392b", bg: "#fdeaea" }
+};
+
 // ── Persistencia OR en localStorage ──────────────────────────────────────────
 const _OR_LS_KEY = () => `or_tx41_${orAlm}`;
 const _OR_CFG_KEY = "or_tx41_config";
@@ -256,6 +265,10 @@ function _tplPanelOR(orAlm, mCPM, mStk, areaSel){
     "<label class=\"chk\"><input type=\"checkbox\" id=\"orSoloX\"> Solo X Surtir &gt; 0</label>" +
     "<label class=\"chk\"><input type=\"checkbox\" id=\"orExced\"> Solo excedentes</label>" +
     "<label class=\"chk\"><input type=\"checkbox\" id=\"orSoloD041\"> Solo con existencia D041</label>" +
+    "<select id=\"orEstadoFiltro\" style=\"padding:5px 8px;border:1px solid var(--line);border-radius:7px;font-family:inherit;font-size:12.5px\">" +
+    "<option value=\"\">Todos los estados</option>" +
+    Object.keys(ESTADOS_OR).map(k=>`<option value="${k}">${ESTADOS_OR[k].label}</option>`).join("") +
+    "</select>" +
     "<button class=\"btn-prim\" id=\"orExport\">&#8681; Exportar OR</button>" +
     "</div>" +
     "<div style=\"display:flex;gap:8px;flex-wrap:wrap;margin:8px 0;font-size:12px\">" +
@@ -323,7 +336,7 @@ function _modORPanel(){
 
   ["orMCPM","orMS"].forEach(id=>{ const el=$("#"+id); el.oninput=pintarOR; el.onchange=pintarOR; });
   const orSearchEl=$("#orSearch"); if(orSearchEl){ orSearchEl.oninput=()=>{ _actualizarNGOpts(); pintarOR(); }; }
-  ["orSolo","orSoloX","orExced","orSoloD041"].forEach(id=>{ const el=$("#"+id); if(el) el.onchange=pintarOR; });
+  ["orSolo","orSoloX","orExced","orSoloD041","orEstadoFiltro"].forEach(id=>{ const el=$("#"+id); if(el) el.onchange=pintarOR; });
   $("#orExport").onclick=_mostrarResumenOR;
 
   // Autocomplete nombre genérico — filtra por área activa
@@ -509,7 +522,7 @@ function calcularOR(){
     const xsurtir=man.xs!=null ? man.xs : sugerido;
     const mdInv=cpm>0?exAux/cpm:null;
     const excedente=(3*cpm-exAux)<0;
-    return {cat,desc:info.desc,um:info.um,area:info.area||"Sin clasificar",ng,consumo,cpm,exAux,exD,calcSurtir,xsurtir,mdInv,excedente,obs:man.obs||""};
+    return {cat,desc:info.desc,um:info.um,area:info.area||"Sin clasificar",ng,consumo,cpm,exAux,exD,calcSurtir,xsurtir,mdInv,excedente,obs:man.obs||"",estado:man.estado||"pendiente"};
   };
 
   // Todos los materiales del maestro — el consumo se usa para calcular, no para filtrar
@@ -527,6 +540,7 @@ function filasOR(){
   const soloCal=$("#orSolo")?.checked;
   const soloX=$("#orSoloX")?.checked;
   const soloExc=$("#orExced")?.checked;
+  const fEstado=$("#orEstadoFiltro")?.value||"";
 
   let rows=calcularOR().filter(r=>{
     if(q && !(r.cat.toLowerCase().includes(q)||(r.desc||"").toLowerCase().includes(q))) return false;
@@ -537,6 +551,7 @@ function filasOR(){
     if(soloCal && r.calcSurtir<=0) return false;
     if(soloX && r.xsurtir<=0) return false;
     if(soloExc && !r.excedente) return false;
+    if(fEstado && r.estado!==fEstado) return false;
     if($("#orSoloD041")?.checked && (r.exD||0) <= 0) return false;
     return true;
   });
@@ -556,7 +571,13 @@ function pintarOR(){
   const totalX=rows.reduce((s,r)=>s+r.xsurtir,0);
   $("#orTitle").innerHTML=`OR · ${orAlm} · ${almName(orAlm)}`;
   $("#orCount").textContent=`${rows.length} catálogos`;
-  $("#orResumen").textContent=`${nNec} a surtir · Total X surtir: ${nfmt(totalX)}`;
+  const conteoEstados={};
+  rows.forEach(r=>{ conteoEstados[r.estado]=(conteoEstados[r.estado]||0)+1; });
+  const resumenEstados=Object.keys(ESTADOS_OR)
+    .filter(k=>conteoEstados[k])
+    .map(k=>`<span style="color:${ESTADOS_OR[k].color};font-weight:700">${conteoEstados[k]} ${ESTADOS_OR[k].label.toLowerCase()}</span>`)
+    .join(" · ");
+  $("#orResumen").innerHTML=`${nNec} a surtir · Total X surtir: ${nfmt(totalX)}` + (resumenEstados?` · ${resumenEstados}`:"");
 
   // Punto 4: sumatoria por nombre genérico — siempre actualizar el contenedor fijo
   const sumNG={};
@@ -587,7 +608,7 @@ function pintarOR(){
     <col style="width:140px"><col style="width:50px"><col style="width:80px">
     <col style="width:70px"><col style="width:60px"><col style="width:90px">
     <col style="width:90px"><col style="width:85px"><col style="width:82px">
-    <col style="width:55px"><col>
+    <col style="width:55px"><col style="width:120px"><col>
   </colgroup>
   <thead><tr>
     <th data-c="cat">Catálogo</th><th data-c="desc">Descripción</th>
@@ -598,7 +619,7 @@ function pintarOR(){
     <th class="r" data-c="exD" ${thExD}>Exist. D041</th>
     <th class="r" data-c="calcSurtir">Cálc. surtir</th>
     <th class="r" data-c="xsurtir">X Surtir</th>
-    <th>Exced.</th><th>Observaciones</th>
+    <th>Exced.</th><th data-c="estado">Estado</th><th>Observaciones</th>
   </tr></thead><tbody>${
   rows.length? rows.map(r=>{
     const nec=r.calcSurtir>0.5;
@@ -606,7 +627,9 @@ function pintarOR(){
     const rowBg=nec?`style="background:#fdf1f1"`:(r.excedente?`style="background:var(--low-bg)"`:"");
     // resaltar ng cuando es sustituto (no SIN SUSTITUTO)
     const ngStyle=esSinSust?"color:var(--muted);font-size:12px":"color:#7a5c00;font-size:12px;font-weight:700";
-    return `<tr ${rowBg}>
+    const est=ESTADOS_OR[r.estado]||ESTADOS_OR.pendiente;
+    const estadoOpts=Object.keys(ESTADOS_OR).map(k=>`<option value="${k}" ${k===r.estado?"selected":""}>${ESTADOS_OR[k].label}</option>`).join("");
+    return `<tr ${rowBg} style="border-left:4px solid ${est.color}">
       <td class="cat num">${r.cat}</td>
       <td class="desc">${r.desc||"—"}</td>
       <td><span class="area-tag">${r.area}</span></td>
@@ -623,10 +646,16 @@ function pintarOR(){
           style="width:70px;text-align:right;padding:4px 6px;border:1px solid var(--line);border-radius:6px">
       </td>
       <td style="text-align:center">${r.excedente?"":""}</td>
+      <td>
+        <select class="or-estado" data-cat="${r.cat}" style="padding:4px 6px;border:1.5px solid ${est.color};
+          border-radius:6px;background:${est.bg};color:${est.color};font-weight:700;font-size:11.5px;font-family:inherit">
+          ${estadoOpts}
+        </select>
+      </td>
       <td><input type="text" class="or-obs" data-cat="${r.cat}" value="${r.obs.replace(/"/g,"&quot;")}" placeholder="…"
           style="min-width:100px;padding:4px 6px;border:1px solid var(--line);border-radius:6px"></td>
     </tr>`;
-  }).join("") : `<tr><td colspan="14" class="empty">Sin catálogos con estos filtros.</td></tr>`}</tbody>`;
+  }).join("") : `<tr><td colspan="15" class="empty">Sin catálogos con estos filtros.</td></tr>`}</tbody>`;
 
   // Orden por cabecera
   $("#orTable").querySelectorAll("th[data-c]").forEach(th=>th.onclick=()=>{
@@ -661,6 +690,15 @@ function pintarOR(){
   $("#orTable").querySelectorAll(".or-obs").forEach(inp=>{
     inp.addEventListener("focus",()=>inp.select());
     inp.addEventListener("input",()=>{ (_orManual[orAlm+"|"+inp.dataset.cat]||={xs:0,obs:""}).obs=inp.value; _orGuardar(); });
+  });
+
+  // Guardar cambios de estado por partida
+  $("#orTable").querySelectorAll(".or-estado").forEach(sel=>{
+    sel.addEventListener("change",()=>{
+      (_orManual[orAlm+"|"+sel.dataset.cat]||={xs:0,obs:""}).estado=sel.value;
+      _orGuardar();
+      pintarOR();
+    });
   });
 }
 
