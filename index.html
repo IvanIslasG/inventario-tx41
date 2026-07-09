@@ -213,6 +213,10 @@
     th,td{padding:8px 9px}
     .cards{grid-template-columns:1fr 1fr}
     .area-grid{grid-template-columns:1fr 1fr}
+    .dash-grid{grid-template-columns:1fr;gap:8px;margin-bottom:12px}
+    .dash-card{padding:11px 14px}
+    .dash-card .dash-value{font-size:17px}
+    .dash-alert{padding:10px 12px;font-size:12px;align-items:flex-start}
   }
 
   /* ---- Área de impresión (listas de conteo) ---- */
@@ -522,7 +526,6 @@ function _dashHtml(){
   var orsProgreso = _dashOrsEnProgreso();
   var guiasCount = _dashGuiasRecientesCount();
   var alertas = _dashAlertasMateriales();
-  var conEx = almacenesConExistencia();
 
   var alertaHtml = alertas.incompletos > 0 ?
     "<div class=\"dash-alert\">&#9888; <span><b>" + nfmt(alertas.incompletos) + " material" + (alertas.incompletos>1?"es":"") +
@@ -537,12 +540,6 @@ function _dashHtml(){
     "<div class=\"dash-grid\">" +
     "<div class=\"dash-card\"><div class=\"dash-label\">&#128197; Última actualización</div>" +
     "<div class=\"dash-value\" style=\"font-size:14px\">" + fechaGen + "</div></div>" +
-    "<div class=\"dash-card\"><div class=\"dash-label\">&#128230; Materiales</div>" +
-    "<div class=\"dash-value\">" + nfmt(m.n_materiales||0) + "</div>" +
-    "<div class=\"dash-sub\">en el maestro</div></div>" +
-    "<div class=\"dash-card\"><div class=\"dash-label\">&#127970; Almacenes</div>" +
-    "<div class=\"dash-value\">" + conEx.size + "</div>" +
-    "<div class=\"dash-sub\">con existencia detectada</div></div>" +
     "<div class=\"dash-card\"><div class=\"dash-label\">&#128257; ORs en progreso</div>" +
     "<div class=\"dash-value\">" + orsProgreso + "</div>" +
     "<div class=\"dash-sub\">con datos capturados</div></div>" +
