@@ -388,13 +388,20 @@ function _orNGRender(){
     _orNGIniciado = true;
   }
 
-  // ¿Qué nombres genéricos tienen al menos un catálogo que necesita surtido? (mismo umbral que el resto del módulo)
+  // ¿Qué nombres genéricos necesitan atención? Se suma el calc.surtir de todos los
+  // catálogos del grupo (son sustitutos entre sí) y se marca si esa sumatoria es > 0,
+  // en vez de marcar por un catálogo individual aislado.
   var necesitaMaterial = new Set();
   var todasFilas = calcularOR();
+  var sumaCalcPorNG = {};
   for(var k=0; k<todasFilas.length; k++){
     var fr = todasFilas[k];
     if(fArea && fr.area !== fArea) continue;
-    if(fr.calcSurtir > 0.5) necesitaMaterial.add(fr.ng || "SIN SUSTITUTO");
+    var ngKey = fr.ng || "SIN SUSTITUTO";
+    sumaCalcPorNG[ngKey] = (sumaCalcPorNG[ngKey] || 0) + fr.calcSurtir;
+  }
+  for(var ngKey in sumaCalcPorNG){
+    if(sumaCalcPorNG[ngKey] > 0) necesitaMaterial.add(ngKey);
   }
 
   // Los que necesitan surtido van primero, para no tener que buscarlos entre los demás
