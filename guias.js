@@ -1669,13 +1669,92 @@ function _guiasProcesarTablaPegada(desdeNueva){
     return;
   }
 
-  document.querySelector(".modal")?.remove();
+  // En vez de importar directo, se normaliza a pares [catálogo, cantidad] y se muestra
+  // una tabla editable — así se pueden quitar líneas que no surten, corregir cantidades,
+  // o agregar líneas sueltas antes de confirmar la importación.
+  var pares = [];
+  for(var r=det.hdrIdx+1; r<rows.length; r++){
+    var row = rows[r];
+    var cat = String(row[det.iCat]||"").trim();
+    var xs  = String(row[det.iXS]||"").replace(/[,\s]/g,"").trim();
+    if(!cat && !xs) continue;
+    pares.push([cat, xs]);
+  }
 
+  document.querySelector(".modal")?.remove();
+  _guiasAbrirRevisionTabla(pares, desdeNueva);
+}
+
+// ── Fila editable dentro de la tabla de revisión ─────────────────────────────
+function _guiasTplFilaPegRevision(cat, xs){
+  return "<div class=\"gPegRow\" style=\"display:flex;gap:8px;align-items:center;margin-bottom:6px\">" +
+    "<input type=\"text\" class=\"gPegCat\" value=\"" + _escAttr(cat) + "\" placeholder=\"Catálogo\"" +
+    " style=\"flex:1.4;padding:7px 9px;border:1px solid var(--line);border-radius:6px;font-family:inherit;font-size:13px\">" +
+    "<input type=\"text\" inputmode=\"numeric\" class=\"gPegXS\" value=\"" + _escAttr(xs) + "\" placeholder=\"Cantidad\"" +
+    " style=\"width:90px;padding:7px 9px;border:1px solid var(--line);border-radius:6px;font-family:inherit;font-size:13px;text-align:right\">" +
+    "<button type=\"button\" onclick=\"this.closest('.gPegRow').remove()\" title=\"Quitar línea\"" +
+    " style=\"border:none;background:none;color:var(--rojo,#dc2626);font-size:18px;line-height:1;cursor:pointer;padding:4px 8px;font-weight:700\">&times;</button>" +
+    "</div>";
+}
+
+// ── Modal de revisión: tabla editable antes de importar ──────────────────────
+function _guiasAbrirRevisionTabla(pares, desdeNueva){
+  var filasHtml = pares.map(function(p){ return _guiasTplFilaPegRevision(p[0], p[1]); }).join("");
+  var modal = document.createElement("div");
+  modal.className = "modal on";
+  modal.id = "gModalRevisionTabla";
+  modal.innerHTML =
+    "<div class=\"modal-box\" style=\"max-width:520px\">" +
+    "<h3 style=\"margin:0 0 6px\">Revisar antes de importar</h3>" +
+    "<p style=\"font-size:12px;color:var(--muted);margin:0 0 12px\">" +
+    "Quita las líneas que no surten (&times;), corrige catálogo o cantidad, o agrega líneas sueltas. " +
+    "Al confirmar se procesan igual que siempre (empaque, patio, lote, etc.).</p>" +
+    "<div id=\"gPegRowsWrap\" style=\"max-height:340px;overflow-y:auto;padding-right:2px\">" +
+    filasHtml +
+    "</div>" +
+    "<button type=\"button\" onclick=\"_guiasAgregarFilaPegRevision()\"" +
+    " style=\"margin-top:8px;border:1.5px dashed var(--line);background:none;border-radius:6px;" +
+    "padding:7px 12px;font-family:inherit;font-size:12px;color:var(--primary);cursor:pointer;width:100%\">" +
+    "+ Agregar línea</button>" +
+    "<div style=\"display:flex;justify-content:flex-end;gap:8px;margin-top:14px\">" +
+    "<button class=\"btn\" onclick=\"this.closest('.modal').remove()\">Cancelar</button>" +
+    "<button class=\"btn-prim\" onclick=\"_guiasConfirmarRevisionTabla(" + (desdeNueva?"true":"false") + ")\">Confirmar e importar</button>" +
+    "</div></div>";
+  document.body.appendChild(modal);
+}
+
+function _guiasAgregarFilaPegRevision(){
+  var wrap = document.getElementById("gPegRowsWrap");
+  if(!wrap) return;
+  wrap.insertAdjacentHTML("beforeend", _guiasTplFilaPegRevision("", ""));
+  var inputs = wrap.querySelectorAll(".gPegRow .gPegCat");
+  var ultimo = inputs[inputs.length-1];
+  if(ultimo) ultimo.focus();
+}
+
+function _guiasConfirmarRevisionTabla(desdeNueva){
+  var wrap = document.getElementById("gPegRowsWrap");
+  if(!wrap) return;
+  var rowsEditadas = [];
+  wrap.querySelectorAll(".gPegRow").forEach(function(fila){
+    var cat = (fila.querySelector(".gPegCat")?.value || "").trim();
+    var xs  = (fila.querySelector(".gPegXS")?.value || "").trim();
+    if(!cat) return; // línea vacía o dejada en blanco tras editar — se ignora
+    rowsEditadas.push([cat, xs]);
+  });
+  if(rowsEditadas.length === 0){
+    alert("No quedó ninguna línea con catálogo. Agrega al menos una o cancela.");
+    return;
+  }
+
+  document.getElementById("gModalRevisionTabla")?.remove();
+
+  // hdrIdx:-1 porque rowsEditadas ya no trae encabezado — arranca en la fila 0
   if(desdeNueva){
-    _guiasORPendiente = { rows: rows, hdrIdx: det.hdrIdx, iCat: det.iCat, iXS: det.iXS };
-    _guiasToast("Tabla procesada y guardada &mdash; se importará al continuar", "ok");
+    _guiasORPendiente = { rows: rowsEditadas, hdrIdx: -1, iCat: 0, iXS: 1 };
+    _guiasToast("Tabla revisada y guardada &mdash; se importará al continuar", "ok");
   } else {
-    var res = _guiasImportarFilasOR(rows, det.hdrIdx, det.iCat, det.iXS);
+    var res = _guiasImportarFilasOR(rowsEditadas, -1, 0, 1);
     _guiasRefrescarLineas();
     if(res.paraRevisar > 0){
       _guiasToast(res.importados + " materiales guardados &mdash; " + res.paraRevisar + " por revisar", "warn");
