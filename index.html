@@ -895,23 +895,8 @@ function _anSortAlm(col){
 }
 function anExportarCat(){
   if(!anCatSel) return; const cat=anCatSel, m=mat(cat), per=anMCPM(), obj=anMStk();
-  // Respetar filtros activos igual que la tabla visible
-  const qFilt=($("#an-cat-filtro")?.value||"").toLowerCase();
-  const soloDem=$("#an-cat-solo")?.checked;
-  const soloRec=$("#an-cat-rec")?.checked;
-  const rows=almList().filter(a=>{
-    if(soloRec && !((DB.directorio?.almacenes?.[a.clave])?.recurrente)) return false;
-    const cons=(DB.consumos?.[a.clave]?.[cat])||0;
-    if(soloDem && cons===0) return false;
-    if(qFilt && !(a.clave.toLowerCase().includes(qFilt)||anNombre(a.clave).toLowerCase().includes(qFilt))) return false;
-    return true;
-  }).map(a=>{
-    const alm=a.clave; const cons=(DB.consumos?.[alm]?.[cat])||0;
-    const ex=(DB.existencias?.[cat]?.[alm])||0;
-    const mens=cons/per, nec=mens*obj, dist=Math.max(0,nec-ex);
-    const exD=(DB.existencias?.[cat]?.[DIST()])||0;
-    return [alm,anNombre(alm),cons,+(mens.toFixed(2)),ex,+(nec.toFixed(2)),+(dist.toFixed(1)),exD];
-  });
+  // Usar exactamente los mismos filtros y datos que anRenderTablaCat
+  const rows=anDatosCat.map(r=>[r.alm,anNombre(r.alm),r.cons,+(r.mens.toFixed(2)),r.ex,+(r.nec.toFixed(2)),+(r.dist.toFixed(1)),r.exD]);
   descargarXLSX([
     [`Catálogo: ${cat} — ${m.desc||""}`,""],[`Periodo: ${per}m | Stock obj: ${obj}m`,""],
     [],["Almacén","Nombre","Consumo total","Cons. mensual","Existencia",`Stock obj.(${obj}m)`,"Distribución","D041 disponible"],
