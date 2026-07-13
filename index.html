@@ -371,9 +371,18 @@ const $ = s => document.querySelector(s);
 /* ============ GATE ============ */
 async function cargarSobre(){
   if(SOBRE) return SOBRE;
-  const res = await fetch(DATA_URL, {cache:"no-store"});
-  if(!res.ok) throw new Error("fetch");
-  SOBRE = await res.json(); return SOBRE;
+  const ctrl = new AbortController();
+  const timeoutId = setTimeout(()=>ctrl.abort(), 12000); // 12s: evita que se quede "Cargando..." para siempre en redes móviles inestables
+  try{
+    const res = await fetch(DATA_URL, {cache:"no-store", signal: ctrl.signal});
+    if(!res.ok) throw new Error("fetch");
+    SOBRE = await res.json(); return SOBRE;
+  }catch(e){
+    if(e.name === "AbortError") throw new Error("timeout");
+    throw e;
+  }finally{
+    clearTimeout(timeoutId);
+  }
 }
 
 // Clave embebida — el cifrado protege el archivo en tránsito, no el acceso
@@ -393,6 +402,7 @@ async function intentarEntrar(){
     console.error("[TX41]",e);
     btn.disabled=false; btn.textContent="Acceder";
     if(e.message==="fetch") err.textContent="No se pudo cargar los datos. Verifica tu conexión.";
+    else if(e.message==="timeout") err.textContent="La conexión tardó demasiado. Intenta de nuevo.";
     else err.textContent="Error al cargar: "+e.message;
   }
 }
@@ -409,7 +419,7 @@ async function precargar(){
     btn.disabled=false;
   }catch(e){
     console.error("[TX41 preload]",e);
-    $("#gate-generado").textContent="Sin conexión";
+    $("#gate-generado").textContent = (e.message==="timeout") ? "Tardó demasiado" : "Sin conexión";
     $("#gate-mats").textContent="";
     btn.disabled=false; // dejar que intente igual
   }
