@@ -369,20 +369,35 @@ let DB = null, SOBRE = null;
 const $ = s => document.querySelector(s);
 
 /* ============ GATE ============ */
-async function cargarSobre(){
-  if(SOBRE) return SOBRE;
+async function _fetchConTimeout(url, opts, ms){
   const ctrl = new AbortController();
-  const timeoutId = setTimeout(()=>ctrl.abort(), 12000); // 12s: evita que se quede "Cargando..." para siempre en redes móviles inestables
+  const timeoutId = setTimeout(()=>ctrl.abort(), ms);
   try{
-    const res = await fetch(DATA_URL, {cache:"no-store", signal: ctrl.signal});
-    if(!res.ok) throw new Error("fetch");
-    SOBRE = await res.json(); return SOBRE;
+    return await fetch(url, {...opts, signal: ctrl.signal});
   }catch(e){
     if(e.name === "AbortError") throw new Error("timeout");
-    throw e;
+    throw new Error("fetch");
   }finally{
     clearTimeout(timeoutId);
   }
+}
+
+async function cargarSobre(){
+  if(SOBRE) return SOBRE;
+  const intentos = 3;
+  let ultimoError;
+  for(let i=0; i<intentos; i++){
+    try{
+      const res = await _fetchConTimeout(DATA_URL, {cache:"no-store"}, 12000);
+      if(!res.ok) throw new Error("fetch");
+      SOBRE = await res.json();
+      return SOBRE;
+    }catch(e){
+      ultimoError = e;
+      if(i < intentos-1) await new Promise(r=>setTimeout(r, 800*(i+1))); // pausa creciente: 0.8s, 1.6s
+    }
+  }
+  throw ultimoError;
 }
 
 // Clave embebida — el cifrado protege el archivo en tránsito, no el acceso
@@ -426,7 +441,11 @@ async function precargar(){
 }
 
 $("#enter").onclick=()=>intentarEntrar();
-window.addEventListener("DOMContentLoaded", ()=>{ precargar(); });
+// Se llama de inmediato (no se espera a DOMContentLoaded) porque los elementos del
+// gate ya existen en el DOM en este punto del parseo. Así el fetch de datos.enc
+// arranca en paralelo con la descarga de existencias.js/or.js/guias.js al final
+// del body, en vez de esperar a que esos módulos terminen de bajar primero.
+precargar();
 
 /* ============ APP / ROUTER ============ */
 function arrancarApp(){
@@ -1951,8 +1970,8 @@ function exportarConteo(){
   XLSX.writeFile(wb,`Inventario_D041_${hoy}.xlsx`);
 }
 </script>
-<script src="existencias.js"></script>
-<script src="or.js"></script>
-<script src="guias.js"></script>
+<script src="existencias.js" defer></script>
+<script src="or.js" defer></script>
+<script src="guias.js" defer></script>
 </body>
 </html>
