@@ -900,7 +900,7 @@ function anExportarCat(){
   const soloDem=$("#an-cat-solo")?.checked;
   const soloRec=$("#an-cat-rec")?.checked;
   const rows=almList().filter(a=>{
-    if(soloRec && !a.recurrente) return false;
+    if(soloRec && !((DB.directorio?.almacenes?.[a.clave])?.recurrente)) return false;
     const cons=(DB.consumos?.[a.clave]?.[cat])||0;
     if(soloDem && cons===0) return false;
     if(qFilt && !(a.clave.toLowerCase().includes(qFilt)||anNombre(a.clave).toLowerCase().includes(qFilt))) return false;
