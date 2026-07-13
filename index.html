@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Almacén Distribuidor Puebla · D041</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
 <style>
   :root{
     --bg:#eef2f6; --surface:#fff; --line:#dde4ec;
@@ -368,13 +368,6 @@ async function descifrar(sobre, clave){
 let DB = null, SOBRE = null;
 const $ = s => document.querySelector(s);
 
-/* ============ GATE ============ */
-async function cargarSobre(){
-  if(SOBRE) return SOBRE;
-  const res = await fetch(DATA_URL, {cache:"no-store"});
-  if(!res.ok) throw new Error("fetch");
-  SOBRE = await res.json(); return SOBRE;
-}
 /* ============ GATE ============ */
 async function cargarSobre(){
   if(SOBRE) return SOBRE;
