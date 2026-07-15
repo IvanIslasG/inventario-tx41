@@ -40,7 +40,7 @@ function modConteo(){
     const m   = mats[cat];
     const lib = (exs[cat] && exs[cat]["D041"]) || 0;
     const tra = (tras[cat] && tras[cat]["D041"]) || 0;
-    const ls  = lotes[cat] || [];
+    const ls  = (lotes[cat] || []).filter(l => (l.lib||0) + (l.tras||0) > 0); // se quitan lotes en 0 — solo estorban
     _conteoMats.push({
       catalogo:    cat,
       descripcion: m.desc || m.descripcion || "",
