@@ -20,6 +20,7 @@ function anNombre(alm){ return AN_NOMBRES[alm]||(DB.directorio?.almacenes?.[alm]
 
 let anTab_="cat", anSortCatCol="dist", anSortCatDir=-1, anSortAlmCol="dist", anSortAlmDir=-1;
 let anDatosCat=[], anDatosAlm=[], anCatSel=null;
+let anDatosCritD041=[], anSortCritCol="rest", anSortCritDir=1;
 let _anFijadas=[]; // filas fijadas para tabla custom
 
 function modAnalisis(){
@@ -33,6 +34,7 @@ function modAnalisis(){
       return `<option value="${a.clave}" ${isCons?'style="font-weight:700"':''}>${a.clave} · ${a.desc}${d}${isCons?" ★":""}</option>`;}).join("")
   }</optgroup>`).join("");
   const mCPM=DB.meta?.meses_cpm||6, mStk=DB.meta?.meses_stock||1.5;
+  const tieneConsD041=!!(DB.consumos?.[DIST()]);
   const almsConsCombos=almsCons.map(a=>`<option value="${a}">${a} · ${anNombre(a)}</option>`).join("");
   const tieneConsumos=almsCons.length>0;
 
@@ -41,6 +43,7 @@ function modAnalisis(){
       <div class="seg" id="anSeg">
         <button data-v="cat" class="${anTab_==="cat"?"on":""}">Por catálogo</button>
         <button data-v="alm" class="${anTab_==="alm"?"on":""}">Por almacén</button>
+        <button data-v="critD041" class="${anTab_==="critD041"?"on":""}">⚠ Críticos D041</button>
       </div>
       <label class="chk">Meses CPM <input type="number" id="anMCPM" value="${mCPM}" min="1" max="24" step="1" style="width:58px"></label>
       <label class="chk">Stock obj. <input type="number" id="anMStk" value="${mStk}" min="0.5" max="12" step="0.5" style="width:58px"></label>
@@ -85,14 +88,28 @@ function modAnalisis(){
       </div>
       <div class="panel"><div class="panel-head"><h2 id="an-alm-title">Selecciona un almacén</h2><span class="pill" id="an-alm-count"></span></div>
         <div class="scroll" id="an-tabla-alm"><div class="empty" style="padding:24px">Selecciona un almacén con consumos (★) para ver el análisis.</div></div></div>`}
+    </div>
+    <!-- Panel CRÍTICOS D041 -->
+    <div id="an-panel-critD041" ${anTab_!=="critD041"?"hidden":""}>
+      ${!tieneConsD041?`<div class="panel"><div style="padding:16px;color:var(--muted)">
+          Carga el archivo de consumos de <b>D041</b> en Configuración para ver esta vista (nombra el archivo con "D041").</div></div>`:`
+      <div class="controls" style="margin-top:4px">
+        <input type="search" id="an-crit-buscar" placeholder="Buscar catálogo o descripción…">
+        <span style="font-size:12px;color:var(--muted);align-self:center">Existencia D041 &lt; 1 mes de consumo propio</span>
+        <button class="btn" id="an-btn-exp-crit" style="display:none;margin-left:auto">⬇ Exportar</button>
+      </div>
+      <div class="panel"><div class="panel-head"><h2>Materiales críticos en D041</h2><span class="pill" id="an-crit-count"></span></div>
+        <div class="scroll" id="an-tabla-crit"></div></div>`}
     </div>`;
 
   // ---- Tab ----
   $("#anSeg").querySelectorAll("button").forEach(b=> b.onclick=()=>{
     anTab_=b.dataset.v;
-    ["cat","alm"].forEach(v=>{ document.getElementById("an-panel-"+v).hidden=anTab_!==v; });
+    ["cat","alm","critD041"].forEach(v=>{ document.getElementById("an-panel-"+v).hidden=anTab_!==v; });
     $("#anSeg").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));
+    if(anTab_==="critD041" && tieneConsD041) anRenderCriticosD041();
   });
+  if(anTab_==="critD041" && tieneConsD041) anRenderCriticosD041();
   // Panel fijadas
   _renderFijadas();
   document.getElementById("an-clear-custom")?.addEventListener("click",()=>{ _anFijadas=[]; _renderFijadas(); });
@@ -100,8 +117,11 @@ function modAnalisis(){
   // ---- Params ----
   const repintarCat=()=>{ if(anCatSel) anRenderTablaCat(anSortCatCol); };
   const repintarAlm=()=>{ if($("#an-alm-sel")?.value) anRenderAlm(); };
-  $("#anMCPM").oninput=()=>{ repintarCat(); repintarAlm(); };
+  const repintarCrit=()=>{ if(tieneConsD041 && anTab_==="critD041") anRenderCriticosD041(); };
+  $("#anMCPM").oninput=()=>{ repintarCat(); repintarAlm(); repintarCrit(); };
   $("#anMStk").oninput=()=>{ repintarCat(); repintarAlm(); };
+  $("#an-crit-buscar")?.addEventListener("input", ()=>_pintarTablaCriticosD041());
+  document.getElementById("an-btn-exp-crit")?.addEventListener("click", anExportarCriticosD041);
   // ---- Buscador catálogo ----
   const catInp=$("#an-cat-input"), catSugs=$("#an-cat-sugs"), catDesc=$("#an-cat-desc");
   catInp.oninput=()=>{
@@ -331,14 +351,81 @@ function anExportarCat(){
     ...rows
   ],"Distribución",`Dist_${cat}_${fechaTag()}`);
 }
-function anExportarAlm(){
-  const alm=$("#an-alm-sel")?.value; if(!alm||!anDatosAlm.length) return;
-  const per=anMCPM(), obj=anMStk();
+/* ---- Críticos D041: existencia propia < 1 mes de consumo propio ---- */
+function anRenderCriticosD041(){
+  const D=DIST(); // "D041"
+  const per=anMCPM();
+  const cD=DB.consumos?.[D]||{};
+  const eD={};
+  for(const [cat,e] of Object.entries(DB.existencias)) if(D in e) eD[cat]=e[D];
+
+  anDatosCritD041=Object.keys(cD).map(cat=>{
+    const m=mat(cat);
+    const cons=Math.max(0,cD[cat]||0); // consumos negativos (ajustes/errores del origen) se tratan como sin consumo, no como demanda
+    const ex=eD[cat]||0;
+    const mens=cons/per;
+    const restan=mens>0 ? ex/mens : null; // null = sin consumo registrado, no aplica "crítico"
+    return {cat,desc:m.desc,um:m.um,area:m.area,cons,mens,ex,restan};
+  }).filter(r=>r.restan!==null && r.restan<1) // crítico = menos de 1 mes de consumo propio en existencia
+    .sort((a,b)=>a.restan-b.restan);
+  anSortCritCol="rest"; anSortCritDir=1;
+  _pintarTablaCriticosD041();
+}
+function _pintarTablaCriticosD041(){
+  const col_=anSortCritCol, dir_=anSortCritDir;
+  const ic=c=>c===col_?(dir_===1?" ▲":" ▼"):" ⇅";
+  const anFmt=(n,d=0)=>n==null||isNaN(n)?"-":Number(n).toLocaleString("es-MX",{minimumFractionDigits:d,maximumFractionDigits:d});
+  const q=($("#an-crit-buscar")?.value||"").toLowerCase();
+  const wrap=document.getElementById("an-tabla-crit");
+  const btnExp=document.getElementById("an-btn-exp-crit");
+  if(!wrap) return;
+
+  const filas=anDatosCritD041.filter(r=>!q || r.cat.includes(q) || (r.desc||"").toLowerCase().includes(q))
+    .sort((a,b)=>{
+      if(["cat","desc","area"].includes(col_)) return String(a[col_]||"").localeCompare(String(b[col_]||""))*dir_;
+      const k=col_==="rest"?"restan":col_;
+      return ((a[k]||0)-(b[k]||0))*dir_;
+    });
+
+  if(!filas.length){
+    wrap.innerHTML=`<div class="empty" style="padding:24px">${anDatosCritD041.length?"Sin coincidencias.":"Sin materiales críticos con los parámetros actuales 🎉"}</div>`;
+    if(btnExp) btnExp.style.display="none";
+    return;
+  }
+  $("#an-crit-count").textContent=`${filas.length} catálogos`;
+  wrap.innerHTML=`<div class="scroll"><table>
+    <thead><tr>
+      <th onclick="_anSortCrit('cat')">Catálogo${ic("cat")}</th>
+      <th onclick="_anSortCrit('desc')">Descripción${ic("desc")}</th>
+      <th class="r">UM</th>
+      <th class="r" onclick="_anSortCrit('mens')">Cons. mensual D041${ic("mens")}</th>
+      <th class="r" onclick="_anSortCrit('ex')">Existencia D041${ic("ex")}</th>
+      <th class="r" onclick="_anSortCrit('rest')">Meses restantes${ic("rest")}</th>
+    </tr></thead><tbody>${filas.map(({cat,desc,um,mens,ex,restan})=>`
+      <tr>
+        <td class="cat num">${cat}</td>
+        <td style="font-size:12px;max-width:260px">${desc||""}</td>
+        <td class="r" style="font-size:11px;color:var(--muted)">${um||""}</td>
+        <td class="r num">${anFmt(mens,1)}</td>
+        <td class="r num">${anFmt(ex)}</td>
+        <td class="r num" style="font-weight:700;color:var(--low)">${anFmt(restan,2)}</td>
+      </tr>`).join("")}</tbody></table></div>`;
+  if(btnExp) btnExp.style.display="inline-flex";
+}
+function _anSortCrit(col){
+  if(col===anSortCritCol) anSortCritDir=-anSortCritDir; else { anSortCritCol=col; anSortCritDir=["cat","desc","area"].includes(col)?1:-1; }
+  _pintarTablaCriticosD041();
+}
+function anExportarCriticosD041(){
+  if(!anDatosCritD041.length) return;
+  const per=anMCPM();
   descargarXLSX([
-    [`Almacén: ${alm} — ${anNombre(alm)}`,""],[`Periodo: ${per}m | Stock obj: ${obj}m`,""],
-    [],["Catálogo","Descripción","UM","Consumo total","Cons. mensual","Existencia",`Stock obj.(${obj}m)`,"Distribución","D041 disponible"],
-    ...[...anDatosAlm].sort((a,b)=>b.dist-a.dist).map(r=>[r.cat,r.desc,r.um,r.cons,+(r.mens.toFixed(2)),r.ex,+(r.nec.toFixed(2)),+(r.dist.toFixed(1)),r.exD])
-  ], alm, `Dist_${alm}_${fechaTag()}`);
+    [`Materiales críticos — Almacén Distribuidor Puebla (D041)`,""],
+    [`Periodo consumo: ${per}m | Crítico = existencia < 1 mes de consumo propio`,""],
+    [],["Catálogo","Descripción","UM","Consumo mensual D041","Existencia D041","Meses restantes"],
+    ...[...anDatosCritD041].sort((a,b)=>a.restan-b.restan)
+      .map(r=>[r.cat,r.desc,r.um,+(r.mens.toFixed(2)),r.ex,+(r.restan.toFixed(2))])
+  ],"Críticos D041",`Criticos_D041_${fechaTag()}`);
 }
 
 

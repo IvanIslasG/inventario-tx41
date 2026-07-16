@@ -35,7 +35,7 @@ function modConfig(){
 
     <div class="panel"><div class="panel-head"><h2>📈 Archivos de consumo</h2><span class="pill">Para OR</span></div>
       <div style="padding:16px;display:grid;gap:12px">
-        <p style="margin:0;color:var(--muted);font-size:13px">Sube los consumos por almacén auxiliar (ej. <b>TX8A</b>). El nombre del archivo identifica el almacén (TX8A → A08A). Columna B = catálogo, columna C = consumo.</p>
+        <p style="margin:0;color:var(--muted);font-size:13px">Sube los consumos por almacén auxiliar (ej. <b>TX8A</b>). El nombre del archivo identifica el almacén (TX8A → A08A). Columna B = catálogo, columna C = consumo. Para el Distribuidor Puebla, nombra el archivo con "D041" — soporta el formato con columnas por mes y "Sumatoria".</p>
         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
           <label class="btn" style="cursor:pointer">📁 Agregar consumos<input type="file" id="upCons" multiple hidden></label>
           <span id="upConsName" style="font-size:13px;color:var(--muted)">Ninguno</span>
@@ -169,6 +169,7 @@ function bundleFinal(){
 /* ---- Parser de consumos (TSV de SAP o xlsx) ---- */
 function claveDeNombre(nombre){
   const base=nombre.replace(/\.[^.]+$/,"").trim().toUpperCase();
+  if(base.includes("D041")) return "D041"; // archivo propio del Distribuidor Puebla, formato distinto
   return /^TX/.test(base) ? "A0"+base.slice(2) : base;
 }
 async function parseConsumoFile(file){
@@ -178,13 +179,30 @@ async function parseConsumoFile(file){
   if(bytes[0]===0x50 && bytes[1]===0x4B){ // xlsx (zip)
     const wb=XLSX.read(buf,{type:"array"}); const ws=wb.Sheets[wb.SheetNames[0]];
     const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:""});
-    rows.forEach(r=>{ const cat=_txtJS(r[1]); if(/^\d+$/.test(cat)) mapa[cat]=_numJS(r[2]); });
+    // Formato con encabezado propio (ej. D041): columnas "Catálogo" ... "Sumatoria"
+    const hdr=(rows[0]||[]).map(h=>_txtJS(h).toLowerCase().replace(/á/g,"a"));
+    const iCat=hdr.findIndex(h=>h.includes("catalogo")||h.includes("material"));
+    const iSum=hdr.findIndex(h=>h.includes("sumatoria")||h.includes("suma")||h.includes("total"));
+    if(iCat>=0 && iSum>=0){
+      const vistos=new Set();
+      for(let i=1;i<rows.length;i++){
+        const r=rows[i]; if(!r) continue;
+        const cat=_txtJS(r[iCat]);
+        if(!/^\d+$/.test(cat)) continue;
+        if(vistos.has(cat)) break; // catálogo repetido = inicio de un bloque de ajustes/errores al final del archivo; se descarta todo lo que sigue
+        vistos.add(cat);
+        mapa[cat]=_numJS(r[iSum]);
+      }
+    } else {
+      // Formato simple sin encabezado: columna B = catálogo, columna C = consumo
+      rows.forEach(r=>{ const cat=_txtJS(r[1]); if(/^\d+$/.test(cat) && !(cat in mapa)) mapa[cat]=_numJS(r[2]); });
+    }
   } else { // texto TSV
     const txt=new TextDecoder("iso-8859-1").decode(buf);
     txt.split(/\r?\n/).forEach(ln=>{ const p=ln.split("\t"); if(p.length<3) return;
       const cat=_txtJS(p[1]); if(/^\d+$/.test(cat)) mapa[cat]=_numJS(p[2]); });
   }
-  if(!Object.keys(mapa).length) throw new Error("sin filas válidas (revisa columnas B y C)");
+  if(!Object.keys(mapa).length) throw new Error("sin filas válidas (revisa columnas B y C, o encabezados Catálogo/Sumatoria)");
   return {alm, mapa, n:Object.keys(mapa).length};
 }
 
