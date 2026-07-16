@@ -184,12 +184,8 @@ async function parseConsumoFile(file){
     const iCat=hdr.findIndex(h=>h.includes("catalogo")||h.includes("material"));
     const iSum=hdr.findIndex(h=>h.includes("sumatoria")||h.includes("suma")||h.includes("total"));
     if(iCat>=0 && iSum>=0){
-      // Los demás archivos de consumo (TX8A, etc.) representan siempre 6 meses. Si este archivo
-      // trae más o menos columnas de "Mes N", se normaliza la suma a esa misma base de 6 meses
-      // para que el consumo mensual salga correcto sin importar cuántos meses traiga el origen.
-      const MESES_BASE_CONSUMO=6;
-      const numMeses=hdr.filter(h=>/^mes\s*\d+$/.test(h)).length;
-      const factor=numMeses>0 ? MESES_BASE_CONSUMO/numMeses : 1;
+      // Se guarda la suma tal cual viene en el archivo (sin normalizar a ningún número de meses fijo).
+      // El divisor real se aplica después, en Análisis, con el campo "Meses CPM" que el usuario controla.
       const vistos=new Set();
       for(let i=1;i<rows.length;i++){
         const r=rows[i]; if(!r) continue;
@@ -197,7 +193,7 @@ async function parseConsumoFile(file){
         if(!/^\d+$/.test(cat)) continue;
         if(vistos.has(cat)) break; // catálogo repetido = inicio de un bloque de ajustes/errores al final del archivo; se descarta todo lo que sigue
         vistos.add(cat);
-        mapa[cat]=_numJS(r[iSum])*factor;
+        mapa[cat]=_numJS(r[iSum]);
       }
     } else {
       // Formato simple sin encabezado: columna B = catálogo, columna C = consumo
