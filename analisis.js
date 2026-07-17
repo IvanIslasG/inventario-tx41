@@ -18,9 +18,9 @@ const AN_NOMBRES={
 };
 function anNombre(alm){ return AN_NOMBRES[alm]||(DB.directorio?.almacenes?.[alm]?.desc)||alm; }
 
-let anTab_="cat", anSortCatCol="dist", anSortCatDir=-1, anSortAlmCol="dist", anSortAlmDir=-1;
+let anTab_="hub", anSortCatCol="dist", anSortCatDir=-1, anSortAlmCol="dist", anSortAlmDir=-1;
 let anDatosCat=[], anDatosAlm=[], anCatSel=null;
-let anDatosCritD041=[], anSortCritCol="rest", anSortCritDir=1;
+let anDatosCrit=[], anSortCritCol="rest", anSortCritDir=1, anCriticoAlmSel=null;
 let _anFijadas=[]; // filas fijadas para tabla custom
 
 function modAnalisis(){
@@ -34,19 +34,55 @@ function modAnalisis(){
       return `<option value="${a.clave}" ${isCons?'style="font-weight:700"':''}>${a.clave} · ${a.desc}${d}${isCons?" ★":""}</option>`;}).join("")
   }</optgroup>`).join("");
   const mCPM=DB.meta?.meses_cpm||6, mStk=DB.meta?.meses_stock||1.5;
-  const tieneConsD041=!!(DB.consumos?.[DIST()]);
   const almsConsCombos=almsCons.map(a=>`<option value="${a}">${a} · ${anNombre(a)}</option>`).join("");
   const tieneConsumos=almsCons.length>0;
 
+  // ---- HUB: menú animado con las 3 vistas ----
+  if(anTab_==="hub"){
+    $("#moduleView").innerHTML=`
+    <style>
+      @keyframes anCardIn{from{opacity:0;transform:translateY(14px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+      .an-hub{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px;padding:10px 2px 4px}
+      .an-hub-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:26px 22px;
+        cursor:pointer;box-shadow:var(--shadow);animation:anCardIn .38s ease both;transition:transform .15s,box-shadow .15s}
+      .an-hub-card:hover{transform:translateY(-3px);box-shadow:0 12px 26px rgba(15,27,45,.14)}
+      .an-hub-card .ico{font-size:34px;margin-bottom:10px;line-height:1}
+      .an-hub-card h3{margin:0 0 6px;font-size:16.5px}
+      .an-hub-card p{margin:0;font-size:12.5px;color:var(--muted);line-height:1.4}
+    </style>
+    <div class="an-hub">
+      <div class="an-hub-card" data-v="cat" style="animation-delay:.02s">
+        <div class="ico">📊</div><h3>Por catálogo</h3>
+        <p>Ver la distribución de un material entre todos los almacenes.</p>
+      </div>
+      <div class="an-hub-card" data-v="alm" style="animation-delay:.09s">
+        <div class="ico">🏭</div><h3>Por almacén</h3>
+        <p>Ver qué necesita repartir D041 a un almacén específico.</p>
+      </div>
+      <div class="an-hub-card" data-v="critico" style="animation-delay:.16s">
+        <div class="ico">⚠️</div><h3>Críticos</h3>
+        <p>Materiales con menos de 1 mes de consumo propio — elige el almacén.</p>
+      </div>
+    </div>`;
+    $("#moduleView").querySelectorAll(".an-hub-card").forEach(c=>c.onclick=()=>{
+      anTab_=c.dataset.v;
+      if(anTab_==="critico") anCriticoAlmSel=null;
+      modAnalisis();
+    });
+    return;
+  }
+
+
   $("#moduleView").innerHTML=`
     <div class="controls">
+      <button class="btn" id="anBtnHome" title="Volver al menú">🏠 Menú</button>
       <div class="seg" id="anSeg">
         <button data-v="cat" class="${anTab_==="cat"?"on":""}">Por catálogo</button>
         <button data-v="alm" class="${anTab_==="alm"?"on":""}">Por almacén</button>
-        <button data-v="critD041" class="${anTab_==="critD041"?"on":""}">⚠ Críticos D041</button>
+        <button data-v="critico" class="${anTab_==="critico"?"on":""}">⚠ Críticos</button>
       </div>
       <label class="chk">Meses CPM <input type="number" id="anMCPM" value="${mCPM}" min="1" max="24" step="1" style="width:58px"></label>
-      <label class="chk" id="anStkWrap" ${anTab_==="critD041"?'style="display:none"':""}>Stock obj. <input type="number" id="anMStk" value="${mStk}" min="0.5" max="12" step="0.5" style="width:58px"></label>
+      <label class="chk" id="anStkWrap" ${anTab_==="critico"?'style="display:none"':""}>Stock obj. <input type="number" id="anMStk" value="${mStk}" min="0.5" max="12" step="0.5" style="width:58px"></label>
     </div>
     <!-- Panel de filas fijadas -->
     <div class="fijadas-bar" id="an-fijadas-bar">
@@ -89,29 +125,33 @@ function modAnalisis(){
       <div class="panel"><div class="panel-head"><h2 id="an-alm-title">Selecciona un almacén</h2><span class="pill" id="an-alm-count"></span></div>
         <div class="scroll" id="an-tabla-alm"><div class="empty" style="padding:24px">Selecciona un almacén con consumos (★) para ver el análisis.</div></div></div>`}
     </div>
-    <!-- Panel CRÍTICOS D041 -->
-    <div id="an-panel-critD041" ${anTab_!=="critD041"?"hidden":""}>
-      ${!tieneConsD041?`<div class="panel"><div style="padding:16px;color:var(--muted)">
-          Carga el archivo de consumos de <b>D041</b> en Configuración para ver esta vista (nombra el archivo con "D041").</div></div>`:`
+    <!-- Panel CRÍTICOS (por almacén) -->
+    <div id="an-panel-critico" ${anTab_!=="critico"?"hidden":""}>
+      ${!tieneConsumos?`<div class="panel"><div style="padding:16px;color:var(--muted)">
+          Carga archivos de consumo en Configuración para ver esta vista.</div></div>`
+      : !anCriticoAlmSel ? `
+      <div style="padding:2px 2px 10px;color:var(--muted);font-size:13px">Elige el almacén para ver sus materiales críticos (existencia &lt; 1 mes de su propio consumo):</div>
+      <div id="an-crit-picker" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px"></div>`
+      : `
       <div class="controls" style="margin-top:4px">
+        <button class="linkish" id="an-crit-cambiar">← Cambiar almacén</button>
+        <span style="font-weight:700;padding:0 4px">${anCriticoAlmSel} · ${anNombre(anCriticoAlmSel)}${anCriticoAlmSel===DIST()?" — Distribuidor":""}</span>
         <input type="search" id="an-crit-buscar" placeholder="Buscar catálogo o descripción…">
         <label class="chk"><input type="checkbox" id="an-crit-solo"> Solo críticos</label>
         <button class="btn" id="an-btn-exp-crit" style="display:none;margin-left:auto">⬇ Exportar</button>
       </div>
-      <div style="font-size:12px;color:var(--muted);padding:2px 2px 4px">⚠ Crítico = existencia D041 menor a 1 mes de su propio consumo (umbral fijo, no usa Stock obj.)</div>
-      <div class="panel"><div class="panel-head"><h2>Materiales D041 · Consumo propio</h2><span class="pill" id="an-crit-count"></span></div>
+      <div style="font-size:12px;color:var(--muted);padding:2px 2px 4px">⚠ Crítico = existencia menor a 1 mes de consumo propio (umbral fijo, no usa Stock obj.)</div>
+      <div class="panel"><div class="panel-head"><h2>Materiales · Consumo propio</h2><span class="pill" id="an-crit-count"></span></div>
         <div class="scroll" id="an-tabla-crit"></div></div>`}
     </div>`;
 
   // ---- Tab ----
+  $("#anBtnHome").onclick=()=>{ anTab_="hub"; modAnalisis(); };
   $("#anSeg").querySelectorAll("button").forEach(b=> b.onclick=()=>{
     anTab_=b.dataset.v;
-    ["cat","alm","critD041"].forEach(v=>{ document.getElementById("an-panel-"+v).hidden=anTab_!==v; });
-    $("#anSeg").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));
-    const stkWrap=document.getElementById("anStkWrap"); if(stkWrap) stkWrap.style.display=anTab_==="critD041"?"none":"";
-    if(anTab_==="critD041" && tieneConsD041) anRenderCriticosD041();
+    if(anTab_==="critico") anCriticoAlmSel=null;
+    modAnalisis();
   });
-  if(anTab_==="critD041" && tieneConsD041) anRenderCriticosD041();
   // Panel fijadas
   _renderFijadas();
   document.getElementById("an-clear-custom")?.addEventListener("click",()=>{ _anFijadas=[]; _renderFijadas(); });
@@ -119,12 +159,29 @@ function modAnalisis(){
   // ---- Params ----
   const repintarCat=()=>{ if(anCatSel) anRenderTablaCat(anSortCatCol); };
   const repintarAlm=()=>{ if($("#an-alm-sel")?.value) anRenderAlm(); };
-  const repintarCrit=()=>{ if(tieneConsD041 && anTab_==="critD041") anRenderCriticosD041(); };
+  const repintarCrit=()=>{ if(anCriticoAlmSel) anRenderCriticos(anCriticoAlmSel); };
   $("#anMCPM").oninput=()=>{ repintarCat(); repintarAlm(); repintarCrit(); };
   $("#anMStk").oninput=()=>{ repintarCat(); repintarAlm(); };
-  $("#an-crit-buscar")?.addEventListener("input", ()=>_pintarTablaCriticosD041());
-  $("#an-crit-solo")?.addEventListener("change", ()=>_pintarTablaCriticosD041());
-  document.getElementById("an-btn-exp-crit")?.addEventListener("click", anExportarCriticosD041);
+  // ---- Picker de almacén para Críticos ----
+  if(anTab_==="critico"){
+    if(!anCriticoAlmSel){
+      const rec=almsCons.filter(a=>almList().find(x=>x.clave===a)?.recurrente);
+      const lista=rec.length?rec:almsCons; // si ninguno de los que tienen consumo está marcado recurrente, se muestran todos
+      const picker=document.getElementById("an-crit-picker");
+      if(picker) picker.innerHTML=lista.sort((a,b)=>anNombre(a).localeCompare(anNombre(b))).map((a,i)=>`
+        <div class="an-hub-card" data-a="${a}" style="padding:16px 14px;animation-delay:${(i*.04).toFixed(2)}s">
+          <div style="font-weight:700;color:var(--primary)">${a}${a===DIST()?" ★":""}</div>
+          <div style="font-size:12.5px;color:var(--muted)">${anNombre(a)}${a===DIST()?" — Distribuidor":""}</div>
+        </div>`).join("");
+      picker?.querySelectorAll("[data-a]").forEach(el=>el.onclick=()=>{ anCriticoAlmSel=el.dataset.a; modAnalisis(); });
+    } else {
+      anRenderCriticos(anCriticoAlmSel);
+      $("#an-crit-cambiar")?.addEventListener("click",()=>{ anCriticoAlmSel=null; modAnalisis(); });
+      $("#an-crit-buscar")?.addEventListener("input", ()=>_pintarTablaCriticos());
+      $("#an-crit-solo")?.addEventListener("change", ()=>_pintarTablaCriticos());
+      document.getElementById("an-btn-exp-crit")?.addEventListener("click", anExportarCriticos);
+    }
+  }
   // ---- Buscador catálogo ----
   const catInp=$("#an-cat-input"), catSugs=$("#an-cat-sugs"), catDesc=$("#an-cat-desc");
   catInp.oninput=()=>{
@@ -354,31 +411,30 @@ function anExportarCat(){
     ...rows
   ],"Distribución",`Dist_${cat}_${fechaTag()}`);
 }
-/* ---- Consumo propio D041: global de materiales, críticos marcados (<1 mes) ---- */
-function anRenderCriticosD041(){
-  const D=DIST(); // "D041"
+/* ---- Consumo propio por almacén: global de materiales, críticos marcados (<1 mes) ---- */
+function anRenderCriticos(alm){
   const per=anMCPM();
-  const cD=DB.consumos?.[D]||{};
-  const eD={};
-  for(const [cat,e] of Object.entries(DB.existencias)) if(D in e) eD[cat]=e[D];
+  const cAlm=DB.consumos?.[alm]||{};
+  const eAlm={};
+  for(const [cat,e] of Object.entries(DB.existencias)) if(alm in e) eAlm[cat]=e[alm];
 
-  anDatosCritD041=Object.keys(cD).map(cat=>{
+  anDatosCrit=Object.keys(cAlm).map(cat=>{
     const m=mat(cat);
-    const cons=Math.max(0,cD[cat]||0); // consumos negativos (ajustes/errores del origen) se tratan como sin consumo, no como demanda
-    const ex=eD[cat]||0;
+    const cons=Math.max(0,cAlm[cat]||0); // consumos negativos (ajustes/errores del origen) se tratan como sin consumo, no como demanda
+    const ex=eAlm[cat]||0;
     const mens=cons/per;
     const restan=mens>0 ? ex/mens : null; // null = sin consumo registrado en el periodo, no aplica "crítico"
     const critico=restan!==null && restan<1; // umbral fijo: menos de 1 mes de consumo propio en existencia
     return {cat,desc:m.desc,um:m.um,area:m.area,cons,mens,ex,restan,critico};
   });
   anSortCritCol="rest"; anSortCritDir=1;
-  _pintarTablaCriticosD041();
+  _pintarTablaCriticos();
 }
-function _filasCriticosD041(){
+function _filasCriticos(){
   const col_=anSortCritCol, dir_=anSortCritDir;
   const q=($("#an-crit-buscar")?.value||"").toLowerCase();
   const soloCrit=$("#an-crit-solo")?.checked;
-  return anDatosCritD041.filter(r=>{
+  return anDatosCrit.filter(r=>{
     if(q && !(r.cat.includes(q) || (r.desc||"").toLowerCase().includes(q))) return false;
     if(soloCrit && !r.critico) return false;
     return true;
@@ -389,7 +445,7 @@ function _filasCriticosD041(){
     return (av-bv)*dir_;
   });
 }
-function _pintarTablaCriticosD041(){
+function _pintarTablaCriticos(){
   const col_=anSortCritCol, dir_=anSortCritDir;
   const ic=c=>c===col_?(dir_===1?" ▲":" ▼"):" ⇅";
   const anFmt=(n,d=0)=>n==null||isNaN(n)?"-":Number(n).toLocaleString("es-MX",{minimumFractionDigits:d,maximumFractionDigits:d});
@@ -397,8 +453,9 @@ function _pintarTablaCriticosD041(){
   const btnExp=document.getElementById("an-btn-exp-crit");
   if(!wrap) return;
 
-  const filas=_filasCriticosD041();
-  const nCrit=anDatosCritD041.filter(r=>r.critico).length;
+  const filas=_filasCriticos();
+  const nCrit=anDatosCrit.filter(r=>r.critico).length;
+  const alm=anCriticoAlmSel;
 
   if(!filas.length){
     wrap.innerHTML=`<div class="empty" style="padding:24px">Sin coincidencias.</div>`;
@@ -411,8 +468,8 @@ function _pintarTablaCriticosD041(){
       <th onclick="_anSortCrit('cat')">Catálogo${ic("cat")}</th>
       <th onclick="_anSortCrit('desc')">Descripción${ic("desc")}</th>
       <th class="r">UM</th>
-      <th class="r" onclick="_anSortCrit('mens')">Cons. mensual D041${ic("mens")}</th>
-      <th class="r" onclick="_anSortCrit('ex')">Existencia D041${ic("ex")}</th>
+      <th class="r" onclick="_anSortCrit('mens')">Cons. mensual ${alm}${ic("mens")}</th>
+      <th class="r" onclick="_anSortCrit('ex')">Existencia ${alm}${ic("ex")}</th>
       <th class="r" onclick="_anSortCrit('rest')">Meses restantes${ic("rest")}</th>
       <th></th>
     </tr></thead><tbody>${filas.map(({cat,desc,um,mens,ex,restan,critico})=>`
@@ -429,19 +486,19 @@ function _pintarTablaCriticosD041(){
 }
 function _anSortCrit(col){
   if(col===anSortCritCol) anSortCritDir=-anSortCritDir; else { anSortCritCol=col; anSortCritDir=["cat","desc","area"].includes(col)?1:-1; }
-  _pintarTablaCriticosD041();
+  _pintarTablaCriticos();
 }
-function anExportarCriticosD041(){
-  if(!anDatosCritD041.length) return;
-  const per=anMCPM();
+function anExportarCriticos(){
+  if(!anDatosCrit.length) return;
+  const per=anMCPM(), alm=anCriticoAlmSel;
   const soloCrit=$("#an-crit-solo")?.checked;
-  const filas=_filasCriticosD041();
+  const filas=_filasCriticos();
   descargarXLSX([
-    [`Materiales D041 — Consumo propio${soloCrit?" (solo críticos)":" (global)"}`,""],
+    [`Materiales ${alm} · ${anNombre(alm)} — Consumo propio${soloCrit?" (solo críticos)":" (global)"}`,""],
     [`Periodo consumo: ${per}m | Crítico = existencia < 1 mes de consumo propio`,""],
-    [],["Catálogo","Descripción","UM","Consumo mensual D041","Existencia D041","Meses restantes","Crítico"],
+    [],["Catálogo","Descripción","UM","Consumo mensual","Existencia","Meses restantes","Crítico"],
     ...filas.map(r=>[r.cat,r.desc,r.um,+(r.mens.toFixed(2)),r.ex,r.restan==null?"":+(r.restan.toFixed(2)),r.critico?"Sí":"No"])
-  ],"Consumo D041",`Consumo_D041_${fechaTag()}`);
+  ],"Consumo propio",`Criticos_${alm}_${fechaTag()}`);
 }
 
 
