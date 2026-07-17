@@ -33,7 +33,7 @@ function modAnalisis(){
       const isCons=almsCons.includes(a.clave); const d=a.clave===DIST()?" — Distribuidor":"";
       return `<option value="${a.clave}" ${isCons?'style="font-weight:700"':''}>${a.clave} · ${a.desc}${d}${isCons?" ★":""}</option>`;}).join("")
   }</optgroup>`).join("");
-  const mCPM=DB.meta?.meses_cpm||6, mStk=DB.meta?.meses_stock||1.5;
+  const mStk=DB.meta?.meses_stock||1.5;
   const almsConsCombos=almsCons.map(a=>`<option value="${a}">${a} · ${anNombre(a)}</option>`).join("");
   const tieneConsumos=almsCons.length>0;
 
@@ -81,8 +81,8 @@ function modAnalisis(){
         <button data-v="alm" class="${anTab_==="alm"?"on":""}">Por almacén</button>
         <button data-v="critico" class="${anTab_==="critico"?"on":""}">⚠ Críticos</button>
       </div>
-      <label class="chk">Meses CPM <input type="number" id="anMCPM" value="${mCPM}" min="1" max="24" step="1" style="width:58px"></label>
       <label class="chk" id="anStkWrap" ${anTab_==="critico"?'style="display:none"':""}>Stock obj. <input type="number" id="anMStk" value="${mStk}" min="0.5" max="12" step="0.5" style="width:58px"></label>
+      <span style="font-size:11.5px;color:var(--muted);align-self:center">CPM: 6 meses (12 para D041) — automático</span>
     </div>
     <!-- Panel de filas fijadas -->
     <div class="fijadas-bar" id="an-fijadas-bar">
@@ -159,8 +159,6 @@ function modAnalisis(){
   // ---- Params ----
   const repintarCat=()=>{ if(anCatSel) anRenderTablaCat(anSortCatCol); };
   const repintarAlm=()=>{ if($("#an-alm-sel")?.value) anRenderAlm(); };
-  const repintarCrit=()=>{ if(anCriticoAlmSel) anRenderCriticos(anCriticoAlmSel); };
-  $("#anMCPM").oninput=()=>{ repintarCat(); repintarAlm(); repintarCrit(); };
   $("#anMStk").oninput=()=>{ repintarCat(); repintarAlm(); };
   // ---- Picker de almacén para Críticos ----
   if(anTab_==="critico"){
@@ -222,19 +220,23 @@ function modAnalisis(){
   }
 }
 
-function anMCPM(){ return Math.max(1,parseFloat($("#anMCPM")?.value)||6); }
+// CPM matemáticamente correcto y automático, sin depender de que alguien lo recuerde ajustar:
+// el consumo total de cada archivo se divide entre el número real de meses que representa.
+// Hoy en día: D041 = 12 meses (su archivo trae 12 columnas de mes), todos los demás = 6 meses.
+function anPerAlm(alm){ return alm===DIST() ? 12 : 6; }
 function anMStk(){ return Math.max(0.1,parseFloat($("#anMStk")?.value)||1.5); }
 
 /* ---- Análisis por catálogo (distribución entre almacenes) ---- */
 function anRenderTablaCat(col){
   if(!anCatSel) return;
   if(anSortCatCol===col) anSortCatDir=-anSortCatDir; else { anSortCatCol=col; anSortCatDir=col==="alm"?1:-1; }
-  const per=anMCPM(), obj=anMStk(), cat=anCatSel, m=mat(cat);
+  const obj=anMStk(), cat=anCatSel, m=mat(cat);
   const qFilt=($("#an-cat-filtro")?.value||"").toLowerCase(), soloDem=$("#an-cat-solo")?.checked, soloRec=$("#an-cat-rec")?.checked;
   const alms=almList().map(a=>a.clave);
   anDatosCat=alms.map(alm=>{
     const cons=(DB.consumos?.[alm]?.[cat])||0;
     const ex=(DB.existencias?.[cat]?.[alm])||0;
+    const per=anPerAlm(alm);
     const mens=cons/per, nec=mens*obj, dist=Math.max(0,nec-ex);
     const exD=(DB.existencias?.[cat]?.[DIST()])||0;
     return {alm,cons,mens,ex,nec,dist,exD};
@@ -309,21 +311,25 @@ function _renderFijadas(){
 function _quitarFijada(i){ _anFijadas.splice(i,1); _renderFijadas(); }
 function _exportarCustom(){
   if(!_anFijadas.length){ alert("No hay filas fijadas."); return; }
-  const per=anMCPM(), obj=anMStk();
+  const obj=anMStk();
   const aoa=[
-    [`Tabla personalizada · CPM ${per}m · Stock obj. ${obj}m`],
+    [`Tabla personalizada · Stock obj. ${obj}m · CPM: 6 meses (12 para D041)`],
     [],
     ["Catálogo","Descripción","U.M.","Almacén","Nombre almacén","Consumo total",
-     "Cons. mensual","Existencia",`Stock obj.(${obj}m)`,"Distribución","D041 disponible"],
+     "Cons. mensual","Existencia",`Stock obj.(${obj}m)`,"Distribución","D041 disponible","Meses restantes","Crítico"],
     ..._anFijadas.map(f=>{
       const m=mat(f.cat);
       const cons=(DB.consumos?.[f.alm]?.[f.cat])||0;
+      const per=anPerAlm(f.alm);
       const mens=cons/per, nec=mens*obj;
-      const dist=Math.max(0,nec-(DB.existencias?.[f.cat]?.[f.alm]||0));
+      const ex=DB.existencias?.[f.cat]?.[f.alm]||0;
+      const dist=Math.max(0,nec-ex);
       const exD=(DB.existencias?.[f.cat]?.[DIST()])||0;
+      const restan=mens>0 ? ex/mens : null;
       return [f.cat,m.desc||f.desc,m.um||f.um,f.alm,anNombre(f.alm),
-              cons,+(mens.toFixed(2)),DB.existencias?.[f.cat]?.[f.alm]||0,
-              +(nec.toFixed(2)),+(dist.toFixed(1)),exD];
+              cons,+(mens.toFixed(2)),ex,
+              +(nec.toFixed(2)),+(dist.toFixed(1)),exD,
+              restan==null?"":+(restan.toFixed(2)), restan!=null&&restan<1?"Sí":"No"];
     })
   ];
   descargarXLSX(aoa,"Distribución",`Analisis_Custom_${fechaTag()}`);
@@ -333,7 +339,7 @@ function _anSortCat(col){ anRenderTablaCat(col); }
 /* ---- Análisis por almacén ---- */
 function anRenderAlm(){
   const alm=$("#an-alm-sel")?.value; if(!alm) return;
-  const per=anMCPM(), obj=anMStk();
+  const per=anPerAlm(alm), obj=anMStk();
   const cAlm=DB.consumos?.[alm]||{}, eAlm={};
   // existencias del almacén
   for(const [cat,e] of Object.entries(DB.existencias)) if(alm in e) eAlm[cat]=e[alm];
@@ -402,18 +408,18 @@ function _anSortAlm(col){
   _pintarTablaAlm(anMStk());
 }
 function anExportarCat(){
-  if(!anCatSel) return; const cat=anCatSel, m=mat(cat), per=anMCPM(), obj=anMStk();
-  // Usar exactamente los mismos filtros y datos que anRenderTablaCat
+  if(!anCatSel) return; const cat=anCatSel, m=mat(cat), obj=anMStk();
+  // Usar exactamente los mismos filtros y datos que anRenderTablaCat (r.mens ya viene calculado con el CPM correcto por almacén)
   const rows=anDatosCat.map(r=>[r.alm,anNombre(r.alm),r.cons,+(r.mens.toFixed(2)),r.ex,+(r.nec.toFixed(2)),+(r.dist.toFixed(1)),r.exD]);
   descargarXLSX([
-    [`Catálogo: ${cat} — ${m.desc||""}`,""],[`Periodo: ${per}m | Stock obj: ${obj}m`,""],
+    [`Catálogo: ${cat} — ${m.desc||""}`,""],[`CPM: 6 meses (12 para D041) | Stock obj: ${obj}m`,""],
     [],["Almacén","Nombre","Consumo total","Cons. mensual","Existencia",`Stock obj.(${obj}m)`,"Distribución","D041 disponible"],
     ...rows
   ],"Distribución",`Dist_${cat}_${fechaTag()}`);
 }
 /* ---- Consumo propio por almacén: global de materiales, críticos marcados (<1 mes) ---- */
 function anRenderCriticos(alm){
-  const per=anMCPM();
+  const per=anPerAlm(alm);
   const cAlm=DB.consumos?.[alm]||{};
   const eAlm={};
   for(const [cat,e] of Object.entries(DB.existencias)) if(alm in e) eAlm[cat]=e[alm];
@@ -471,9 +477,10 @@ function _pintarTablaCriticos(){
       <th class="r" onclick="_anSortCrit('mens')">Cons. mensual ${alm}${ic("mens")}</th>
       <th class="r" onclick="_anSortCrit('ex')">Existencia ${alm}${ic("ex")}</th>
       <th class="r" onclick="_anSortCrit('rest')">Meses restantes${ic("rest")}</th>
-      <th></th>
-    </tr></thead><tbody>${filas.map(({cat,desc,um,mens,ex,restan,critico})=>`
-      <tr ${critico?'style="background:var(--low-bg)"':""}>
+      <th></th><th></th>
+    </tr></thead><tbody>${filas.map(({cat,desc,um,cons,mens,ex,restan,critico})=>{
+      const yaFijada=_anFijadas.some(f=>f.cat===cat&&f.alm===alm);
+      return `<tr ${critico?'style="background:var(--low-bg)"':""}>
         <td class="cat num">${cat}</td>
         <td style="font-size:12px;max-width:260px">${desc||""}</td>
         <td class="r" style="font-size:11px;color:var(--muted)">${um||""}</td>
@@ -481,8 +488,17 @@ function _pintarTablaCriticos(){
         <td class="r num">${anFmt(ex)}</td>
         <td class="r num" style="${critico?"font-weight:700;color:var(--low)":""}">${restan==null?"—":anFmt(restan,2)}</td>
         <td>${critico?'<span class="an-badge r">⚠ Crítico</span>':""}</td>
-      </tr>`).join("")}</tbody></table></div>`;
+        <td><button class="btn an-fijar-crit" data-cat="${cat}" data-alm="${alm}"
+            data-desc="${(desc||"").replace(/"/g,"")}" data-um="${um||""}" data-cons="${cons}" data-ex="${ex}"
+            style="${yaFijada?"background:var(--primary);color:#fff":""}"
+            title="${yaFijada?"Ya fijada":"Fijar en tabla personalizada"}">📌</button></td>
+      </tr>`;}).join("")}</tbody></table></div>`;
   if(btnExp) btnExp.style.display="inline-flex";
+  wrap.querySelectorAll(".an-fijar-crit").forEach(btn=>btn.onclick=()=>{
+    const {cat,alm,desc,um,cons,ex}=btn.dataset;
+    _fijarFila({cat,alm,desc,um,cons:+cons,ex:+ex,dist:0});
+    _pintarTablaCriticos();
+  });
 }
 function _anSortCrit(col){
   if(col===anSortCritCol) anSortCritDir=-anSortCritDir; else { anSortCritCol=col; anSortCritDir=["cat","desc","area"].includes(col)?1:-1; }
@@ -490,12 +506,12 @@ function _anSortCrit(col){
 }
 function anExportarCriticos(){
   if(!anDatosCrit.length) return;
-  const per=anMCPM(), alm=anCriticoAlmSel;
+  const per=anPerAlm(anCriticoAlmSel), alm=anCriticoAlmSel;
   const soloCrit=$("#an-crit-solo")?.checked;
   const filas=_filasCriticos();
   descargarXLSX([
     [`Materiales ${alm} · ${anNombre(alm)} — Consumo propio${soloCrit?" (solo críticos)":" (global)"}`,""],
-    [`Periodo consumo: ${per}m | Crítico = existencia < 1 mes de consumo propio`,""],
+    [`CPM: ${per} meses (${alm===DIST()?"D041 → 12 meses":"6 meses"}) | Crítico = existencia < 1 mes de consumo propio`,""],
     [],["Catálogo","Descripción","UM","Consumo mensual","Existencia","Meses restantes","Crítico"],
     ...filas.map(r=>[r.cat,r.desc,r.um,+(r.mens.toFixed(2)),r.ex,r.restan==null?"":+(r.restan.toFixed(2)),r.critico?"Sí":"No"])
   ],"Consumo propio",`Criticos_${alm}_${fechaTag()}`);
