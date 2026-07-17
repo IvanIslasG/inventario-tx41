@@ -73,16 +73,13 @@ function modAnalisis(){
   }
 
 
+  const anTituloVista={cat:"📊 Por catálogo",alm:"🏭 Por almacén",critico:"⚠️ Críticos"}[anTab_]||"";
   $("#moduleView").innerHTML=`
     <div class="controls">
       <button class="btn" id="anBtnHome" title="Volver al menú">🏠 Menú</button>
-      <div class="seg" id="anSeg">
-        <button data-v="cat" class="${anTab_==="cat"?"on":""}">Por catálogo</button>
-        <button data-v="alm" class="${anTab_==="alm"?"on":""}">Por almacén</button>
-        <button data-v="critico" class="${anTab_==="critico"?"on":""}">⚠ Críticos</button>
-      </div>
+      <h3 style="margin:0;font-size:15.5px;align-self:center">${anTituloVista}</h3>
       <label class="chk" id="anStkWrap" ${anTab_==="critico"?'style="display:none"':""}>Stock obj. <input type="number" id="anMStk" value="${mStk}" min="0.5" max="12" step="0.5" style="width:58px"></label>
-      <span style="font-size:11.5px;color:var(--muted);align-self:center">CPM: 6 meses (12 para D041) — automático</span>
+      <span style="font-size:11.5px;color:var(--muted);align-self:center;margin-left:auto">CPM: 6 meses (12 para D041) — automático</span>
     </div>
     <!-- Panel de filas fijadas -->
     <div class="fijadas-bar" id="an-fijadas-bar">
@@ -145,13 +142,8 @@ function modAnalisis(){
         <div class="scroll" id="an-tabla-crit"></div></div>`}
     </div>`;
 
-  // ---- Tab ----
+  // ---- Volver al menú ----
   $("#anBtnHome").onclick=()=>{ anTab_="hub"; modAnalisis(); };
-  $("#anSeg").querySelectorAll("button").forEach(b=> b.onclick=()=>{
-    anTab_=b.dataset.v;
-    if(anTab_==="critico") anCriticoAlmSel=null;
-    modAnalisis();
-  });
   // Panel fijadas
   _renderFijadas();
   document.getElementById("an-clear-custom")?.addEventListener("click",()=>{ _anFijadas=[]; _renderFijadas(); });
@@ -166,11 +158,34 @@ function modAnalisis(){
       const rec=almsCons.filter(a=>almList().find(x=>x.clave===a)?.recurrente);
       const lista=rec.length?rec:almsCons; // si ninguno de los que tienen consumo está marcado recurrente, se muestran todos
       const picker=document.getElementById("an-crit-picker");
-      if(picker) picker.innerHTML=lista.sort((a,b)=>anNombre(a).localeCompare(anNombre(b))).map((a,i)=>`
-        <div class="an-hub-card" data-a="${a}" style="padding:16px 14px;animation-delay:${(i*.04).toFixed(2)}s">
-          <div style="font-weight:700;color:var(--primary)">${a}${a===DIST()?" ★":""}</div>
-          <div style="font-size:12.5px;color:var(--muted)">${anNombre(a)}${a===DIST()?" — Distribuidor":""}</div>
-        </div>`).join("");
+      const conD=lista.includes(DIST());
+      const resto=lista.filter(a=>a!==DIST()).sort((a,b)=>anNombre(a).localeCompare(anNombre(b)));
+      const ordenada=conD?[DIST(),...resto]:resto;
+      if(picker) picker.innerHTML=`
+        <style>
+          @keyframes anCardIn{from{opacity:0;transform:translateY(12px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+          .an-alm-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 16px 14px;
+            cursor:pointer;box-shadow:var(--shadow);animation:anCardIn .3s ease both;position:relative;overflow:hidden;
+            transition:transform .15s,box-shadow .15s,border-color .15s}
+          .an-alm-card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--line)}
+          .an-alm-card:hover{transform:translateY(-2px);box-shadow:0 10px 22px rgba(15,27,45,.14);border-color:var(--primary)}
+          .an-alm-card .code{font-weight:800;font-size:15px;color:var(--primary)}
+          .an-alm-card .name{font-size:12.5px;color:var(--muted);margin-top:3px}
+          .an-alm-card.principal{background:linear-gradient(135deg,var(--primary-d),var(--primary) 70%);border-color:var(--primary-d)}
+          .an-alm-card.principal::before{background:#ffd54a}
+          .an-alm-card.principal .code,.an-alm-card.principal .name{color:#fff}
+          .an-alm-card.principal .name{color:rgba(255,255,255,.85)}
+          .an-alm-card .tag{position:absolute;top:8px;right:10px;font-size:10px;font-weight:700;
+            background:#ffd54a;color:#5c3d00;padding:2px 7px;border-radius:20px}
+        </style>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px">
+        ${ordenada.map((a,i)=>`
+          <div class="an-alm-card ${a===DIST()?"principal":""}" data-a="${a}" style="animation-delay:${(i*.03).toFixed(2)}s">
+            ${a===DIST()?'<span class="tag">★ Principal</span>':""}
+            <div class="code">🏬 ${a}</div>
+            <div class="name">${anNombre(a)}${a===DIST()?" — Distribuidor":""}</div>
+          </div>`).join("")}
+        </div>`;
       picker?.querySelectorAll("[data-a]").forEach(el=>el.onclick=()=>{ anCriticoAlmSel=el.dataset.a; modAnalisis(); });
     } else {
       anRenderCriticos(anCriticoAlmSel);
@@ -424,14 +439,17 @@ function anRenderCriticos(alm){
   const eAlm={};
   for(const [cat,e] of Object.entries(DB.existencias)) if(alm in e) eAlm[cat]=e[alm];
 
-  anDatosCrit=Object.keys(cAlm).map(cat=>{
+  // Base = TODO el maestro de materiales (no solo los que tienen consumo registrado para este almacén),
+  // así se ve el global y se marca claramente "Sin consumo" donde no haya dato en vez de simplemente omitirlos.
+  anDatosCrit=Object.keys(DB.materiales).map(cat=>{
     const m=mat(cat);
-    const cons=Math.max(0,cAlm[cat]||0); // consumos negativos (ajustes/errores del origen) se tratan como sin consumo, no como demanda
+    const tieneCons=cAlm[cat]!==undefined;
+    const cons=tieneCons?Math.max(0,cAlm[cat]||0):0; // consumos negativos (ajustes/errores del origen) se tratan como sin consumo, no como demanda
     const ex=eAlm[cat]||0;
-    const mens=cons/per;
-    const restan=mens>0 ? ex/mens : null; // null = sin consumo registrado en el periodo, no aplica "crítico"
+    const mens=tieneCons ? cons/per : null; // null = sin archivo de consumo para este material en este almacén
+    const restan=(mens!==null && mens>0) ? ex/mens : null; // null = sin consumo o consumo en 0, no aplica "crítico"
     const critico=restan!==null && restan<1; // umbral fijo: menos de 1 mes de consumo propio en existencia
-    return {cat,desc:m.desc,um:m.um,area:m.area,cons,mens,ex,restan,critico};
+    return {cat,desc:m.desc,um:m.um,area:m.area,tieneCons,cons,mens,ex,restan,critico};
   });
   anSortCritCol="rest"; anSortCritDir=1;
   _pintarTablaCriticos();
@@ -468,7 +486,7 @@ function _pintarTablaCriticos(){
     if(btnExp) btnExp.style.display="none";
     return;
   }
-  $("#an-crit-count").textContent=`${filas.length} catálogos · ${nCrit} críticos`;
+  $("#an-crit-count").textContent=`${filas.length} mostrados · ${nCrit} críticos · ${Object.keys(DB.materiales).length} en el maestro`;
   wrap.innerHTML=`<div class="scroll"><table>
     <thead><tr>
       <th onclick="_anSortCrit('cat')">Catálogo${ic("cat")}</th>
@@ -478,15 +496,15 @@ function _pintarTablaCriticos(){
       <th class="r" onclick="_anSortCrit('ex')">Existencia ${alm}${ic("ex")}</th>
       <th class="r" onclick="_anSortCrit('rest')">Meses restantes${ic("rest")}</th>
       <th></th><th></th>
-    </tr></thead><tbody>${filas.map(({cat,desc,um,cons,mens,ex,restan,critico})=>{
+    </tr></thead><tbody>${filas.map(({cat,desc,um,cons,mens,ex,restan,critico,tieneCons})=>{
       const yaFijada=_anFijadas.some(f=>f.cat===cat&&f.alm===alm);
       return `<tr ${critico?'style="background:var(--low-bg)"':""}>
         <td class="cat num">${cat}</td>
         <td style="font-size:12px;max-width:260px">${desc||""}</td>
         <td class="r" style="font-size:11px;color:var(--muted)">${um||""}</td>
-        <td class="r num">${anFmt(mens,1)}</td>
+        <td class="r num" style="${tieneCons?"":"color:var(--muted);font-style:italic"}">${tieneCons?anFmt(mens,1):"Sin consumo"}</td>
         <td class="r num">${anFmt(ex)}</td>
-        <td class="r num" style="${critico?"font-weight:700;color:var(--low)":""}">${restan==null?"—":anFmt(restan,2)}</td>
+        <td class="r num" style="${critico?"font-weight:700;color:var(--low)":(tieneCons?"":"color:var(--muted);font-style:italic")}">${!tieneCons?"Sin consumo":(restan==null?"—":anFmt(restan,2))}</td>
         <td>${critico?'<span class="an-badge r">⚠ Crítico</span>':""}</td>
         <td><button class="btn an-fijar-crit" data-cat="${cat}" data-alm="${alm}"
             data-desc="${(desc||"").replace(/"/g,"")}" data-um="${um||""}" data-cons="${cons}" data-ex="${ex}"
@@ -513,7 +531,11 @@ function anExportarCriticos(){
     [`Materiales ${alm} · ${anNombre(alm)} — Consumo propio${soloCrit?" (solo críticos)":" (global)"}`,""],
     [`CPM: ${per} meses (${alm===DIST()?"D041 → 12 meses":"6 meses"}) | Crítico = existencia < 1 mes de consumo propio`,""],
     [],["Catálogo","Descripción","UM","Consumo mensual","Existencia","Meses restantes","Crítico"],
-    ...filas.map(r=>[r.cat,r.desc,r.um,+(r.mens.toFixed(2)),r.ex,r.restan==null?"":+(r.restan.toFixed(2)),r.critico?"Sí":"No"])
+    ...filas.map(r=>[r.cat,r.desc,r.um,
+      r.tieneCons?+(r.mens.toFixed(2)):"Sin consumo",
+      r.ex,
+      !r.tieneCons?"Sin consumo":(r.restan==null?"":+(r.restan.toFixed(2))),
+      r.critico?"Sí":"No"])
   ],"Consumo propio",`Criticos_${alm}_${fechaTag()}`);
 }
 
