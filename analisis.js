@@ -178,14 +178,12 @@ function modAnalisis(){
           .an-alm-card .tag{position:absolute;top:8px;right:10px;font-size:10px;font-weight:700;
             background:#ffd54a;color:#5c3d00;padding:2px 7px;border-radius:20px}
         </style>
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px">
         ${ordenada.map((a,i)=>`
           <div class="an-alm-card ${a===DIST()?"principal":""}" data-a="${a}" style="animation-delay:${(i*.03).toFixed(2)}s">
             ${a===DIST()?'<span class="tag">★ Principal</span>':""}
             <div class="code">🏬 ${a}</div>
             <div class="name">${anNombre(a)}${a===DIST()?" — Distribuidor":""}</div>
-          </div>`).join("")}
-        </div>`;
+          </div>`).join("")}`;
       picker?.querySelectorAll("[data-a]").forEach(el=>el.onclick=()=>{ anCriticoAlmSel=el.dataset.a; modAnalisis(); });
     } else {
       anRenderCriticos(anCriticoAlmSel);
