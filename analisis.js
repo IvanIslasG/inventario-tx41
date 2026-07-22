@@ -21,6 +21,7 @@ function anNombre(alm){ return AN_NOMBRES[alm]||(DB.directorio?.almacenes?.[alm]
 let anTab_="hub", anSortCatCol="dist", anSortCatDir=-1, anSortAlmCol="dist", anSortAlmDir=-1;
 let anDatosCat=[], anDatosAlm=[], anCatSel=null;
 let anDatosCrit=[], anSortCritCol="rest", anSortCritDir=1, anCriticoAlmSel=null;
+let anBuscarCatSel=null;
 let _anFijadas=[]; // filas fijadas para tabla custom
 
 function modAnalisis(){
@@ -52,28 +53,33 @@ function modAnalisis(){
     </style>
     <div class="an-hub">
       <div class="an-hub-card" data-v="cat" style="animation-delay:.02s">
-        <div class="ico">📊</div><h3>Por catálogo</h3>
+        <div class="ico">📊</div><h3>Distribución por catálogo</h3>
         <p>Ver la distribución de un material entre todos los almacenes.</p>
       </div>
-      <div class="an-hub-card" data-v="alm" style="animation-delay:.09s">
-        <div class="ico">🏭</div><h3>Por almacén</h3>
+      <div class="an-hub-card" data-v="alm" style="animation-delay:.08s">
+        <div class="ico">🏭</div><h3>Distribución por almacén</h3>
         <p>Ver qué necesita repartir D041 a un almacén específico.</p>
       </div>
-      <div class="an-hub-card" data-v="critico" style="animation-delay:.16s">
+      <div class="an-hub-card" data-v="critico" style="animation-delay:.14s">
         <div class="ico">⚠️</div><h3>Críticos</h3>
         <p>Materiales con menos de 1 mes de consumo propio — elige el almacén.</p>
+      </div>
+      <div class="an-hub-card" data-v="buscar" style="animation-delay:.20s">
+        <div class="ico">🔎</div><h3>Encontrar material</h3>
+        <p>Busca un catálogo y ve en qué almacenes hay existencia.</p>
       </div>
     </div>`;
     $("#moduleView").querySelectorAll(".an-hub-card").forEach(c=>c.onclick=()=>{
       anTab_=c.dataset.v;
       if(anTab_==="critico") anCriticoAlmSel=null;
+      if(anTab_==="buscar") anBuscarCatSel=null;
       modAnalisis();
     });
     return;
   }
 
 
-  const anTituloVista={cat:"📊 Por catálogo",alm:"🏭 Por almacén",critico:"⚠️ Críticos"}[anTab_]||"";
+  const anTituloVista={cat:"📊 Distribución por catálogo",alm:"🏭 Distribución por almacén",critico:"⚠️ Críticos",buscar:"🔎 Encontrar material"}[anTab_]||"";
   $("#moduleView").innerHTML=`
     <div class="controls">
       <button class="btn" id="anBtnHome" title="Volver al menú">🏠 Menú</button>
@@ -140,6 +146,19 @@ function modAnalisis(){
       <div style="font-size:12px;color:var(--muted);padding:2px 2px 4px">⚠ Crítico = existencia menor a 1 mes de consumo propio (umbral fijo, no usa Stock obj.)</div>
       <div class="panel"><div class="panel-head"><h2>Materiales · Consumo propio</h2><span class="pill" id="an-crit-count"></span></div>
         <div class="scroll" id="an-tabla-crit"></div></div>`}
+    </div>
+    <!-- Panel ENCONTRAR MATERIAL -->
+    <div id="an-panel-buscar" ${anTab_!=="buscar"?"hidden":""}>
+      <div class="controls" style="margin-top:4px">
+        <div class="an-cat-wrap" style="flex:1;min-width:220px">
+          <input id="an-buscar-input" class="an-cat-input" placeholder="Buscar catálogo por número o descripción…" autocomplete="off">
+          <div id="an-buscar-sugs" class="an-cat-sugs"></div>
+        </div>
+        <button class="btn" id="an-btn-exp-buscar" style="display:none">⬇ Exportar</button>
+      </div>
+      <div id="an-buscar-desc" class="an-desc" style="font-size:13px;color:var(--muted);padding:4px 2px">Escribe un catálogo para ver en qué almacenes hay existencia.</div>
+      <div class="panel"><div class="panel-head"><h2>Almacenes con existencia</h2><span class="pill" id="an-buscar-count"></span></div>
+        <div class="scroll" id="an-tabla-buscar"></div></div>
     </div>`;
 
   // ---- Volver al menú ----
@@ -215,6 +234,26 @@ function modAnalisis(){
   $("#an-cat-solo")?.addEventListener("change",()=>anRenderTablaCat(anSortCatCol));
   $("#an-cat-rec")?.addEventListener("change",()=>anRenderTablaCat(anSortCatCol));
   $("#an-btn-exp-cat")?.addEventListener("click",anExportarCat);
+  // ---- Buscador "Encontrar material" ----
+  if(anTab_==="buscar"){
+    const bInp=$("#an-buscar-input"), bSugs=$("#an-buscar-sugs"), bDesc=$("#an-buscar-desc");
+    bInp.oninput=()=>{
+      const q=bInp.value.trim().toLowerCase(); anBuscarCatSel=null; $("#an-btn-exp-buscar").style.display="none";
+      if(!q||q.length<2){ bSugs.style.display="none"; bDesc.textContent="Escribe un catálogo para ver en qué almacenes hay existencia."; return; }
+      const hits=Object.entries(DB.materiales).filter(([c,m])=>c.startsWith(q)||m.desc.toLowerCase().includes(q)).slice(0,14);
+      bSugs.innerHTML=hits.map(([c,m])=>`<div class="an-cat-sug" data-c="${c}"><b>${c}</b> · ${m.desc} <span style="color:var(--muted)">${m.um||""}</span></div>`).join("");
+      bSugs.style.display=hits.length?"block":"none";
+    };
+    bSugs.addEventListener("pointerdown", e=>{
+      const t=e.target.closest("[data-c]"); if(!t) return;
+      anBuscarCatSel=t.dataset.c; const m=mat(anBuscarCatSel);
+      bInp.value=anBuscarCatSel+" — "+m.desc; bSugs.style.display="none";
+      bDesc.textContent=m.desc+(m.um?" · "+m.um:""); bDesc.className="an-desc ok";
+      anRenderTablaBuscar();
+    });
+    document.addEventListener("click", e=>{ if(!bSugs.contains(e.target)&&e.target!==bInp) bSugs.style.display="none"; },{once:false,capture:false});
+    document.getElementById("an-btn-exp-buscar")?.addEventListener("click", anExportarBuscar);
+  }
   // ---- Buscador almacén ----
   if(tieneConsumos){
     const almInp=$("#an-alm-input"), almSugs=$("#an-alm-sugs"), almHid=$("#an-alm-sel");
@@ -535,6 +574,48 @@ function anExportarCriticos(){
       !r.tieneCons?"Sin consumo":(r.restan==null?"":+(r.restan.toFixed(2))),
       r.critico?"Sí":"No"])
   ],"Consumo propio",`Criticos_${alm}_${fechaTag()}`);
+}
+
+/* ---- Encontrar material: en qué almacenes hay existencia de un catálogo ---- */
+let anDatosBuscar=[];
+function anRenderTablaBuscar(){
+  const cat=anBuscarCatSel; if(!cat) return;
+  const eCat=DB.existencias?.[cat]||{};
+  anDatosBuscar=Object.entries(eCat).filter(([alm,ex])=>ex>0)
+    .map(([alm,ex])=>({alm,nombre:anNombre(alm),ex}))
+    .sort((a,b)=>b.ex-a.ex);
+  _pintarTablaBuscar();
+}
+function _pintarTablaBuscar(){
+  const wrap=document.getElementById("an-tabla-buscar");
+  const btnExp=document.getElementById("an-btn-exp-buscar");
+  if(!wrap) return;
+  if(!anDatosBuscar.length){
+    wrap.innerHTML=`<div class="empty" style="padding:24px">Sin existencia registrada en ningún almacén para este catálogo.</div>`;
+    if(btnExp) btnExp.style.display="none";
+    return;
+  }
+  const total=anDatosBuscar.reduce((s,r)=>s+r.ex,0);
+  const anFmt=(n)=>Number(n).toLocaleString("es-MX");
+  $("#an-buscar-count").textContent=`${anDatosBuscar.length} almacenes · ${anFmt(total)} en total`;
+  wrap.innerHTML=`<div class="scroll"><table>
+    <thead><tr><th>Almacén</th><th>Nombre</th><th class="r">Existencia</th></tr></thead>
+    <tbody>${anDatosBuscar.map(({alm,nombre,ex})=>`
+      <tr ${alm===DIST()?'style="background:var(--ok-bg,#e7f4ec)"':""}>
+        <td class="cat num" style="font-weight:${alm===DIST()?700:400}">${alm}${alm===DIST()?" ★":""}</td>
+        <td style="font-size:12.5px">${nombre}${alm===DIST()?" — Distribuidor":""}</td>
+        <td class="r num" style="font-weight:700">${anFmt(ex)}</td>
+      </tr>`).join("")}</tbody></table></div>`;
+  if(btnExp) btnExp.style.display="inline-flex";
+}
+function anExportarBuscar(){
+  if(!anDatosBuscar.length || !anBuscarCatSel) return;
+  const m=mat(anBuscarCatSel);
+  descargarXLSX([
+    [`Catálogo: ${anBuscarCatSel} — ${m.desc||""}`,""],
+    [],["Almacén","Nombre","Existencia"],
+    ...anDatosBuscar.map(r=>[r.alm,r.nombre,r.ex])
+  ],"Existencias",`Buscar_${anBuscarCatSel}_${fechaTag()}`);
 }
 
 
