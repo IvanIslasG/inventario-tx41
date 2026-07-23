@@ -141,9 +141,10 @@ function modAnalisis(){
         <span style="font-weight:700;padding:0 4px">${anCriticoAlmSel} · ${anNombre(anCriticoAlmSel)}${anCriticoAlmSel===DIST()?" — Distribuidor":""}</span>
         <input type="search" id="an-crit-buscar" placeholder="Buscar catálogo o descripción…">
         <label class="chk"><input type="checkbox" id="an-crit-solo"> Solo críticos</label>
+        <label class="chk"><input type="checkbox" id="an-crit-solo-compra"> Solo requieren compra</label>
         <button class="btn" id="an-btn-exp-crit" style="display:none;margin-left:auto">⬇ Exportar</button>
       </div>
-      <div style="font-size:12px;color:var(--muted);padding:2px 2px 4px">⚠ Crítico = existencia menor a 1 mes de consumo propio (umbral fijo, no usa Stock obj.)</div>
+      <div style="font-size:12px;color:var(--muted);padding:2px 2px 4px">⚠ Crítico = existencia menor a 1 mes de consumo propio (umbral fijo, no usa Stock obj.) · 🔄 Cubierto por sustituto = crítico individual, pero el Nombre Genérico completo alcanza ≥1 mes · 🛒 Requiere compra = sigue faltando aún sumando sustitutos</div>
       <div class="panel"><div class="panel-head"><h2>Materiales · Consumo propio</h2><span class="pill" id="an-crit-count"></span></div>
         <div class="scroll" id="an-tabla-crit"></div></div>`}
     </div>
@@ -209,6 +210,7 @@ function modAnalisis(){
       $("#an-crit-cambiar")?.addEventListener("click",()=>{ anCriticoAlmSel=null; modAnalisis(); });
       $("#an-crit-buscar")?.addEventListener("input", ()=>_pintarTablaCriticos());
       $("#an-crit-solo")?.addEventListener("change", ()=>_pintarTablaCriticos());
+      $("#an-crit-solo-compra")?.addEventListener("change", ()=>_pintarTablaCriticos());
       document.getElementById("an-btn-exp-crit")?.addEventListener("click", anExportarCriticos);
     }
   }
@@ -476,6 +478,15 @@ function anRenderCriticos(alm){
   const eAlm={};
   for(const [cat,e] of Object.entries(DB.existencias)) if(alm in e) eAlm[cat]=e[alm];
 
+  // Existencia total por Nombre Genérico (grupo de sustitutos) en este almacén, para poder
+  // restarle la propia y saber cuánto hay disponible en sus sustitutos.
+  const totalPorNG={};
+  for(const c of Object.keys(DB.materiales)){
+    const ngc=ngDe(c);
+    if(!ngc) continue; // sin NG = no tiene sustitutos registrados
+    totalPorNG[ngc]=(totalPorNG[ngc]||0)+(eAlm[c]||0);
+  }
+
   // Base = TODO el maestro de materiales (no solo los que tienen consumo registrado para este almacén),
   // así se ve el global y se marca claramente "Sin consumo" donde no haya dato en vez de simplemente omitirlos.
   anDatosCrit=Object.keys(DB.materiales).map(cat=>{
@@ -486,7 +497,17 @@ function anRenderCriticos(alm){
     const mens=tieneCons ? cons/per : null; // null = sin archivo de consumo para este material en este almacén
     const restan=(mens!==null && mens>0) ? ex/mens : null; // null = sin consumo o consumo en 0, no aplica "crítico"
     const critico=restan!==null && restan<1; // umbral fijo: menos de 1 mes de consumo propio en existencia
-    return {cat,desc:m.desc,um:m.um,area:m.area,tieneCons,cons,mens,ex,restan,critico};
+
+    const ng=ngDe(cat)||"";
+    const exGrupoTotal=ng ? (totalPorNG[ng]||0) : ex; // sin NG, su "grupo" es solo él mismo
+    const exSustitutos=ng ? Math.max(0,exGrupoTotal-ex) : 0;
+    const restanConSustituto=(mens!==null && mens>0) ? exGrupoTotal/mens : null;
+    // Sigue siendo crítico DESPUÉS de contar sustitutos = de verdad hay que comprarlo.
+    // Si es crítico solo (ex propia baja) pero el sustituto lo cubre, no urge comprar.
+    const necesitaComprar=critico && (restanConSustituto===null || restanConSustituto<1);
+
+    return {cat,desc:m.desc,um:m.um,area:m.area,tieneCons,cons,mens,ex,restan,critico,
+            ng,exSustitutos,restanConSustituto,necesitaComprar};
   });
   anSortCritCol="rest"; anSortCritDir=1;
   _pintarTablaCriticos();
@@ -495,9 +516,11 @@ function _filasCriticos(){
   const col_=anSortCritCol, dir_=anSortCritDir;
   const q=($("#an-crit-buscar")?.value||"").toLowerCase();
   const soloCrit=$("#an-crit-solo")?.checked;
+  const soloCompra=$("#an-crit-solo-compra")?.checked;
   return anDatosCrit.filter(r=>{
     if(q && !(r.cat.includes(q) || (r.desc||"").toLowerCase().includes(q))) return false;
     if(soloCrit && !r.critico) return false;
+    if(soloCompra && !r.necesitaComprar) return false;
     return true;
   }).sort((a,b)=>{
     if(["cat","desc","area"].includes(col_)) return String(a[col_]||"").localeCompare(String(b[col_]||""))*dir_;
@@ -516,6 +539,7 @@ function _pintarTablaCriticos(){
 
   const filas=_filasCriticos();
   const nCrit=anDatosCrit.filter(r=>r.critico).length;
+  const nCompra=anDatosCrit.filter(r=>r.necesitaComprar).length;
   const alm=anCriticoAlmSel;
 
   if(!filas.length){
@@ -523,7 +547,7 @@ function _pintarTablaCriticos(){
     if(btnExp) btnExp.style.display="none";
     return;
   }
-  $("#an-crit-count").textContent=`${filas.length} mostrados · ${nCrit} críticos · ${Object.keys(DB.materiales).length} en el maestro`;
+  $("#an-crit-count").textContent=`${filas.length} mostrados · ${nCrit} críticos · ${nCompra} requieren compra · ${Object.keys(DB.materiales).length} en el maestro`;
   wrap.innerHTML=`<div class="scroll"><table>
     <thead><tr>
       <th onclick="_anSortCrit('cat')">Catálogo${ic("cat")}</th>
@@ -532,17 +556,22 @@ function _pintarTablaCriticos(){
       <th class="r" onclick="_anSortCrit('mens')">Cons. mensual ${alm}${ic("mens")}</th>
       <th class="r" onclick="_anSortCrit('ex')">Existencia ${alm}${ic("ex")}</th>
       <th class="r" onclick="_anSortCrit('rest')">Meses restantes${ic("rest")}</th>
+      <th class="r">Sustitutos (exist.)</th>
       <th></th><th></th>
-    </tr></thead><tbody>${filas.map(({cat,desc,um,cons,mens,ex,restan,critico,tieneCons})=>{
+    </tr></thead><tbody>${filas.map(({cat,desc,um,cons,mens,ex,restan,critico,tieneCons,ng,exSustitutos,necesitaComprar})=>{
       const yaFijada=_anFijadas.some(f=>f.cat===cat&&f.alm===alm);
-      return `<tr ${critico?'style="background:var(--low-bg)"':""}>
+      let badge="";
+      if(necesitaComprar) badge='<span class="an-badge r">🛒 Comprar</span>';
+      else if(critico) badge='<span class="an-badge" style="background:var(--dist-bg,#fdf6e3);color:var(--dist,#b8860b)">🔄 Cubierto por sustituto</span>';
+      return `<tr ${necesitaComprar?'style="background:var(--low-bg)"':""}>
         <td class="cat num">${cat}</td>
         <td style="font-size:12px;max-width:260px">${desc||""}</td>
         <td class="r" style="font-size:11px;color:var(--muted)">${um||""}</td>
         <td class="r num" style="${tieneCons?"":"color:var(--muted);font-style:italic"}">${tieneCons?anFmt(mens,1):"Sin consumo"}</td>
         <td class="r num">${anFmt(ex)}</td>
-        <td class="r num" style="${critico?"font-weight:700;color:var(--low)":(tieneCons?"":"color:var(--muted);font-style:italic")}">${!tieneCons?"Sin consumo":(restan==null?"—":anFmt(restan,2))}</td>
-        <td>${critico?'<span class="an-badge r">⚠ Crítico</span>':""}</td>
+        <td class="r num" style="${necesitaComprar?"font-weight:700;color:var(--low)":(tieneCons?"":"color:var(--muted);font-style:italic")}">${!tieneCons?"Sin consumo":(restan==null?"—":anFmt(restan,2))}</td>
+        <td class="r num" style="${!ng?"color:var(--muted);font-style:italic":""}">${!ng?"Sin sustituto":anFmt(exSustitutos)}</td>
+        <td>${badge}</td>
         <td><button class="btn an-fijar-crit" data-cat="${cat}" data-alm="${alm}"
             data-desc="${(desc||"").replace(/"/g,"")}" data-um="${um||""}" data-cons="${cons}" data-ex="${ex}"
             style="${yaFijada?"background:var(--primary);color:#fff":""}"
@@ -562,17 +591,19 @@ function _anSortCrit(col){
 function anExportarCriticos(){
   if(!anDatosCrit.length) return;
   const per=anPerAlm(anCriticoAlmSel), alm=anCriticoAlmSel;
-  const soloCrit=$("#an-crit-solo")?.checked;
+  const soloCrit=$("#an-crit-solo")?.checked, soloCompra=$("#an-crit-solo-compra")?.checked;
   const filas=_filasCriticos();
   descargarXLSX([
-    [`Materiales ${alm} · ${anNombre(alm)} — Consumo propio${soloCrit?" (solo críticos)":" (global)"}`,""],
-    [`CPM: ${per} meses (${alm===DIST()?"D041 → 12 meses":"6 meses"}) | Crítico = existencia < 1 mes de consumo propio`,""],
-    [],["Catálogo","Descripción","UM","Consumo mensual","Existencia","Meses restantes","Crítico"],
+    [`Materiales ${alm} · ${anNombre(alm)} — Consumo propio${soloCompra?" (solo requieren compra)":soloCrit?" (solo críticos)":" (global)"}`,""],
+    [`CPM: ${per} meses (${alm===DIST()?"D041 → 12 meses":"6 meses"}) | Crítico = existencia < 1 mes de consumo propio | Requiere compra = sigue faltando aún sumando existencia de sustitutos (mismo Nombre Genérico)`,""],
+    [],["Catálogo","Descripción","UM","Consumo mensual","Existencia","Meses restantes","Crítico","Existencia sustitutos","Requiere compra"],
     ...filas.map(r=>[r.cat,r.desc,r.um,
       r.tieneCons?+(r.mens.toFixed(2)):"Sin consumo",
       r.ex,
       !r.tieneCons?"Sin consumo":(r.restan==null?"":+(r.restan.toFixed(2))),
-      r.critico?"Sí":"No"])
+      r.critico?"Sí":"No",
+      r.ng?r.exSustitutos:"Sin sustituto",
+      r.necesitaComprar?"Sí":"No"])
   ],"Consumo propio",`Criticos_${alm}_${fechaTag()}`);
 }
 
