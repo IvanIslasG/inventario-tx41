@@ -257,20 +257,25 @@ function construirBundleJS(parsed){
     if(!materiales[cat]) materiales[cat]={um:m.umb,desc:m.desc,area:"",ubic:""};
     else { if(!materiales[cat].desc) materiales[cat].desc=m.desc; if(!materiales[cat].um) materiales[cat].um=m.umb; }
   }
-  const existencias={}, traslados={}, lotes={}, valoracion=[];
+  const existencias={}, traslados={}, lotes={}, lotesTodos={}, valoracion=[];
   for(const [cat,m] of Object.entries(parsed.materiales)){
     const ex={}; for(const[a,v]of Object.entries(m.almacenes)) if(v>0) ex[a]=v;
     if(Object.keys(ex).length) existencias[cat]=ex;
     if(Object.keys(m.traslados).length) traslados[cat]=m.traslados;
-    if(m.lotes[D]&&m.lotes[D].length) lotes[cat]=m.lotes[D];
-    if(Object.keys(m.lotes).length) valoracion.push(cat);
+    if(m.lotes[D]&&m.lotes[D].length) lotes[cat]=m.lotes[D]; // D041 (se conserva igual, ya usado por OR/Guías/Conteo)
+    if(Object.keys(m.lotes).length){
+      valoracion.push(cat);
+      // Lotes de TODOS los almacenes (incluye D041), para mostrarlos en Existencias sin importar el almacén.
+      lotesTodos[cat]={};
+      for(const [almK,ls] of Object.entries(m.lotes)) if(ls.length) lotesTodos[cat][almK]=ls;
+    }
   }
   valoracion.sort();
   const out={ meta:{ generado:fechaLocalISO(), almacen_distribuidor:D,
       n_materiales:Object.keys(materiales).length, n_almacenes:Object.keys(DB.directorio.almacenes).length,
       n_con_existencia:Object.keys(existencias).length,
       meses_cpm:DB.meta?.meses_cpm||6, meses_stock:DB.meta?.meses_stock||1.5 },
-    directorio:DB.directorio, materiales, existencias, traslados, lotes, valoracion };
+    directorio:DB.directorio, materiales, existencias, traslados, lotes, lotesTodos, valoracion };
   if(DB.consumos) out.consumos=DB.consumos;
   if(DB.nombresGenericos) out.nombresGenericos=DB.nombresGenericos;
   return out;

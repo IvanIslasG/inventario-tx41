@@ -8,15 +8,17 @@ let invAlmacenSel=null; // almacén elegido para consultar (null = aún no se ha
 function existDist(cat){ const e=DB.existencias[cat]; return e && DIST() in e ? e[DIST()] : null; }
 // traslado del distribuidor (0 si no hay)
 function trasDist(cat){ const t=DB.traslados&&DB.traslados[cat]; return t && DIST() in t ? t[DIST()] : 0; }
-// lotes reales del distribuidor (lista, vacío si no hay)
+// lotes reales del distribuidor (lista, vacío si no hay) — usada por OR/Guías/Conteo, no tocar
 function lotesDe(cat){ return (DB.lotes&&DB.lotes[cat])||[]; }
+// lotes reales de CUALQUIER almacén (el TOTAL trae lote por almacén, no solo D041)
+function lotesDeAlm(cat, alm){ return (DB.lotesTodos && DB.lotesTodos[cat] && DB.lotesTodos[cat][alm]) || []; }
 
 // existencia/traslado en CUALQUIER almacén de la red (no solo el distribuidor)
 function existEnAlm(cat, alm){ const e=DB.existencias[cat]; return e && alm in e ? e[alm] : null; }
 function trasEnAlm(cat, alm){ const t=DB.traslados&&DB.traslados[cat]; return t && alm in t ? t[alm] : 0; }
 
 // Construye filas desde el MAESTRO para un área (o TODO), sobre el almacén seleccionado.
-// Incluye materiales sin existencia (exist=null). Ubicación y lotes solo aplican al distribuidor D041.
+// Incluye materiales sin existencia (exist=null). Ubicación solo aplica al distribuidor D041; lotes aplican a cualquier almacén.
 function matsArea(area){
   const alm = invAlmacenSel || DIST();
   const esDist = alm === DIST();
@@ -24,7 +26,7 @@ function matsArea(area){
   for(const [cat,m] of Object.entries(DB.materiales)){
     if(area!==TODO && (m.area||"")!==area) continue;
     out.push({cat,desc:m.desc||"",um:m.um||"",area:m.area||"Sin clasificar",ubic: esDist ? (m.ubic||"") : "",
-              exist:existEnAlm(cat,alm),tras:trasEnAlm(cat,alm),lotes: esDist ? lotesDe(cat) : []});
+              exist:existEnAlm(cat,alm),tras:trasEnAlm(cat,alm),lotes: lotesDeAlm(cat,alm)});
   }
   return out;
 }
