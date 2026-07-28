@@ -40,6 +40,7 @@ function modInventario(){
 /* ---- Pantalla de selección de almacén ---- */
 function renderSelectorAlmacen(){
   $("#backBtn").onclick=mostrarMenu;
+  clearCtx();
   const conData=almacenesConExistencia();
   const codigos=Object.keys(DB.directorio.almacenes||{})
     .filter(c=>c===DIST()||conData.has(c))
@@ -86,6 +87,8 @@ function renderAreasInv(){
   const alm=invAlmacenSel||DIST();
   const esDist=alm===DIST();
   const almInfo=DB.directorio.almacenes[alm]||{};
+  setCtx({clave:alm, nombre:almInfo.desc||alm, tag:esDist?"Distribuidor":null,
+          onChange:()=>{ invAlmacenSel=null; modInventario(); window.scrollTo(0,0); }});
   // conteos por área: total en maestro y con existencia en el almacén seleccionado
   const tot={}, conx={};
   for(const [cat,m] of Object.entries(DB.materiales)){
@@ -131,6 +134,9 @@ function renderDetalleInv(){
   const esTodo=invSel===TODO, label=esTodo?"Todo el inventario":invSel;
   // back vuelve a las tarjetas (no al menú)
   $("#backBtn").onclick=()=>{ invSel=null; modInventario(); window.scrollTo(0,0); };
+  const almD=invAlmacenSel||DIST();
+  setCtx({clave:almD, nombre:(DB.directorio.almacenes[almD]||{}).desc||almD, tag:label,
+          onChange:()=>{ invAlmacenSel=null; invSel=null; modInventario(); window.scrollTo(0,0); }});
   // ubicaciones del área (para el select)
   const base=matsArea(invSel);
   const ubis=[...new Set(base.map(m=>m.ubic).filter(Boolean))].sort();
@@ -237,7 +243,7 @@ function pintarInv(){
 /* ---- Exportaciones de Inventario ---- */
 function fechaTag(){ return new Date().toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric'}).replace(/\//g,'-'); }
 function expFilas(mats){
-  const aoa=[["Área","Catálogo","Descripción","U.M.","Ubicación","Existencia D041","Traslado","Lote"]];
+  const aoa=[["Área","Catálogo","Descripción","U.M.","Ubicación","Existencia "+(invAlmacenSel||DIST()),"Traslado","Lote"]];
   mats.forEach(m=>{
     aoa.push([m.area,m.cat,m.desc,m.um,m.ubic, m.exist===null?"":m.exist, m.tras||0, ""]);
     if(m.lotes && m.lotes.length){
@@ -331,13 +337,15 @@ function _generarImpresion(grupos, ubis){
   const ocultarLotesCeros = $("#invLotesCeros")?.checked;
   const hoy=new Date().toLocaleDateString('es-MX',{day:'2-digit',month:'long',year:'numeric'});
   const label=invSel===TODO?"TODO EL INVENTARIO":invSel.toUpperCase();
+  const almP=invAlmacenSel||DIST();
+  const almPDesc=((DB.directorio.almacenes[almP]||{}).desc||almP).toUpperCase();
   const pa=$("#printArea"); pa.innerHTML="";
   ubis.forEach(u=>{
     const lista=(grupos[u]||[]).slice().sort((a,b)=>+a.cat - +b.cat); if(!lista.length) return;
     const div=document.createElement("div"); div.className="pg";
     div.innerHTML=`
       <div class="ph">
-        <div class="ph-top">TELMEX — ALMACÉN DISTRIBUIDOR D041 PUEBLA · ÁREA: ${label}</div>
+        <div class="ph-top">TELMEX — ALMACÉN ${almP} · ${almPDesc} · ÁREA: ${label}</div>
         <div class="ph-sub">Inventario físico · Lista de conteo</div>
         <div class="ph-ubi">Ubicación: ${u}</div>
         <div class="ph-meta">Fecha: <u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u>&nbsp;&nbsp;&nbsp;Responsable: <u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u></div>
@@ -369,7 +377,7 @@ function _generarImpresion(grupos, ubis){
           return base+subs;
         }).join("")}
       </tbody></table>
-      <div class="pf"><span>D041 · ${invSel===TODO?"Todo":invSel} · ${u} · ${lista.length} materiales</span><span>Generado: ${hoy}</span></div>`;
+      <div class="pf"><span>${almP} · ${invSel===TODO?"Todo":invSel} · ${u} · ${lista.length} materiales</span><span>Generado: ${hoy}</span></div>`;
     pa.appendChild(div);
   });
   setTimeout(()=>{ window.print(); setTimeout(()=>{ pa.innerHTML=""; },800); },250);
