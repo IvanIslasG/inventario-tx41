@@ -104,10 +104,17 @@
   .lote-badge{display:inline-block;margin-left:6px;padding:1px 8px;border-radius:99px;background:#fff3e0;color:#9a5a00;
               font-size:11px;font-weight:700;cursor:pointer;border:1px solid #f0d9b5;white-space:nowrap}
   .lote-badge:hover{background:#ffe7c2}
-  .lotes-sub{width:100%;border-collapse:collapse}
-  .lotes-sub th{background:#fff3e0;color:#9a5a00;font-size:10.5px;padding:5px 12px}
-  .lotes-sub td{padding:4px 12px;border-bottom:1px solid #f3e6d3;font-size:12.5px}
-  .lotes-sub td:first-child{padding-left:28px;font-family:ui-monospace,monospace}
+  .lotes-cell{padding:0 !important;background:#fffaf2}
+  .lotes-wrap{position:sticky;left:0;width:min(100%,calc(100vw - 40px));box-sizing:border-box}
+  .lotes-head,.lotes-item{display:grid;grid-template-columns:1fr 92px 92px;gap:8px;
+                          padding:5px 12px 5px 28px;align-items:center}
+  .lotes-head{background:#fff3e0;color:#9a5a00;font-size:10.5px;font-weight:700;
+              text-transform:uppercase;letter-spacing:.4px}
+  .lotes-item{border-bottom:1px solid #f3e6d3;font-size:12.5px}
+  .lotes-wrap .r{text-align:right}
+  .lotes-wrap .num,.lotes-wrap .lt-num{font-variant-numeric:tabular-nums}
+  .lt-num{font-family:ui-monospace,monospace}
+  .lt-tras{color:var(--low)}
   .scroll{max-height:62vh;overflow:auto}
   .area-tag{font-size:11px;color:var(--muted)}
   .empty{padding:40px 16px;text-align:center;color:var(--muted)}
@@ -217,6 +224,8 @@
     .dash-card{padding:11px 14px}
     .dash-card .dash-value{font-size:17px}
     .dash-alert{padding:10px 12px;font-size:12px;align-items:flex-start}
+    .lotes-head,.lotes-item{grid-template-columns:1fr 66px 66px;padding-left:14px;font-size:12px}
+    .lote-badge{display:block;margin:5px 0 0;width:max-content;padding:3px 10px}
   }
 
   /* ---- Área de impresión (listas de conteo) ---- */

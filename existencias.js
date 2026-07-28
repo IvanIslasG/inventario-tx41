@@ -217,10 +217,14 @@ function pintarInv(){
              <td>${r.um||"—"}</td>${tdUbic}
              <td class="r">${ex} <small style="color:var(--muted)">${r.um}</small></td><td class="r">${tr}</td></tr>`;
       const filaLotes = tieneLotes
-        ? `<tr class="lotes-row" id="lt-${r.cat}" hidden><td colspan="${ncols}" style="padding:0;background:#fffaf2">
-             <table class="lotes-sub"><thead><tr><th>Lote</th><th class="r">Libre</th><th class="r">Traslado</th></tr></thead>
-             <tbody>${lotesVisibles.map(l=>`<tr><td class="num">${l.lote}</td><td class="r num">${nfmt(l.lib)}</td>
-               <td class="r num" style="color:var(--low)">${nfmt(l.tras||0)}</td></tr>`).join("")}</tbody></table></td></tr>`
+        ? `<tr class="lotes-row" id="lt-${r.cat}" hidden><td colspan="${ncols}" class="lotes-cell">
+             <div class="lotes-wrap">
+               <div class="lotes-head"><span>Lote</span><span class="r">Libre</span><span class="r">Traslado</span></div>
+               ${lotesVisibles.map(l=>`<div class="lotes-item">
+                 <span class="lt-num">${l.lote}</span>
+                 <span class="r num">${nfmt(l.lib)}</span>
+                 <span class="r num lt-tras">${nfmt(l.tras||0)}</span></div>`).join("")}
+             </div></td></tr>`
         : "";
       return main+filaLotes;
     }).join("") : `<tr><td colspan="${ncols}" class="empty">Sin coincidencias.</td></tr>`}</tbody>`;
