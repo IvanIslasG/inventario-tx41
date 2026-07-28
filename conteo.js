@@ -5,10 +5,19 @@
 /* ============ CONTEO FÍSICO ============ */
 let _conteoData = {};   // cat (o cat__lote) → físico capturado
 let _conteoLista = [];  // lista filtrada actual
-let _conteoMats  = [];  // materiales del módulo actual (D041)
+let _conteoMats  = [];  // materiales del almacén actualmente seleccionado
+let _conteoAlmSel = null; // almacén en el que se está inventariando (null = aún no se elige)
 
-// ── Clave localStorage por área ──────────────────────────────────────────────
-function _conteoKey(area){ return "conteo_tx41_" + (area||"todo").replace(/\s+/g,"_").toLowerCase(); }
+// almacén activo (fallback al distribuidor)
+function _conteoAlm(){ return _conteoAlmSel || DIST(); }
+
+// ── Clave localStorage por almacén + área ────────────────────────────────────
+// D041 conserva la clave original para no perder conteos ya guardados.
+function _conteoKey(area, alm){
+  const a = alm || _conteoAlm();
+  const pref = (a === DIST()) ? "" : a + "_";
+  return "conteo_tx41_" + pref + (area||"todo").replace(/\s+/g,"_").toLowerCase();
+}
 
 function _conteoCargarLS(area){
   try{ return JSON.parse(localStorage.getItem(_conteoKey(area)) || "{}"); }
@@ -29,24 +38,105 @@ function _conteoLimpiarLS(area){
 let _conteoAreaActual = "";
 
 function modConteo(){
-  // Construir lista completa de materiales de D041
+  if(_conteoAlmSel === null) return _conteoSelectorAlmacen();
+  return _conteoAreas();
+}
+
+// ── Pantalla 1: elegir almacén (solo recurrentes + distribuidor) ─────────────
+function _conteoSelectorAlmacen(){
+  $("#backBtn").onclick = mostrarMenu;
+  clearCtx();
+  const conData = almacenesConExistencia();
+  const recs = almList()
+    .filter(a => a.recurrente && a.clave !== DIST() && conData.has(a.clave))
+    .sort((x,y) => x.clave.localeCompare(y.clave));
+  const dist = (DB.directorio.almacenes||{})[DIST()] || {clave:DIST(), desc:DIST()};
+  const lista = [dist, ...recs];
+
+  // ¿hay conteos guardados para ese almacén?
+  const conConteo = new Set();
+  for(let i=0; i<localStorage.length; i++){
+    const k = localStorage.key(i) || "";
+    if(!k.startsWith("conteo_tx41_")) continue;
+    try{ if(!Object.keys(JSON.parse(localStorage.getItem(k)||"{}")).length) continue; }catch(e){ continue; }
+    const resto = k.slice("conteo_tx41_".length);
+    const alm = lista.map(a=>a.clave).find(c => c !== DIST() && resto.startsWith(c + "_"));
+    conConteo.add(alm || DIST());
+  }
+
+  $("#moduleView").innerHTML = `
+    <div style="max-width:560px;margin:0 auto;padding-top:8px">
+      <div style="margin-bottom:20px">
+        <h2 style="margin:0 0 4px;font-size:20px">Inventario Físico</h2>
+        <p style="margin:0;color:var(--muted);font-size:13px">¿En qué almacén vas a levantar el inventario?</p>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${lista.map(a => {
+          const esDist = a.clave === DIST();
+          const prog = conConteo.has(a.clave);
+          const nMats = Object.keys(DB.materiales||{}).filter(c => (DB.existencias[c]||{})[a.clave] !== undefined).length;
+          return `<button onclick="elegirAlmacenConteo('${a.clave}')"
+            style="display:flex;align-items:center;gap:12px;padding:13px 15px;
+                   background:${prog?"#f0fdf4":"white"};
+                   border:2px solid ${prog?"#86efac":"var(--borde)"};
+                   border-radius:12px;cursor:pointer;text-align:left;width:100%">
+            <span style="font-family:'IBM Plex Mono',ui-monospace,monospace;font-weight:800;font-size:14px;
+                         background:${esDist?"var(--dist-bg)":"#eef2f8"};color:${esDist?"var(--dist)":"var(--primary)"};
+                         padding:3px 10px;border-radius:8px">${a.clave}</span>
+            <span style="flex:1;min-width:0">
+              <span style="display:block;font-size:13.5px;font-weight:600;color:var(--texto)">${a.desc||a.clave}</span>
+              <span style="display:block;font-size:11px;color:var(--muted);margin-top:2px">
+                ${nfmt(nMats)} materiales con existencia${esDist?" · Distribuidor":""}</span>
+            </span>
+            ${prog?`<span style="font-size:10.5px;font-weight:700;color:#16a34a">EN PROGRESO</span>`:""}
+            <span style="font-size:18px;color:var(--muted)">›</span>
+          </button>`;
+        }).join("")}
+      </div>
+      <div style="margin-top:18px;padding:11px 13px;background:#f7f9fc;border:1px solid var(--line);
+                  border-radius:10px;font-size:12px;color:var(--muted)">
+        Se listan el distribuidor y los almacenes marcados como recurrentes en el directorio.
+        La ubicación física solo aplica a ${DIST()}.
+      </div>
+    </div>`;
+}
+
+function elegirAlmacenConteo(clave){
+  _conteoAlmSel = clave;
+  _conteoAreaActual = "";
+  _conteoData = {};
+  modConteo();
+  window.scrollTo(0,0);
+}
+
+// ── Pantalla 2: elegir área dentro del almacén ──────────────────────────────
+function _conteoAreas(){
+  const alm = _conteoAlm();
+  const esDist = alm === DIST();
+  const almInfo = (DB.directorio.almacenes||{})[alm] || {};
+  $("#backBtn").onclick = mostrarMenu;
+  setCtx({clave:alm, nombre:almInfo.desc||alm, tag:esDist?"Distribuidor":"Recurrente",
+          onChange:()=>{ _conteoAlmSel=null; modConteo(); window.scrollTo(0,0); }});
+
+  // Construir lista de materiales del almacén seleccionado
   _conteoMats = [];
   const mats = DB.materiales || {};
   const exs  = DB.existencias || {};
   const tras  = DB.traslados || {};
-  const lotes = DB.lotes || {};
 
   Object.keys(mats).forEach(cat => {
     const m   = mats[cat];
-    const lib = (exs[cat] && exs[cat]["D041"]) || 0;
-    const tra = (tras[cat] && tras[cat]["D041"]) || 0;
-    const ls  = (lotes[cat] || []).filter(l => (l.lib||0) + (l.tras||0) > 0); // se quitan lotes en 0 — solo estorban
+    const lib = (exs[cat] && exs[cat][alm]) || 0;
+    const tra = (tras[cat] && tras[cat][alm]) || 0;
+    // lotes del almacén elegido; para el distribuidor se respeta DB.lotes como fuente original
+    const src = esDist ? ((DB.lotes||{})[cat] || lotesDeAlm(cat, alm)) : lotesDeAlm(cat, alm);
+    const ls  = (src || []).filter(l => (l.lib||0) + (l.tras||0) > 0); // se quitan lotes en 0 — solo estorban
     _conteoMats.push({
       catalogo:    cat,
       descripcion: m.desc || m.descripcion || "",
       um:          m.um || "",
       area:        m.area || "",
-      ubicacion:   m.ubic || m.ubicacion || "",
+      ubicacion:   esDist ? (m.ubic || m.ubicacion || "") : "",
       existencia:  lib,
       traslado:    tra,
       lotes:       ls,
@@ -68,9 +158,11 @@ function modConteo(){
 
   $("#moduleView").innerHTML=`
     <div style="max-width:520px;margin:0 auto;padding-top:8px">
+      <button class="linkish" onclick="_conteoAlmSel=null;modConteo();window.scrollTo(0,0)"
+              style="margin-bottom:10px">‹ Cambiar almacén</button>
       <div style="margin-bottom:24px">
         <h2 style="margin:0 0 4px;font-size:20px">Inventario Físico</h2>
-        <p style="margin:0;color:var(--muted);font-size:13px">D041 · Almacén Distribuidor Puebla</p>
+        <p style="margin:0;color:var(--muted);font-size:13px">${alm} · ${almInfo.desc||alm}</p>
       </div>
 
       <p style="font-size:14px;font-weight:600;margin:0 0 12px">¿De qué área vas a hacer inventario?</p>
@@ -122,6 +214,13 @@ function iniciarConteo(area){
   _conteoData = _conteoCargarLS(area);
   const hayDatos = Object.keys(_conteoData).length > 0;
 
+  const alm = _conteoAlm();
+  const esDist = alm === DIST();
+  const almInfo = (DB.directorio.almacenes||{})[alm] || {};
+  $("#backBtn").onclick = mostrarMenu;
+  setCtx({clave:alm, nombre:almInfo.desc||alm, tag:area,
+          onChange:()=>{ _conteoAlmSel=null; modConteo(); window.scrollTo(0,0); }});
+
   // Filtrar materiales según área seleccionada
   const esTodo = area === "Todo el inventario";
   const matsArea = esTodo ? _conteoMats : _conteoMats.filter(m=>m.area===area);
@@ -130,7 +229,7 @@ function iniciarConteo(area){
     <div style="margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <button class="btn btn-outline btn-sm" onclick="modConteo()" style="padding:4px 10px">‹ Áreas</button>
       <div style="flex:1">
-        <h2 style="margin:0;font-size:17px">Inventario · ${area}</h2>
+        <h2 style="margin:0;font-size:17px">${alm} · ${area}</h2>
         <div id="conteo-subtitulo" style="font-size:12px;color:var(--muted);margin-top:2px">${matsArea.length} materiales</div>
       </div>
       <button class="btn btn-outline btn-sm" onclick="exportarConteo()">⬇ Exportar</button>
@@ -163,9 +262,9 @@ function iniciarConteo(area){
         <option value="faltante">🔴 Faltantes</option>
         <option value="sobrante">🟡 Sobrantes</option>
       </select>
-      <select id="conteo-ubic" onchange="filtrarConteo()" style="min-width:140px">
+      ${esDist ? `<select id="conteo-ubic" onchange="filtrarConteo()" style="min-width:140px">
         <option value="">Todas las ubicaciones</option>
-      </select>
+      </select>` : ""}
       <label class="chk"><input type="checkbox" id="conteo-solo-ex" onchange="filtrarConteo()"> Solo con existencia</label>
     </div>
 
@@ -221,6 +320,13 @@ function filtrarConteo(){
   actualizarTotalesConteo();
 }
 
+// Ubicación solo existe en el distribuidor; en los demás almacenes se omite
+function _conteoUbiTxt(m){
+  const um = m.um || "—";
+  if(_conteoAlm() !== DIST()) return um;
+  return (m.ubicacion || "Sin ubicación") + " · " + um;
+}
+
 function renderConteo(){
   const lista = $("#conteo-lista");
   if(!lista) return;
@@ -238,7 +344,7 @@ function renderConteo(){
           <span class="cap-cat" style="color:#9a3412">${m.catalogo}</span>
           <span style="font-size:10px;background:#fed7aa;color:#9a3412;padding:2px 6px;border-radius:8px">📦 ${m.lotes.length} lotes</span>
           <div style="flex:1;font-size:12px;color:var(--texto)">${m.descripcion}</div>
-          <div style="font-size:10px;color:var(--muted)">${m.ubicacion||"Sin ubicación"} · ${m.um||"—"}</div>
+          <div style="font-size:10px;color:var(--muted)">${_conteoUbiTxt(m)}</div>
         </div>`;
 
       const tbody = document.createElement("div");
@@ -298,7 +404,7 @@ function renderConteo(){
         <div class="cap-cat">${m.catalogo}</div>
         <div style="flex:1">
           <div class="cap-desc">${m.descripcion}</div>
-          <div class="cap-ubi">${m.ubicacion||"Sin ubicación"} · ${m.um||"—"}</div>
+          <div class="cap-ubi">${_conteoUbiTxt(m)}</div>
         </div>
         <div class="cap-siatel"><div class="cap-siatel-n">${lib.toLocaleString()}</div><div class="cap-siatel-l">Libre</div></div>
         <div class="cap-siatel"><div class="cap-siatel-n" style="color:var(--naranja,#ea580c)">${tra.toLocaleString()}</div><div class="cap-siatel-l">Traslado</div></div>
@@ -672,9 +778,11 @@ function exportarConteo(){
     }
   });
 
+  const almX = _conteoAlm();
+  const almXDesc = ((DB.directorio.almacenes||{})[almX]||{}).desc || almX;
   const wsData=[
-    ["INVENTARIO FÍSICO — ALMACÉN D041 PUEBLA","","","","","","","","",""],
-    [`Fecha: ${hoy}   ·   Materiales: ${_conteoMats.length}   ·   Capturados: ${capOk+capFalt+capSob}   ·   Pendientes: ${capPend}`,"","","","","","","","",""],
+    [`INVENTARIO FÍSICO — ALMACÉN ${almX} · ${almXDesc.toUpperCase()}`,"","","","","","","","",""],
+    [`Fecha: ${hoy}   ·   Área: ${_conteoAreaActual||"Todo el inventario"}   ·   Materiales: ${_conteoMats.length}   ·   Capturados: ${capOk+capFalt+capSob}   ·   Pendientes: ${capPend}`,"","","","","","","","",""],
     [""],
     ["Catálogo","Descripción","U.M.","Ubicación","Lote","Lib. Utiliz.","Traslado","Total SAP","Físico","Diferencia"],
     ...filas,
@@ -690,7 +798,7 @@ function exportarConteo(){
 
   // Hoja solo diferencias
   const difData=[
-    ["DIFERENCIAS — D041 — "+hoy,"","","","","","","","",""],
+    [`DIFERENCIAS — ${almX} — ${hoy}`,"","","","","","","","",""],
     ["Catálogo","Descripción","U.M.","Ubicación","Lote","Lib. Utiliz.","Traslado","Total SAP","Físico","Diferencia"],
     ...filas.filter(f=>f[9]!==""&&f[9]!==0).sort((a,b)=>(a[9]||0)-(b[9]||0))
   ];
@@ -699,5 +807,5 @@ function exportarConteo(){
   wsDif["!cols"]=ws["!cols"];
   XLSX.utils.book_append_sheet(wb,wsDif,"Solo Diferencias");
 
-  XLSX.writeFile(wb,`Inventario_D041_${hoy}.xlsx`);
+  XLSX.writeFile(wb,`Inventario_${almX}_${hoy}.xlsx`);
 }
