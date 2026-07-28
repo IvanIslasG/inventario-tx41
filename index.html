@@ -206,6 +206,18 @@
   .alm-card.alm-dist .alm-name{color:var(--primary-d,var(--primary));font-weight:600}
   .alm-badge{position:absolute;top:10px;right:12px;font-size:9.5px;font-weight:800;text-transform:uppercase;
              letter-spacing:.4px;color:#fff;background:var(--primary);padding:3px 8px;border-radius:8px}
+  .alm-card .alm-mats{font-size:10.5px;color:var(--muted);margin-top:6px;font-variant-numeric:tabular-nums}
+  .alm-card.alm-prog{background:#f0fdf4;border-color:#86efac}
+  .alm-card.alm-prog:hover{border-color:#16a34a}
+  .alm-badge.prog{background:#16a34a}
+  .alm-empty{grid-column:1/-1;padding:26px 16px;text-align:center;color:var(--muted);font-size:13px}
+  @media(max-width:560px){
+    .alm-grid{grid-template-columns:1fr 1fr;gap:8px}
+    .alm-card{padding:11px 12px}
+    .alm-card .alm-code{font-size:13px}
+    .alm-card .alm-name{font-size:11px}
+    .alm-badge{position:static;display:inline-block;margin-bottom:5px}
+  }
   /* filtros checkbox */
   .chk{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);font-weight:600;cursor:pointer;white-space:nowrap}
   .chk input{width:15px;height:15px;accent-color:var(--primary)}

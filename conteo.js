@@ -65,33 +65,29 @@ function _conteoSelectorAlmacen(){
   }
 
   $("#moduleView").innerHTML = `
-    <div style="max-width:560px;margin:0 auto;padding-top:8px">
-      <div style="margin-bottom:20px">
-        <h2 style="margin:0 0 4px;font-size:20px">Inventario Físico</h2>
-        <p style="margin:0;color:var(--muted);font-size:13px">¿En qué almacén vas a levantar el inventario?</p>
+    <div style="max-width:900px;margin:0 auto;padding-top:8px">
+      <div class="menu-h" style="margin-bottom:14px">
+        <h1>Inventario Físico</h1>
+        <p>¿En qué almacén vas a levantar el inventario?
+          <span style="color:var(--muted)">(${lista.length} disponibles)</span></p>
       </div>
-      <div style="display:flex;flex-direction:column;gap:8px">
+      <div class="controls" style="margin-bottom:16px">
+        <input type="search" id="cntAlmSearch" placeholder="Buscar almacén por clave o nombre…" style="width:100%">
+      </div>
+      <div class="alm-grid" id="cntAlmGrid">
         ${lista.map(a => {
           const esDist = a.clave === DIST();
           const prog = conConteo.has(a.clave);
           const nMats = Object.keys(DB.materiales||{}).filter(c => (DB.existencias[c]||{})[a.clave] !== undefined).length;
-          return `<button onclick="elegirAlmacenConteo('${a.clave}')"
-            style="display:flex;align-items:center;gap:12px;padding:13px 15px;
-                   background:${prog?"#f0fdf4":"white"};
-                   border:2px solid ${prog?"#86efac":"var(--borde)"};
-                   border-radius:12px;cursor:pointer;text-align:left;width:100%">
-            <span style="font-family:'IBM Plex Mono',ui-monospace,monospace;font-weight:800;font-size:14px;
-                         background:${esDist?"var(--dist-bg)":"#eef2f8"};color:${esDist?"var(--dist)":"var(--primary)"};
-                         padding:3px 10px;border-radius:8px">${a.clave}</span>
-            <span style="flex:1;min-width:0">
-              <span style="display:block;font-size:13.5px;font-weight:600;color:var(--texto)">${a.desc||a.clave}</span>
-              <span style="display:block;font-size:11px;color:var(--muted);margin-top:2px">
-                ${nfmt(nMats)} materiales con existencia${esDist?" · Distribuidor":""}</span>
-            </span>
-            ${prog?`<span style="font-size:10.5px;font-weight:700;color:#16a34a">EN PROGRESO</span>`:""}
-            <span style="font-size:18px;color:var(--muted)">›</span>
-          </button>`;
+          return `<div class="alm-card ${esDist?"alm-dist":""} ${prog?"alm-prog":""}" data-alm="${a.clave}">
+            ${prog ? `<span class="alm-badge prog">En progreso</span>`
+                   : (esDist ? `<span class="alm-badge">Distribuidor</span>` : "")}
+            <div class="alm-code">${a.clave}</div>
+            <div class="alm-name">${a.desc||a.clave}</div>
+            <div class="alm-mats">${nfmt(nMats)} materiales</div>
+          </div>`;
         }).join("")}
+        <div class="alm-empty" id="cntAlmEmpty" hidden>Sin coincidencias.</div>
       </div>
       <div style="margin-top:18px;padding:11px 13px;background:#f7f9fc;border:1px solid var(--line);
                   border-radius:10px;font-size:12px;color:var(--muted)">
@@ -99,6 +95,21 @@ function _conteoSelectorAlmacen(){
         La ubicación física solo aplica a ${DIST()}.
       </div>
     </div>`;
+
+  $("#cntAlmSearch").oninput = () => {
+    const q = ($("#cntAlmSearch").value||"").trim().toLowerCase();
+    let visibles = 0;
+    $("#cntAlmGrid").querySelectorAll(".alm-card").forEach(el => {
+      const c = el.dataset.alm, info = (DB.directorio.almacenes||{})[c] || {};
+      const match = !q || c.toLowerCase().includes(q) || (info.desc||"").toLowerCase().includes(q);
+      el.style.display = match ? "" : "none";
+      if(match) visibles++;
+    });
+    $("#cntAlmEmpty").hidden = visibles > 0;
+  };
+  $("#cntAlmGrid").querySelectorAll(".alm-card").forEach(el => {
+    el.onclick = () => elegirAlmacenConteo(el.dataset.alm);
+  });
 }
 
 function elegirAlmacenConteo(clave){
