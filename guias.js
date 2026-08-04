@@ -512,81 +512,76 @@ function _guiasBorrarSeleccionadas(){
 }
 
 // ── PANTALLA 1: Menú principal ────────────────────────────────────────────────
+var _guiasAreaSel = null;   // área abierta en el listado (null = ninguna, tarjetas cerradas)
+
+var _GUIAS_AREAS = ["Herramientas","Misceláneos","Papelería","Cables","Ropa y Calzado","General"];
+
+function _guiasAgrupar(hist){
+  var porArea = {};
+  _GUIAS_AREAS.forEach(function(a){ porArea[a] = []; });
+  hist.forEach(function(g,i){
+    var a = g.area || "General";
+    if(!porArea[a]) porArea[a] = [];
+    porArea[a].push({g:g, i:i});
+  });
+  return porArea;
+}
+
 function modGuias(){
   var hist = _guiasHistCargar();
+  var porArea = _guiasAgrupar(hist);
 
-  // Agrupar historial por área
-  var areas = ["Herramientas","Misceláneos","Papelería","Cables","Ropa y Calzado","General"];
-  var porArea = {};
-  areas.forEach(function(a){ porArea[a] = []; });
-  hist.forEach(function(g,i){ var a = g.area||"General"; if(!porArea[a]) porArea[a]=[]; porArea[a].push({g:g,i:i}); });
+  // Si el área abierta se quedó sin guías, se cierra
+  if(_guiasAreaSel && !(porArea[_guiasAreaSel] || []).length) _guiasAreaSel = null;
 
-  var histHtml = "";
-  if(hist.length === 0){
-    histHtml = "<div style=\"color:var(--muted);font-size:13px;padding:16px 0\">No hay guías generadas aún.</div>";
-  } else {
-    areas.forEach(function(area){
-      var items = porArea[area] || [];
-      if(!items.length) return;
-      histHtml +=
-        "<details open class=\"guia-area-group\" data-area-group=\"" + area + "\" style=\"margin-bottom:12px\">" +
-        "<summary style=\"font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;" +
-        "letter-spacing:.4px;cursor:pointer;padding:6px 0;list-style:none\">" +
-        area + " <span style=\"color:var(--primary)\">(" + items.length + ")</span></summary>" +
-        "<div style=\"display:flex;flex-direction:column;gap:6px;margin-top:8px\">";
-      items.forEach(function(item){
-        var g=item.g, i=item.i;
-        var buscable = (g.folio + " " + (g.destino||'') + " " + area + " " + (g.fecha||'')).toLowerCase();
-        histHtml +=
-          "<div class=\"guia-item\" data-buscar=\"" + buscable.replace(/"/g,"&quot;") + "\" style=\"display:flex;align-items:center;gap:8px;padding:10px 14px;" +
-          "background:white;border:1px solid var(--line);border-radius:10px\">" +
-          "<input type=\"checkbox\" class=\"guia-chk\" data-idx=\"" + i + "\"" +
-          " onchange=\"_guiasToggleExportBtn()\" style=\"width:15px;height:15px;cursor:pointer;flex-shrink:0\">" +
-          "<div style=\"flex:1;cursor:pointer\" onclick=\"_guiasAbrirHistorial(" + i + ")\" title=\"Ver / editar\">" +
-          "<div style=\"font-size:13px;font-weight:700\">No. " + g.folio + " &mdash; " + (g.destino||'') + "</div>" +
-          "<div style=\"font-size:11px;color:var(--muted)\">" + (g.fecha||'') + " &middot; " + (g.lineas||0) + " materiales</div>" +
-          "</div>" +
-          "<button onclick=\"_guiasReimprimirHistorial(" + i + ",event)\" title=\"Reimprimir\"" +
-          " style=\"background:none;border:none;color:var(--primary);cursor:pointer;font-size:15px;padding:0\">&#128424;</button>" +
-          "<button onclick=\"_guiasBorrarHistorial(" + i + ")\" title=\"Borrar\"" +
-          " style=\"background:none;border:none;color:#dc2626;cursor:pointer;font-size:16px;padding:0\">&times;</button>" +
-          "</div>";
-      });
-      histHtml += "</div></details>";
-    });
-  }
+  var tarjetas = "";
+  Object.keys(porArea).forEach(function(area){
+    var n = (porArea[area] || []).length;
+    var abierta = _guiasAreaSel === area;
+    tarjetas +=
+      "<div class=\"guia-area-card" + (abierta ? " abierta" : "") + (n === 0 ? " vacia" : "") + "\"" +
+      " data-area=\"" + _escAttr(area) + "\">" +
+      "<div class=\"ga-n\">" + n + "</div>" +
+      "<div class=\"ga-t\">" + area + "</div>" +
+      "<div class=\"ga-s\">" + (n === 0 ? "sin guías" : (n === 1 ? "1 guía" : n + " guías")) + "</div>" +
+      "</div>";
+  });
 
   $("#moduleView").innerHTML =
-    "<div style=\"max-width:600px;margin:0 auto;padding:24px 16px\">" +
-    "<div style=\"margin-bottom:24px\">" +
-    "<h2 style=\"margin:0 0 4px;font-size:20px\">Guías de Embarque</h2>" +
-    "<p style=\"margin:0;color:var(--muted);font-size:13px\">D041 &middot; Almacén Distribuidor Puebla</p>" +
+    "<div style=\"max-width:900px;margin:0 auto;padding:16px 0\">" +
+    "<div class=\"menu-h\" style=\"margin-bottom:14px\">" +
+    "<h1>Guías de Embarque</h1>" +
+    "<p>" + DIST() + " &middot; " + hist.length + " guía" + (hist.length===1?"":"s") + " guardada" + (hist.length===1?"":"s") + "</p>" +
     "</div>" +
+
     "<button onclick=\"_guiaActual=null;_guiaEditandoOriginal=null;_guiasNueva()\"" +
     " style=\"width:100%;padding:14px;background:var(--primary);color:white;border:none;" +
     "border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;" +
     "margin-bottom:10px\">+ Nueva guía de embarque</button>" +
-    "<div style=\"display:flex;gap:8px;margin-bottom:20px\">" +
+
+    "<div style=\"display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap\">" +
     "<button id=\"btnExportSel\" disabled onclick=\"_guiasExportarSeleccion(_guiasGetSeleccionados())\"" +
-    " style=\"flex:1;padding:9px;background:white;border:1.5px solid var(--line);border-radius:10px;" +
+    " style=\"flex:1;min-width:150px;padding:9px;background:white;border:1.5px solid var(--line);border-radius:10px;" +
     "font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;color:var(--primary);\">" +
     "Exportar seleccionadas</button>" +
     "<button id=\"btnBorrarSel\" disabled onclick=\"_guiasBorrarSeleccionadas()\"" +
-    " style=\"flex:1;padding:9px;background:white;border:1.5px solid var(--line);border-radius:10px;" +
+    " style=\"flex:1;min-width:150px;padding:9px;background:white;border:1.5px solid var(--line);border-radius:10px;" +
     "font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;color:#dc2626;\">" +
     "Borrar seleccionadas</button>" +
     "</div>" +
-    "<div style=\"display:flex;gap:8px;margin-bottom:20px\">" +
+
+    "<div style=\"display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap\">" +
     "<button onclick=\"_guiasExportarTodo()\"" +
-    " style=\"flex:1;padding:9px;background:white;border:1.5px solid var(--line);border-radius:10px;" +
+    " style=\"flex:1;min-width:150px;padding:9px;background:white;border:1.5px solid var(--line);border-radius:10px;" +
     "font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;color:var(--primary)\">" +
     "Exportar todo</button>" +
     "<button onclick=\"_guiasImportar()\"" +
-    " style=\"flex:1;padding:9px;background:white;border:1.5px solid var(--line);border-radius:10px;" +
+    " style=\"flex:1;min-width:150px;padding:9px;background:white;border:1.5px solid var(--line);border-radius:10px;" +
     "font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;color:var(--primary)\">" +
     "&#8679; Importar</button>" +
     "</div>" +
-    "<details style=\"margin-bottom:20px\">" +
+
+    "<details style=\"margin-bottom:18px\">" +
     "<summary style=\"font-size:11px;color:var(--muted);cursor:pointer;list-style:none;" +
     "display:inline-block\">&#9881; Opciones avanzadas</summary>" +
     "<button onclick=\"_guiasBDExportarSemilla()\"" +
@@ -594,36 +589,99 @@ function modGuias(){
     "border-radius:8px;font-size:11px;cursor:pointer;font-family:inherit;color:var(--muted)\">" +
     "Generar código de semilla de empaques</button>" +
     "</details>" +
-    "<div style=\"font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;" +
-    "letter-spacing:.4px;margin-bottom:10px\">Guías recientes</div>" +
+
     "<input type=\"search\" id=\"guiaSearch\" placeholder=\"Buscar por folio, destino o área...\"" +
     " style=\"width:100%;padding:9px 12px;border:1.5px solid var(--line);border-radius:10px;" +
-    "font-family:inherit;font-size:13px;margin-bottom:12px;box-sizing:border-box\">" +
-    "<div id=\"guiaListaVacia\" style=\"display:none;color:var(--muted);font-size:13px;padding:12px 0\">" +
-    "Sin resultados para esa búsqueda.</div>" +
-    "<div style=\"display:flex;flex-direction:column;gap:8px\">" + histHtml + "</div>" +
+    "font-family:inherit;font-size:13px;margin-bottom:14px;box-sizing:border-box\">" +
+
+    "<div class=\"guia-areas-grid\" id=\"guiaAreasGrid\">" + tarjetas + "</div>" +
+    "<div id=\"guiaPanel\"></div>" +
     "</div>";
+
+  $("#guiaAreasGrid").querySelectorAll(".guia-area-card").forEach(function(card){
+    card.onclick = function(){
+      var area = card.dataset.area;
+      _guiasAreaSel = (_guiasAreaSel === area) ? null : area;
+      modGuias();
+    };
+  });
+
+  _guiasRenderPanel();
 
   var buscador = document.getElementById("guiaSearch");
   if(buscador){
-    buscador.oninput = function(){
-      var q = this.value.trim().toLowerCase();
-      var algunaVisible = false;
-      document.querySelectorAll(".guia-area-group").forEach(function(grupo){
-        var visiblesEnGrupo = 0;
-        grupo.querySelectorAll(".guia-item").forEach(function(item){
-          var match = !q || item.dataset.buscar.includes(q);
-          item.style.display = match ? "" : "none";
-          if(match) visiblesEnGrupo++;
-        });
-        grupo.style.display = visiblesEnGrupo > 0 ? "" : "none";
-        if(visiblesEnGrupo > 0) algunaVisible = true;
-        if(q) grupo.open = true; // expandir automáticamente al buscar
-      });
-      var vacio = document.getElementById("guiaListaVacia");
-      if(vacio) vacio.style.display = algunaVisible ? "none" : "";
-    };
+    buscador.oninput = function(){ _guiasBuscar(this.value); };
   }
+}
+
+// ── Panel inferior: guías del área abierta ───────────────────────────────────
+function _guiasRenderPanel(){
+  var panel = document.getElementById("guiaPanel");
+  if(!panel) return;
+  if(!_guiasAreaSel){ panel.innerHTML = ""; return; }
+
+  var items = _guiasAgrupar(_guiasHistCargar())[_guiasAreaSel] || [];
+  panel.innerHTML =
+    "<div class=\"guia-panel-head\">" +
+    "<span>" + _guiasAreaSel + "</span>" +
+    "<span class=\"pill\">" + items.length + "</span>" +
+    "<button class=\"guia-cerrar\" onclick=\"_guiasAreaSel=null;modGuias()\">Cerrar &times;</button>" +
+    "</div>" +
+    "<div class=\"guia-lista\">" + items.map(_guiasFilaHtml).join("") + "</div>";
+  _guiasToggleExportBtn();
+}
+
+function _guiasFilaHtml(item){
+  var g = item.g, i = item.i;
+  var area = g.area || "General";
+  var buscable = (g.folio + " " + (g.destino||"") + " " + area + " " + (g.fecha||"")).toLowerCase();
+  return "<div class=\"guia-item\" data-buscar=\"" + _escAttr(buscable) + "\">" +
+    "<input type=\"checkbox\" class=\"guia-chk\" data-idx=\"" + i + "\"" +
+    " onchange=\"_guiasToggleExportBtn()\" style=\"width:15px;height:15px;cursor:pointer;flex-shrink:0\">" +
+    "<div style=\"flex:1;min-width:0;cursor:pointer\" onclick=\"_guiasAbrirHistorial(" + i + ")\" title=\"Ver / editar\">" +
+    "<div class=\"gi-t\">No. " + g.folio + " &mdash; " + (g.destino||"") + "</div>" +
+    "<div class=\"gi-s\">" + (g.fecha||"") + " &middot; " + (g.lineas||0) + " materiales</div>" +
+    "</div>" +
+    "<button onclick=\"_guiasReimprimirHistorial(" + i + ",event)\" title=\"Reimprimir\"" +
+    " style=\"background:none;border:none;color:var(--primary);cursor:pointer;font-size:15px;padding:0\">&#128424;</button>" +
+    "<button onclick=\"_guiasBorrarHistorial(" + i + ")\" title=\"Borrar\"" +
+    " style=\"background:none;border:none;color:#dc2626;cursor:pointer;font-size:16px;padding:0\">&times;</button>" +
+    "</div>";
+}
+
+// ── Búsqueda: resultados planos de todas las áreas ───────────────────────────
+function _guiasBuscar(val){
+  var q = (val||"").trim().toLowerCase();
+  var grid = document.getElementById("guiaAreasGrid");
+  var panel = document.getElementById("guiaPanel");
+  if(!grid || !panel) return;
+
+  if(!q){                       // sin búsqueda: se regresa a las tarjetas
+    grid.style.display = "";
+    _guiasRenderPanel();
+    return;
+  }
+
+  grid.style.display = "none";  // durante la búsqueda las tarjetas estorban
+  var hist = _guiasHistCargar();
+  var res = hist.map(function(g,i){ return {g:g, i:i}; }).filter(function(item){
+    var g = item.g;
+    var s = (g.folio + " " + (g.destino||"") + " " + (g.area||"General") + " " + (g.fecha||"")).toLowerCase();
+    return s.indexOf(q) !== -1;
+  });
+
+  if(!res.length){
+    panel.innerHTML = "<div class=\"empty\">Sin resultados para esa búsqueda.</div>";
+    return;
+  }
+  panel.innerHTML =
+    "<div class=\"guia-panel-head\"><span>Resultados</span>" +
+    "<span class=\"pill\">" + res.length + "</span></div>" +
+    "<div class=\"guia-lista\">" + res.map(function(item){
+      return _guiasFilaHtml(item).replace("<div class=\"gi-s\">",
+        "<div class=\"gi-s\"><b style=\"color:var(--primary)\">" + (item.g.area||"General") + "</b> &middot; ");
+    }).join("") + "</div>";
+  _guiasToggleExportBtn();
 }
 
 // ── PANTALLA 2: Nueva guía — datos de cabecera ────────────────────────────────

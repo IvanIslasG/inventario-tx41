@@ -211,6 +211,37 @@
   .alm-card.alm-prog:hover{border-color:#16a34a}
   .alm-badge.prog{background:#16a34a}
   .alm-empty{grid-column:1/-1;padding:26px 16px;text-align:center;color:var(--muted);font-size:13px}
+
+  /* ---- Guías: tarjetas por área ---- */
+  .guia-areas-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+  .guia-area-card{position:relative;background:var(--surface);border:1.5px solid var(--line);border-radius:12px;
+                  padding:14px 12px;cursor:pointer;transition:.12s;text-align:center}
+  .guia-area-card:hover{border-color:var(--primary);transform:translateY(-2px);box-shadow:0 6px 18px rgba(10,78,163,.12)}
+  .guia-area-card .ga-n{font-size:26px;font-weight:800;color:var(--primary);line-height:1;font-variant-numeric:tabular-nums}
+  .guia-area-card .ga-t{font-size:12.5px;font-weight:700;color:var(--ink);margin-top:6px;line-height:1.25}
+  .guia-area-card .ga-s{font-size:10.5px;color:var(--muted);margin-top:2px}
+  .guia-area-card.abierta{background:linear-gradient(135deg,#eaf1fb,#dce9fb);border-color:var(--primary);
+                          box-shadow:0 2px 10px rgba(10,78,163,.15)}
+  .guia-area-card.vacia{opacity:.5}
+  .guia-area-card.vacia .ga-n{color:var(--muted)}
+  .guia-area-card.vacia:hover{transform:none;box-shadow:none;border-color:var(--line)}
+  .guia-panel-head{display:flex;align-items:center;gap:9px;margin:20px 0 10px;font-size:12px;font-weight:800;
+                   color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+  .guia-cerrar{margin-left:auto;background:none;border:0;color:var(--primary);font-weight:700;font-size:11.5px;
+               font-family:inherit;cursor:pointer;text-transform:none;letter-spacing:0}
+  .guia-lista{display:flex;flex-direction:column;gap:6px}
+  .guia-item{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--surface);
+             border:1px solid var(--line);border-radius:10px}
+  .guia-item .gi-t{font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .guia-item .gi-s{font-size:11px;color:var(--muted);margin-top:1px}
+  @media(max-width:560px){
+    .guia-areas-grid{grid-template-columns:1fr 1fr;gap:8px}
+    .guia-area-card{padding:12px 8px}
+    .guia-area-card .ga-n{font-size:22px}
+    .guia-area-card .ga-t{font-size:11.5px}
+    .guia-item{padding:9px 11px;gap:7px}
+    .guia-item .gi-t{font-size:12.5px}
+  }
   @media(max-width:560px){
     .alm-grid{grid-template-columns:1fr 1fr;gap:8px}
     .alm-card{padding:11px 12px}
@@ -530,6 +561,7 @@ function abrirModulo(id){
   window.scrollTo(0,0);
   if(id==="inventario"){ invAlmacenSel=null; invSel=null; }
   if(id==="conteo"){ _conteoAlmSel=null; _conteoAreaActual=""; _conteoData={}; }
+  if(id==="guias"){ _guiasAreaSel=null; }
   // OR y Análisis usan todo el ancho (tablas con muchas columnas); el resto respeta max-width
   document.querySelector("main").classList.toggle("fullwidth", id==="or" || id==="analisis");
   ({inventario:modInventario, analisis:modAnalisis, directorio:modDirectorio, or:modOR, conteo:modConteo, config:modConfig, guias:modGuias}[id])();
@@ -631,7 +663,7 @@ function renderMenu(){
     {id:"analisis", t:"Análisis", d:"Existencias por almacén y por catálogo, todos los centros.", s:`${conEx.size} almacenes con existencia`},
     {id:"directorio", t:"Directorio", d:"Claves y nombres de centros y almacenes.", s:`${nRec} recurrentes · ${almList().length} totales`},
     {id:"or", t:"Orden de Reabasto", d:"Generar OR por almacén auxiliar con cálculo automático.", s:""},
-    {id:"conteo", t:"Inventario", d:"Captura de conteo físico con diferencias en tiempo real.", s:`Conteo físico · ${DIST()} y recurrentes`},{id:"cuentas", t:"Convertidor de Cuentas", d:"Consulta equivalencias de cuentas contables R3 → S/4HANA.", s:"1,572 cuentas · Nacional", url:"cuentas.html"},{id:"config", t:"Configuración", d:"Parámetros, datos del paquete y sesión.", s:""},{id:"guias", t:"Guías de Embarque", d:"Genera guías de embarque con QR para trazabilidad.", s:"BD de empaques · D041"},
+    {id:"conteo", t:"Inventario", d:"Captura de conteo físico con diferencias en tiempo real.", s:`Conteo físico · ${DIST()} y recurrentes`},{id:"cuentas", t:"Convertidor de Cuentas", d:"Consulta equivalencias de cuentas contables R3 → S/4HANA.", s:"1,572 cuentas · Nacional", url:"cuentas.html"},{id:"config", t:"Configuración", d:"Parámetros, datos del paquete y sesión.", s:""},{id:"guias", t:"Guías de Embarque", d:"Genera guías de embarque con QR para trazabilidad.", s:`BD de empaques · ${DIST()}`},
   ];
   $("#menuView").innerHTML=`
     <div class="menu-h"><h1>Módulos</h1><p>Elige una herramienta para empezar.</p></div>
