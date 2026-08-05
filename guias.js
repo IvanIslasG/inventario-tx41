@@ -929,7 +929,8 @@ function _guiasContinuarMateriales(){
     placas:    previa ? previa.placas    : '',
     tipoVeh:   previa ? previa.tipoVeh   : '',
     pedido:    previa ? previa.pedido    : '',
-    siatel:    previa ? previa.siatel    : ''
+    siatel:    previa ? previa.siatel    : '',
+    cajasGranel: previa && previa.cajasGranel != null ? previa.cajasGranel : 0
   };
 
   // Si se importó un OR desde esta pantalla, aplicar ahora los materiales
@@ -2034,11 +2035,8 @@ function _guiasRevision(){
     return;
   }
 
-  var _gruposBultos = _guiasAgruparLineas(_guiaActual.lineas, _guiaActual.area);
-  var totalBultos = 0;
-  _gruposBultos.cajas.forEach(function(l){ totalBultos += Math.floor(l.cant/l.contEmp); });
-  _gruposBultos.patio.forEach(function(l){ totalBultos += l.bultos || 1; });
-  if(_gruposBultos.granel.length > 0) totalBultos += 1; // 1 caja colectiva
+  if(_guiaActual.cajasGranel == null) _guiaActual.cajasGranel = 0;
+  var totalBultos = _guiasTotalBultos();
 
   var filasHtml = "";
   for(var i=0; i<_guiaActual.lineas.length; i++){
@@ -2071,8 +2069,11 @@ function _guiasRevision(){
     "<div><div style=\"font-size:18px;font-weight:800;color:var(--primary)\">" +
     "Guía " + _guiaActual.area + " No. " + _guiaActual.folio + " &mdash; Revisión</div>" +
     "<div style=\"font-size:12px;color:var(--muted)\">" + _guiaActual.destino + " &middot; " +
-    _guiaActual.almInfo.nombre + " &middot; " + totalBultos + " bultos total</div></div>" +
+    _guiaActual.almInfo.nombre + " &middot; <span id=\"gTotalBultos\">" + totalBultos + " bultos total</span></div></div>" +
     "</div>" +
+
+    // Panel de reparto de granel (vacío si no hay material a granel)
+    "<div id=\"granelPanel\"></div>" +
 
     // Tabla de materiales
     "<div style=\"background:white;border:1px solid var(--line);border-radius:12px;" +
@@ -2118,6 +2119,9 @@ function _guiasRevision(){
     "border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit\">" +
     "&#128203; Generar e imprimir guía</button>" +
     "</div>";
+
+  _grSel = null;
+  _guiasRenderGranelPanel();
 }
 
 function _tplCampoFirma(id, label, valor){
@@ -2185,6 +2189,284 @@ function _guiasAgruparLineas(lineas, area){
   return { cajas: cajas, patio: patio, granel: granel };
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   REPARTO DE GRANEL EN VARIAS CAJAS
+   El usuario dice cuántas cajas colectivas va a usar y arrastra cada material
+   a la que le toca. 0 cajas = comportamiento de siempre (un solo encabezado).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+// Índices (dentro de _guiaActual.lineas) de todo lo que va a granel
+function _guiasGranelIdx(){
+  var out = [];
+  var ls = (_guiaActual && _guiaActual.lineas) || [];
+  for(var i=0; i<ls.length; i++){
+    var l = ls[i];
+    if(!l.patio && (l.granel || l.contEmp === 0)) out.push(i);
+  }
+  return out;
+}
+
+function _guiasNumCajasGranel(){
+  var n = parseInt((_guiaActual && _guiaActual.cajasGranel) || 0, 10);
+  return (isNaN(n) || n < 0) ? 0 : n;
+}
+
+// Cuántas cajas colectivas cuentan como bulto (incluye la de "sin asignar")
+function _guiasBultosGranel(){
+  var idx = _guiasGranelIdx();
+  if(!idx.length) return 0;
+  var n = _guiasNumCajasGranel();
+  if(n === 0) return 1;                       // una sola caja colectiva, como antes
+  var sinAsignar = idx.some(function(i){
+    var c = _guiaActual.lineas[i].cajaGranel;
+    return !c || c < 1 || c > n;
+  });
+  return n + (sinAsignar ? 1 : 0);
+}
+
+function _guiasCambiarNumCajas(valor){
+  var n = parseInt(valor, 10);
+  if(isNaN(n) || n < 0) n = 0;
+  if(n > 30) n = 30;
+  _guiaActual.cajasGranel = n;
+  // Si se reduce el número de cajas, lo que quedó fuera de rango vuelve a "sin asignar"
+  _guiasGranelIdx().forEach(function(i){
+    var l = _guiaActual.lineas[i];
+    if(l.cajaGranel && (l.cajaGranel > n || n === 0)) delete l.cajaGranel;
+  });
+  _guiasRenderGranelPanel();
+}
+
+function _guiasAsignarGranel(idxLinea, caja){
+  var l = _guiaActual.lineas[idxLinea];
+  if(!l) return;
+  if(caja == null) delete l.cajaGranel;
+  else l.cajaGranel = caja;
+  _guiasRenderGranelPanel();
+}
+
+// Reparte lo que falta, en orden, entre las cajas disponibles
+function _guiasGranelAuto(){
+  var n = _guiasNumCajasGranel();
+  if(n < 1) return;
+  var pend = _guiasGranelIdx().filter(function(i){
+    var c = _guiaActual.lineas[i].cajaGranel;
+    return !c || c < 1 || c > n;
+  });
+  if(!pend.length){ return; }
+  // se reparte por cantidad de materiales, buscando siempre la caja menos llena
+  var carga = {};
+  for(var k=1;k<=n;k++) carga[k]=0;
+  _guiasGranelIdx().forEach(function(i){
+    var c=_guiaActual.lineas[i].cajaGranel;
+    if(c>=1 && c<=n) carga[c]++;
+  });
+  pend.forEach(function(i){
+    var mejor=1;
+    for(var k=2;k<=n;k++) if(carga[k]<carga[mejor]) mejor=k;
+    _guiaActual.lineas[i].cajaGranel = mejor;
+    carga[mejor]++;
+  });
+  _guiasRenderGranelPanel();
+}
+
+function _guiasGranelLimpiar(){
+  _guiasGranelIdx().forEach(function(i){ delete _guiaActual.lineas[i].cajaGranel; });
+  _guiasRenderGranelPanel();
+}
+
+// ── Tarjeta de material a granel ─────────────────────────────────────────────
+function _tplGranelCard(i){
+  var l = _guiaActual.lineas[i];
+  return "<div class=\"gr-card\" data-idx=\"" + i + "\">" +
+    "<div class=\"gr-cat\">" + l.cat + "</div>" +
+    "<div class=\"gr-desc\">" + l.desc + "</div>" +
+    "<div class=\"gr-cant\">" + l.cant + " " + l.um + (l.lote ? " · L-" + l.lote : "") + "</div>" +
+    "</div>";
+}
+
+function _tplGranelPanel(){
+  var idx = _guiasGranelIdx();
+  if(!idx.length) return "";   // sin granel no se pregunta nada
+
+  var colectivo = _GUIAS_COLECTIVO[_guiaActual.area] || "Material en General";
+  var n = _guiasNumCajasGranel();
+
+  var html =
+    "<div style=\"background:white;border:1px solid var(--line);border-radius:12px;" +
+    "padding:16px;margin-bottom:20px\">" +
+    "<div style=\"display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px\">" +
+    "<div style=\"font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;" +
+    "letter-spacing:.4px;flex:1\">Cajas de granel</div>" +
+    "<label style=\"font-size:12px;color:var(--muted)\">&iquest;Cu&aacute;ntas cajas?</label>" +
+    "<input id=\"gNumCajasGranel\" type=\"number\" min=\"0\" max=\"30\" value=\"" + n + "\"" +
+    " onchange=\"_guiasCambiarNumCajas(this.value)\"" +
+    " style=\"width:70px;padding:7px 9px;border:1.5px solid var(--line);border-radius:8px;" +
+    "font-family:inherit;font-size:14px;font-weight:700;text-align:center\">" +
+    "</div>" +
+    "<div style=\"font-size:11.5px;color:var(--muted);margin-bottom:12px\">" +
+    idx.length + " material(es) a granel. " +
+    (n === 0
+      ? "Con 0 cajas todo sale junto bajo &laquo;" + colectivo + "&raquo;."
+      : "Arrastra cada material a su caja, o t&oacute;calo y luego toca la caja.") +
+    "</div>";
+
+  if(n === 0){
+    html += "<div class=\"gr-zona gr-zona-off\">" +
+      idx.map(_tplGranelCard).join("") + "</div>";
+  } else {
+    var sinAsignar = idx.filter(function(i){
+      var c = _guiaActual.lineas[i].cajaGranel;
+      return !c || c < 1 || c > n;
+    });
+
+    html +=
+      "<div style=\"display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px\">" +
+      "<button type=\"button\" onclick=\"_guiasGranelAuto()\" style=\"padding:6px 12px;background:white;" +
+      "border:1.5px solid var(--line);border-radius:8px;font-size:11.5px;font-weight:600;" +
+      "cursor:pointer;font-family:inherit;color:var(--primary)\">Repartir autom&aacute;tico</button>" +
+      "<button type=\"button\" onclick=\"_guiasGranelLimpiar()\" style=\"padding:6px 12px;background:white;" +
+      "border:1.5px solid var(--line);border-radius:8px;font-size:11.5px;font-weight:600;" +
+      "cursor:pointer;font-family:inherit;color:var(--muted)\">Vaciar cajas</button>" +
+      "</div>";
+
+    // Bandeja de pendientes
+    html +=
+      "<div class=\"gr-pend" + (sinAsignar.length ? " alerta" : "") + "\">" +
+      "<div class=\"gr-zona-tit\">" +
+      (sinAsignar.length ? "Sin asignar &middot; " + sinAsignar.length : "Todo asignado &#10003;") +
+      "</div>" +
+      "<div class=\"gr-zona\" data-caja=\"0\">" +
+      (sinAsignar.length ? sinAsignar.map(_tplGranelCard).join("")
+                         : "<div class=\"gr-vacia\">Arrastra aqu&iacute; para sacar un material de su caja</div>") +
+      "</div></div>";
+
+    // Una zona por caja
+    html += "<div class=\"gr-cajas\">";
+    for(var c=1; c<=n; c++){
+      var enCaja = idx.filter(function(i){ return _guiaActual.lineas[i].cajaGranel === c; });
+      html +=
+        "<div class=\"gr-caja\">" +
+        "<div class=\"gr-zona-tit\">Caja " + c + " de " + colectivo +
+        "<span class=\"gr-n\">" + enCaja.length + "</span></div>" +
+        "<div class=\"gr-zona\" data-caja=\"" + c + "\">" +
+        (enCaja.length ? enCaja.map(_tplGranelCard).join("")
+                       : "<div class=\"gr-vacia\">Vac&iacute;a</div>") +
+        "</div></div>";
+    }
+    html += "</div>";
+  }
+
+  return html + "</div>";
+}
+
+// Repinta solo el panel, sin rehacer toda la pantalla de revisión
+function _guiasRenderGranelPanel(){
+  var cont = document.getElementById("granelPanel");
+  if(!cont) return;
+  cont.innerHTML = _tplGranelPanel();
+  _guiasGranelDnD();
+  // el total de bultos del encabezado depende de las cajas de granel
+  var bs = document.getElementById("gTotalBultos");
+  if(bs) bs.textContent = _guiasTotalBultos() + " bultos total";
+}
+
+/* ── Arrastrar y soltar ──────────────────────────────────────────────────────
+   Se usa Pointer Events en vez de HTML5 drag&drop porque este último no
+   funciona con el dedo. Un toque corto selecciona; arrastrar mueve. */
+var _grSel = null;   // índice seleccionado por toque (modo "tocar y colocar")
+
+function _guiasGranelDnD(){
+  var panel = document.getElementById("granelPanel");
+  if(!panel) return;
+  if(_guiasNumCajasGranel() < 1) return;
+
+  panel.querySelectorAll(".gr-card").forEach(function(card){
+    card.style.touchAction = "none";
+    card.onpointerdown = function(ev){
+      if(ev.button === 1 || ev.button === 2) return;
+      var idx = +card.dataset.idx;
+      var x0 = ev.clientX, y0 = ev.clientY;
+      var arrastrando = false, fantasma = null, zonaPrev = null;
+
+      var mover = function(e){
+        if(!arrastrando){
+          if(Math.abs(e.clientX-x0) < 6 && Math.abs(e.clientY-y0) < 6) return;
+          arrastrando = true;
+          card.classList.add("gr-origen");
+          fantasma = card.cloneNode(true);
+          fantasma.className = "gr-card gr-fantasma";
+          fantasma.style.width = card.offsetWidth + "px";
+          document.body.appendChild(fantasma);
+        }
+        fantasma.style.left = (e.clientX - fantasma.offsetWidth/2) + "px";
+        fantasma.style.top  = (e.clientY - 22) + "px";
+
+        fantasma.style.display = "none";
+        var bajo = document.elementFromPoint(e.clientX, e.clientY);
+        fantasma.style.display = "";
+        var zona = bajo && bajo.closest ? bajo.closest(".gr-zona") : null;
+        if(zona !== zonaPrev){
+          if(zonaPrev) zonaPrev.classList.remove("gr-sobre");
+          if(zona) zona.classList.add("gr-sobre");
+          zonaPrev = zona;
+        }
+      };
+
+      var soltar = function(e){
+        card.releasePointerCapture && card.releasePointerCapture(ev.pointerId);
+        window.removeEventListener("pointermove", mover);
+        window.removeEventListener("pointerup", soltar);
+        window.removeEventListener("pointercancel", soltar);
+        if(fantasma) fantasma.remove();
+        if(zonaPrev) zonaPrev.classList.remove("gr-sobre");
+        card.classList.remove("gr-origen");
+
+        if(arrastrando){
+          if(zonaPrev){
+            var c = +zonaPrev.dataset.caja;
+            _guiasAsignarGranel(idx, c > 0 ? c : null);
+          }
+        } else {
+          // Toque simple: seleccionar / deseleccionar
+          _grSel = (_grSel === idx) ? null : idx;
+          panel.querySelectorAll(".gr-card").forEach(function(c2){
+            c2.classList.toggle("gr-sel", +c2.dataset.idx === _grSel);
+          });
+          panel.querySelectorAll(".gr-zona").forEach(function(z){
+            z.classList.toggle("gr-destino", _grSel !== null);
+          });
+        }
+      };
+
+      try{ card.setPointerCapture(ev.pointerId); }catch(err){}
+      window.addEventListener("pointermove", mover);
+      window.addEventListener("pointerup", soltar);
+      window.addEventListener("pointercancel", soltar);
+    };
+  });
+
+  // Tocar una zona coloca ahí el material seleccionado
+  panel.querySelectorAll(".gr-zona").forEach(function(zona){
+    zona.onclick = function(){
+      if(_grSel === null) return;
+      var c = +zona.dataset.caja;
+      var sel = _grSel;
+      _grSel = null;
+      _guiasAsignarGranel(sel, c > 0 ? c : null);
+    };
+  });
+}
+
+function _guiasTotalBultos(){
+  var g = _guiasAgruparLineas(_guiaActual.lineas, _guiaActual.area);
+  var t = 0;
+  g.cajas.forEach(function(l){ t += Math.floor(l.cant/l.contEmp); });
+  g.patio.forEach(function(l){ t += l.bultos || 1; });
+  return t + _guiasBultosGranel();
+}
+
+
 // Abreviatura del tipo de empaque para el impreso (C/C para Caja, como ya se usaba; nuevo para los demás)
 function _guiasAbrevTipo(tipo){
   var map = { "Caja": "C/C", "Bobina": "Bob c/" };
@@ -2230,13 +2512,13 @@ function _guiasBloquesImpresion(lineas, area){
   });
   if(bloqueEmpaque.length > 0) bloques.push(bloqueEmpaque);
 
-  // BLOQUE GRANEL: separador + encabezado colectivo + materiales, siempre juntos
+  // BLOQUE(S) GRANEL: cada caja colectiva es un bloque que nunca se parte entre hojas
   if(grupos.granel.length > 0){
-    var bloqueGranel = [];
-    bloqueGranel.push({ tipo: "separador" });
-    bloqueGranel.push({ tipo: "colectivo", desc: colectivo });
-    grupos.granel.forEach(function(l){
-      bloqueGranel.push({
+    var nCajasG = parseInt((_guiaActual && _guiaActual.cajasGranel) || 0, 10);
+    if(isNaN(nCajasG) || nCajasG < 0) nCajasG = 0;
+
+    var filaGranel = function(l){
+      return {
         cant:    l.cant,
         um:      l.um,
         desc:    l.desc + (l.lote ? " — L - " + l.lote : ""),
@@ -2244,9 +2526,28 @@ function _guiasBloquesImpresion(lineas, area){
         total:   l.cant + " " + l.um,
         tipo:    "granel",
         patio:   false
+      };
+    };
+    var armarBloque = function(titulo, lineas){
+      var b = [{ tipo:"separador" }, { tipo:"colectivo", desc:titulo }];
+      lineas.forEach(function(l){ b.push(filaGranel(l)); });
+      bloques.push(b);
+    };
+
+    if(nCajasG < 1){
+      // Sin reparto: un solo encabezado colectivo, como siempre
+      armarBloque(colectivo, grupos.granel);
+    } else {
+      for(var c=1; c<=nCajasG; c++){
+        var enCaja = grupos.granel.filter(function(l){ return l.cajaGranel === c; });
+        if(enCaja.length) armarBloque("Caja " + c + " de " + colectivo + ":", enCaja);
+      }
+      // Lo que quedó sin caja no se pierde: sale al final con el encabezado simple
+      var sueltos = grupos.granel.filter(function(l){
+        return !l.cajaGranel || l.cajaGranel < 1 || l.cajaGranel > nCajasG;
       });
-    });
-    bloques.push(bloqueGranel);
+      if(sueltos.length) armarBloque(colectivo, sueltos);
+    }
   }
 
   return bloques;
@@ -2254,6 +2555,20 @@ function _guiasBloquesImpresion(lineas, area){
 
 // ── PANTALLA 5: Generar guía imprimible ───────────────────────────────────────
 function _guiasGenerar(){
+  var nCajasG = _guiasNumCajasGranel();
+  if(nCajasG >= 1){
+    var sueltos = _guiasGranelIdx().filter(function(i){
+      var c = _guiaActual.lineas[i].cajaGranel;
+      return !c || c < 1 || c > nCajasG;
+    });
+    if(sueltos.length){
+      var nombres = sueltos.slice(0,6).map(function(i){ return "  · " + _guiaActual.lineas[i].cat; }).join("\n");
+      if(!confirm("Hay " + sueltos.length + " material(es) a granel sin caja asignada:\n\n" + nombres +
+        (sueltos.length>6 ? "\n  · …" : "") +
+        "\n\nVan a salir al final, bajo el encabezado general y contando como una caja aparte.\n\n¿Generar así?")) return;
+    }
+  }
+
   var faltanLote = _guiaActual.lineas.filter(function(l){ return l.loteRequerido; });
   if(faltanLote.length > 0){
     alert("Hay " + faltanLote.length + " material(es) que llevan lote y aún no se ha elegido de cuál surtir " +
