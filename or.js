@@ -62,6 +62,146 @@ function _orCargarConfig(){
   try{ return JSON.parse(localStorage.getItem(_OR_CFG_KEY)||"{}"); }
   catch(e){ return {}; }
 }
+
+// ── Respaldo y reinicio global de todas las ORs ──────────────────────────────
+// Recorre localStorage y devuelve [{alm, n, datos}] de cada OR con avance guardado.
+function _orTodasLasORs(){
+  const out=[];
+  for(let i=0;i<localStorage.length;i++){
+    const k=localStorage.key(i)||"";
+    if(!k.startsWith("or_tx41_") || k===_OR_CFG_KEY) continue;
+    const alm=k.slice("or_tx41_".length);
+    if(!alm) continue;
+    let datos;
+    try{ datos=JSON.parse(localStorage.getItem(k)||"{}"); }
+    catch(e){ console.warn("OR ilegible en",k,e); continue; }
+    const n=Object.keys(datos||{}).length;
+    if(n>0) out.push({alm, n, datos});
+  }
+  return out.sort((a,b)=>a.alm.localeCompare(b.alm));
+}
+
+function _orTotalEditados(){ return _orTodasLasORs().reduce((s,o)=>s+o.n,0); }
+
+// Respaldo legible en Excel: hoja resumen + una fila por partida editada.
+function _orExportarRespaldo(){
+  const ors=_orTodasLasORs();
+  if(!ors.length){ alert("No hay ninguna OR con avance guardado."); return; }
+  if(typeof XLSX==="undefined"){ alert("No se pudo cargar el generador de Excel."); return; }
+
+  const hoy=new Date().toLocaleDateString("es-MX");
+  const cfg=_orCargarConfig();
+
+  const resumen=[
+    ["RESPALDO DE ÓRDENES DE REABASTO"],
+    [`Generado: ${hoy}   ·   Almacenes con avance: ${ors.length}   ·   Partidas editadas: ${_orTotalEditados()}`],
+    [],
+    ["Almacén","Nombre","Partidas editadas","Piezas a surtir","Con observación","Pendiente","Validado","Parcial","No surtir","Revisar"]
+  ];
+  const detalle=[["Almacén","Catálogo","Descripción","U.M.","Área","No genérico","X surtir","Estado","Observación"]];
+
+  ors.forEach(o=>{
+    const c={pendiente:0,validado:0,parcial:0,no_surtir:0,revisar:0};
+    let pzas=0, obs=0;
+    Object.entries(o.datos).forEach(([key,man])=>{
+      const cat=key.split("|")[1]||key;
+      const info=(typeof mat==="function" ? mat(cat) : null)||{};
+      const est=man.estado||"pendiente";
+      if(c[est]!=null) c[est]++;
+      const xs=+man.xs||0; pzas+=xs;
+      if(man.obs) obs++;
+      detalle.push([o.alm, cat, info.desc||"", info.um||"", info.area||"Sin clasificar",
+                    (typeof ngDe==="function" ? (ngDe(cat)||"") : ""),
+                    xs, (ESTADOS_OR[est]||{}).label||est, man.obs||""]);
+    });
+    resumen.push([o.alm, (typeof almName==="function"?almName(o.alm):o.alm), o.n, pzas, obs,
+                  c.pendiente, c.validado, c.parcial, c.no_surtir, c.revisar]);
+  });
+
+  resumen.push([], ["Parámetros guardados", `CPM: ${cfg.mCPM??"—"} meses · Stock: ${cfg.mStk??"—"} · Último almacén: ${cfg.alm||"—"}`]);
+
+  const wb=XLSX.utils.book_new();
+  const wsR=XLSX.utils.aoa_to_sheet(resumen);
+  wsR["!cols"]=[{wch:10},{wch:38},{wch:17},{wch:15},{wch:15},{wch:11},{wch:10},{wch:9},{wch:11},{wch:9}];
+  wsR["!merges"]=[{s:{r:0,c:0},e:{r:0,c:9}},{s:{r:1,c:0},e:{r:1,c:9}}];
+  XLSX.utils.book_append_sheet(wb, wsR, "Resumen");
+
+  const wsD=XLSX.utils.aoa_to_sheet(detalle);
+  wsD["!cols"]=[{wch:10},{wch:12},{wch:46},{wch:7},{wch:16},{wch:13},{wch:10},{wch:12},{wch:40}];
+  wsD["!autofilter"]={ref:`A1:I${detalle.length}`};
+  wsD["!freeze"]={xSplit:0,ySplit:1};
+  XLSX.utils.book_append_sheet(wb, wsD, "Detalle");
+
+  const tag=new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb, `Respaldo_OR_${tag}.xlsx`);
+}
+
+// Respaldo restaurable: JSON con todo lo guardado, para volver a cargarlo después.
+function _orExportarRespaldoJSON(){
+  const ors=_orTodasLasORs();
+  if(!ors.length){ alert("No hay ninguna OR con avance guardado."); return; }
+  const paquete={
+    tipo:"respaldo_or_tx41", version:1,
+    generado:new Date().toISOString(),
+    config:_orCargarConfig(),
+    ors:ors.map(o=>({alm:o.alm, datos:o.datos}))
+  };
+  const blob=new Blob([JSON.stringify(paquete,null,2)],{type:"application/json"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download=`Respaldo_OR_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+
+function _orImportarRespaldo(){
+  const inp=document.createElement("input");
+  inp.type="file"; inp.accept=".json,application/json";
+  inp.onchange=()=>{
+    const f=inp.files&&inp.files[0]; if(!f) return;
+    const fr=new FileReader();
+    fr.onload=()=>{
+      let p;
+      try{ p=JSON.parse(fr.result); }
+      catch(e){ alert("El archivo no es un JSON válido."); return; }
+      if(!p || p.tipo!=="respaldo_or_tx41" || !Array.isArray(p.ors)){
+        alert("Ese archivo no es un respaldo de Órdenes de Reabasto."); return;
+      }
+      const total=p.ors.reduce((s,o)=>s+Object.keys(o.datos||{}).length,0);
+      if(!confirm(`Restaurar ${p.ors.length} almacén(es) con ${total} partidas editadas?\n\nLas ORs actuales de esos almacenes se van a reemplazar.`)) return;
+      let ok=0;
+      try{
+        p.ors.forEach(o=>{ if(!o.alm) return; localStorage.setItem(`or_tx41_${o.alm}`, JSON.stringify(o.datos||{})); ok++; });
+        if(p.config) localStorage.setItem(_OR_CFG_KEY, JSON.stringify(p.config));
+      }catch(e){
+        alert("No se pudo guardar todo el respaldo. Puede que el navegador esté sin espacio.\n\n"+e.message);
+      }
+      _orManual={}; orAlm=""; _orAreaSel="";
+      alert(`Respaldo restaurado: ${ok} almacén(es).`);
+      modOR();
+    };
+    fr.onerror=()=>alert("No se pudo leer el archivo.");
+    fr.readAsText(f);
+  };
+  inp.click();
+}
+
+function _orReiniciarTodas(){
+  const ors=_orTodasLasORs();
+  if(!ors.length){ alert("No hay ninguna OR con avance guardado."); return; }
+  const total=_orTotalEditados();
+  const lista=ors.map(o=>`  · ${o.alm} — ${o.n} partidas`).join("\n");
+  if(!confirm(`Reiniciar TODAS las Órdenes de Reabasto?\n\n${lista}\n\nSe borrarán ${total} partidas editadas en ${ors.length} almacén(es).\nEsta acción no se puede deshacer.`)) return;
+  if(!confirm("Última confirmación.\n\n¿Seguro que quieres borrar todo el avance de las ORs?\nSi aún no exportaste un respaldo, cancela y hazlo primero.")) return;
+  try{
+    ors.forEach(o=>localStorage.removeItem(`or_tx41_${o.alm}`));
+    localStorage.removeItem(_OR_CFG_KEY);
+  }catch(e){ alert("No se pudieron borrar todos los datos: "+e.message); }
+  _orManual={}; orAlm=""; _orAreaSel="";
+  alert(`Listo. Se reiniciaron ${ors.length} OR(s).`);
+  modOR();
+}
+
 function consumosDisp(){ return DB.consumos ? Object.keys(DB.consumos).sort() : []; }
 
 // ── Pantalla bienvenida OR ───────────────────────────────────────────────────
@@ -92,7 +232,7 @@ function _tplPaso1Alm(alms){
       "font-family:inherit;transition:border-color .15s\"" +
       " onmouseover=\"this.style.borderColor='var(--primary)'\"" +
       " onmouseout=\"this.style.borderColor='" + bc + "'\">" +
-      "<span style=\"font-size:14px;font-weight:700;color:var(--text)\">" + alm + "</span>" +
+      "<span style=\"font-size:14px;font-weight:700;color:var(--ink)\">" + alm + "</span>" +
       "<span style=\"font-size:10px;color:" + subColor + "\">" + subTexto + "</span>" +
       "</button>";
   }
@@ -104,8 +244,8 @@ function _tplPaso1Alm(alms){
     "<div style=\"font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2px;" +
     "color:var(--muted);margin-bottom:10px\">Sistema de Inventario TX41</div>" +
     "<div style=\"font-size:22px;font-weight:800;color:var(--primary);margin-bottom:6px\">Orden de Reabasto</div>" +
-    "<div style=\"font-size:14px;color:var(--text);font-weight:500;margin-bottom:4px\">Telmex RNUM</div>" +
-    "<div style=\"font-size:12px;color:var(--muted)\">Almacen Distribuidor Puebla &middot; D041</div>" +
+    "<div style=\"font-size:14px;color:var(--ink);font-weight:500;margin-bottom:4px\">Telmex RNUM</div>" +
+    "<div style=\"font-size:12px;color:var(--muted)\">" + almName(DIST()) + " &middot; " + DIST() + "</div>" +
     "</div>" +
     "<div id=\"or-menu-alm\" style=\"opacity:0;transform:translateY(16px);transition:all .5s ease;" +
     "margin-top:28px;width:100%;max-width:720px\">" +
@@ -117,7 +257,45 @@ function _tplPaso1Alm(alms){
     " oninput=\"_filtrarAlmMenu(this.value)\">" +
     "<div id=\"or-alm-grid\" style=\"display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px\">" +
     tarjetas +
-    "</div></div></div>"
+    "</div>" +
+    _tplOrHerramientas() +
+    "</div></div>"
+  );
+}
+
+// Barra de respaldo / reinicio global (solo aparece si hay algo guardado)
+function _tplOrHerramientas(){
+  var ors = _orTodasLasORs();
+  if(!ors.length) return "";
+  var total = _orTotalEditados();
+  var chips = ors.map(function(o){
+    return "<span style=\"font-size:10.5px;font-weight:700;background:#f0fdf4;color:#16a34a;" +
+           "border:1px solid #86efac;border-radius:99px;padding:2px 8px\">" +
+           o.alm + " &middot; " + o.n + "</span>";
+  }).join("");
+
+  return (
+    "<div style=\"margin-top:22px;padding:14px;background:var(--surface);border:1px solid var(--line);" +
+    "border-radius:12px;text-align:left\">" +
+    "<div style=\"font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;" +
+    "color:var(--muted);margin-bottom:8px\">Avance guardado</div>" +
+    "<div style=\"display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px\">" + chips + "</div>" +
+    "<div style=\"font-size:11.5px;color:var(--muted);margin-bottom:12px\">" +
+    total + " partidas editadas en " + ors.length + " almac&eacute;n(es), guardadas solo en este navegador.</div>" +
+    "<div style=\"display:flex;gap:8px;flex-wrap:wrap\">" +
+    "<button onclick=\"_orExportarRespaldo()\" style=\"flex:1;min-width:150px;padding:9px;background:white;" +
+    "border:1.5px solid var(--line);border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;" +
+    "font-family:inherit;color:var(--primary)\">&#8681; Respaldo en Excel</button>" +
+    "<button onclick=\"_orExportarRespaldoJSON()\" style=\"flex:1;min-width:150px;padding:9px;background:white;" +
+    "border:1.5px solid var(--line);border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;" +
+    "font-family:inherit;color:var(--primary)\">&#8681; Respaldo restaurable</button>" +
+    "<button onclick=\"_orImportarRespaldo()\" style=\"flex:1;min-width:150px;padding:9px;background:white;" +
+    "border:1.5px solid var(--line);border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;" +
+    "font-family:inherit;color:var(--primary)\">&#8679; Restaurar</button>" +
+    "<button onclick=\"_orReiniciarTodas()\" style=\"flex:1;min-width:150px;padding:9px;background:white;" +
+    "border:1.5px solid #fca5a5;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;" +
+    "font-family:inherit;color:#dc2626\">Reiniciar todas las ORs</button>" +
+    "</div></div>"
   );
 }
 
@@ -189,9 +367,9 @@ function _mostrarBienvenidaOR(almSeleccionado){
       " style=\"display:flex;align-items:center;justify-content:space-between;" +
       "gap:12px;padding:12px 18px;background:" + bg + ";border:1.5px solid " + bc + ";" +
       "border-radius:11px;cursor:pointer;text-align:left;width:100%;" +
-      "font-family:inherit;transition:all .15s;font-size:14px;font-weight:600;color:var(--text)\"" +
+      "font-family:inherit;transition:all .15s;font-size:14px;font-weight:600;color:var(--ink)\"" +
       " onmouseover=\"this.style.borderColor='var(--primary)';this.style.color='var(--primary)'\"" +
-      " onmouseout=\"this.style.borderColor='" + bc + "';this.style.color='var(--text)'\">" +
+      " onmouseout=\"this.style.borderColor='" + bc + "';this.style.color='var(--ink)'\">" +
       "<span>" + area + "</span>" +
       "<span style=\"font-size:11px;font-weight:400;color:" + rightColor + "\">" + rightLabel + "</span>" +
       "</button>";
@@ -973,7 +1151,7 @@ function _tplFilaMatResumen(r){
     "<tr style=\"border-bottom:1px solid var(--lite,#f4f6fb)\">" +
     "<td style=\"padding:7px 10px;font-size:12px;font-family:monospace;" +
     "font-weight:700;color:var(--primary);white-space:nowrap\">" + r.cat + "</td>" +
-    "<td style=\"padding:7px 10px;font-size:12px;color:var(--text)\">" + r.desc + "</td>" +
+    "<td style=\"padding:7px 10px;font-size:12px;color:var(--ink)\">" + r.desc + "</td>" +
     "<td style=\"padding:7px 10px;font-size:13px;font-weight:700;text-align:center;" +
     "color:var(--primary);white-space:nowrap\">" + r.xsurtir + "</td>" +
     "<td style=\"padding:7px 10px;font-size:11px;color:var(--muted);font-style:italic\">" + obs + "</td>" +
@@ -1018,14 +1196,14 @@ function _tplResumenOR(orAlm, totalPzas, totalCats, ramaLabel, matRowsHtml){
     "text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:6px\">Genera OR</label>" +
     "<input id=\"orGenResum\" type=\"text\" placeholder=\"Nombre completo\" style=\"width:100%;" +
     "padding:10px 14px;border:1.5px solid var(--line);border-radius:10px;font-size:14px;" +
-    "font-family:inherit;color:var(--text);outline:none\"" +
+    "font-family:inherit;color:var(--ink);outline:none\"" +
     " onfocus=\"this.style.borderColor='var(--primary)'\" onblur=\"this.style.borderColor='var(--line)'\">" +
     "</div></div>" +
     "<div style=\"background:#f0f4ff;border:1.5px solid #c7d7f0;border-radius:10px;" +
     "padding:12px 16px;margin-bottom:20px;display:flex;align-items:center;gap:10px\">" +
     "<span style=\"font-size:18px\">&#128203;</span>" +
     "<div><div style=\"font-size:12px;font-weight:700;color:var(--primary)\">Ruta SAP</div>" +
-    "<div style=\"font-size:12px;color:var(--text)\">" + ramaLabel + "</div></div>" +
+    "<div style=\"font-size:12px;color:var(--ink)\">" + ramaLabel + "</div></div>" +
     "</div>" +
     "<div style=\"background:white;border:1px solid var(--line);border-radius:12px;" +
     "overflow:hidden;margin-bottom:24px\">" +
