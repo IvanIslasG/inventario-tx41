@@ -167,17 +167,55 @@ function _orImportarRespaldo(){
       if(!p || p.tipo!=="respaldo_or_tx41" || !Array.isArray(p.ors)){
         alert("Ese archivo no es un respaldo de Órdenes de Reabasto."); return;
       }
-      const total=p.ors.reduce((s,o)=>s+Object.keys(o.datos||{}).length,0);
-      if(!confirm(`Restaurar ${p.ors.length} almacén(es) con ${total} partidas editadas?\n\nLas ORs actuales de esos almacenes se van a reemplazar.`)) return;
-      let ok=0;
+
+      const entrantes=p.ors.filter(o=>o.alm && o.datos && Object.keys(o.datos).length);
+      if(!entrantes.length){ alert("El respaldo no contiene ninguna OR con datos."); return; }
+
+      const actuales={}; _orTodasLasORs().forEach(o=>actuales[o.alm]=o.n);
+      const choque=entrantes.filter(o=>actuales[o.alm]);
+      const fecha=p.generado ? new Date(p.generado).toLocaleString("es-MX") : "sin fecha";
+      const detalle=entrantes.map(o=>{
+        const n=Object.keys(o.datos).length;
+        return `  · ${o.alm} — ${n} partidas` + (actuales[o.alm] ? `  (aquí ya hay ${actuales[o.alm]})` : "");
+      }).join("\n");
+
+      let modo="reemplazar";
+      if(choque.length){
+        // Hay ORs que ya existen: hay que decidir qué pasa con ellas antes de tocar nada
+        const r=prompt(
+          `Respaldo del ${fecha}\n\n${detalle}\n\n` +
+          `${choque.length} almacén(es) ya tienen avance en este navegador.\n\n` +
+          `Escribe:\n` +
+          `  R = reemplazar (se pierde lo que hay aquí)\n` +
+          `  C = combinar (el respaldo gana en las partidas repetidas)\n` +
+          `  cancelar = no hacer nada`, "C");
+        if(r===null) return;
+        const op=r.trim().toUpperCase();
+        if(op==="R") modo="reemplazar";
+        else if(op==="C") modo="combinar";
+        else { alert("Restauración cancelada."); return; }
+      } else {
+        if(!confirm(`Respaldo del ${fecha}\n\n${detalle}\n\n¿Restaurar?`)) return;
+      }
+
+      let ok=0, partidas=0;
       try{
-        p.ors.forEach(o=>{ if(!o.alm) return; localStorage.setItem(`or_tx41_${o.alm}`, JSON.stringify(o.datos||{})); ok++; });
+        entrantes.forEach(o=>{
+          let datos=o.datos;
+          if(modo==="combinar"){
+            let previos={};
+            try{ previos=JSON.parse(localStorage.getItem(`or_tx41_${o.alm}`)||"{}"); }catch(e){ previos={}; }
+            datos=Object.assign({}, previos, o.datos);
+          }
+          localStorage.setItem(`or_tx41_${o.alm}`, JSON.stringify(datos));
+          ok++; partidas+=Object.keys(o.datos).length;
+        });
         if(p.config) localStorage.setItem(_OR_CFG_KEY, JSON.stringify(p.config));
       }catch(e){
         alert("No se pudo guardar todo el respaldo. Puede que el navegador esté sin espacio.\n\n"+e.message);
       }
       _orManual={}; orAlm=""; _orAreaSel="";
-      alert(`Respaldo restaurado: ${ok} almacén(es).`);
+      alert(`Respaldo restaurado (${modo}): ${ok} almacén(es), ${partidas} partidas.`);
       modOR();
     };
     fr.onerror=()=>alert("No se pudo leer el archivo.");
@@ -263,39 +301,53 @@ function _tplPaso1Alm(alms){
   );
 }
 
-// Barra de respaldo / reinicio global (solo aparece si hay algo guardado)
+// Barra de respaldo / reinicio global.
+// Se dibuja SIEMPRE: aunque no haya avance, hay que poder restaurar un respaldo.
 function _tplOrHerramientas(){
-  var ors = _orTodasLasORs();
-  if(!ors.length) return "";
+  var ors   = _orTodasLasORs();
+  var hay   = ors.length > 0;
   var total = _orTotalEditados();
-  var chips = ors.map(function(o){
-    return "<span style=\"font-size:10.5px;font-weight:700;background:#f0fdf4;color:#16a34a;" +
-           "border:1px solid #86efac;border-radius:99px;padding:2px 8px\">" +
-           o.alm + " &middot; " + o.n + "</span>";
-  }).join("");
+
+  var btn = function(txt, fn, color, borde){
+    return "<button onclick=\"" + fn + "\" style=\"flex:1;min-width:150px;padding:9px;background:white;" +
+           "border:1.5px solid " + (borde||"var(--line)") + ";border-radius:10px;font-size:12px;" +
+           "font-weight:600;cursor:pointer;font-family:inherit;color:" + (color||"var(--primary)") + "\">" +
+           txt + "</button>";
+  };
+
+  var cuerpo;
+  if(hay){
+    var chips = ors.map(function(o){
+      return "<span style=\"font-size:10.5px;font-weight:700;background:#f0fdf4;color:#16a34a;" +
+             "border:1px solid #86efac;border-radius:99px;padding:2px 8px\">" +
+             o.alm + " &middot; " + o.n + "</span>";
+    }).join("");
+    cuerpo =
+      "<div style=\"display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px\">" + chips + "</div>" +
+      "<div style=\"font-size:11.5px;color:var(--muted);margin-bottom:12px\">" +
+      total + " partidas editadas en " + ors.length + " almac&eacute;n(es), guardadas solo en este navegador.</div>" +
+      "<div style=\"display:flex;gap:8px;flex-wrap:wrap\">" +
+      btn("&#8681; Respaldo en Excel", "_orExportarRespaldo()") +
+      btn("&#8681; Respaldo restaurable", "_orExportarRespaldoJSON()") +
+      btn("&#8679; Restaurar respaldo", "_orImportarRespaldo()") +
+      btn("Reiniciar todas las ORs", "_orReiniciarTodas()", "#dc2626", "#fca5a5") +
+      "</div>";
+  } else {
+    cuerpo =
+      "<div style=\"font-size:11.5px;color:var(--muted);margin-bottom:12px\">" +
+      "No hay avance guardado en este navegador. Si traes un respaldo en JSON, puedes cargarlo aqu&iacute;.</div>" +
+      "<div style=\"display:flex;gap:8px;flex-wrap:wrap\">" +
+      btn("&#8679; Restaurar respaldo", "_orImportarRespaldo()") +
+      "</div>";
+  }
 
   return (
     "<div style=\"margin-top:22px;padding:14px;background:var(--surface);border:1px solid var(--line);" +
     "border-radius:12px;text-align:left\">" +
     "<div style=\"font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;" +
-    "color:var(--muted);margin-bottom:8px\">Avance guardado</div>" +
-    "<div style=\"display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px\">" + chips + "</div>" +
-    "<div style=\"font-size:11.5px;color:var(--muted);margin-bottom:12px\">" +
-    total + " partidas editadas en " + ors.length + " almac&eacute;n(es), guardadas solo en este navegador.</div>" +
-    "<div style=\"display:flex;gap:8px;flex-wrap:wrap\">" +
-    "<button onclick=\"_orExportarRespaldo()\" style=\"flex:1;min-width:150px;padding:9px;background:white;" +
-    "border:1.5px solid var(--line);border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;" +
-    "font-family:inherit;color:var(--primary)\">&#8681; Respaldo en Excel</button>" +
-    "<button onclick=\"_orExportarRespaldoJSON()\" style=\"flex:1;min-width:150px;padding:9px;background:white;" +
-    "border:1.5px solid var(--line);border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;" +
-    "font-family:inherit;color:var(--primary)\">&#8681; Respaldo restaurable</button>" +
-    "<button onclick=\"_orImportarRespaldo()\" style=\"flex:1;min-width:150px;padding:9px;background:white;" +
-    "border:1.5px solid var(--line);border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;" +
-    "font-family:inherit;color:var(--primary)\">&#8679; Restaurar</button>" +
-    "<button onclick=\"_orReiniciarTodas()\" style=\"flex:1;min-width:150px;padding:9px;background:white;" +
-    "border:1.5px solid #fca5a5;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;" +
-    "font-family:inherit;color:#dc2626\">Reiniciar todas las ORs</button>" +
-    "</div></div>"
+    "color:var(--muted);margin-bottom:8px\">" +
+    (hay ? "Avance guardado" : "Respaldos") + "</div>" +
+    cuerpo + "</div>"
   );
 }
 
