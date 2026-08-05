@@ -252,6 +252,9 @@
   /* filtros checkbox */
   .chk{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);font-weight:600;cursor:pointer;white-space:nowrap}
   .chk input{width:15px;height:15px;accent-color:var(--primary)}
+  .chk-precon{background:#eef2f8;border:1px solid var(--line);border-radius:99px;padding:4px 11px 4px 9px;color:var(--primary)}
+  .chk-precon:has(input:checked){background:var(--primary);border-color:var(--primary);color:#fff}
+  .chk-precon:has(input:checked) .pill{background:rgba(255,255,255,.22);color:#fff}
   /* modal */
   .modal{position:fixed;inset:0;background:rgba(15,27,45,.5);display:none;align-items:center;justify-content:center;z-index:120;padding:20px}
   .modal.on{display:flex}

@@ -1,6 +1,25 @@
 /* ============ INVENTARIO (D041 por área, con tarjetas) ============ */
 const AREA_ICON={Herramientas:"🔧",Misceláneos:"🔩",Papelería:"📄",Cables:"🔌","Ropa y Calzado":"👔",Baja:"📦"};
 const TODO="__TODO__";
+
+// Catálogos de cable preconectorizado (filtro rápido del área Cables)
+const CABLES_PRECON = new Set([
+"1035387","1035388","1035389","1035390","1035391","1035452","1035453","1035454","1035455",
+"1049689","1049690","1049691",
+"1051918","1051919","1051920","1051921","1051922","1051923","1051924","1051927","1051928",
+"1051929","1051930","1051931","1051932",
+"1052493","1052494","1052495","1052551","1052562","1052563",
+"1052844","1052845","1052846","1052847","1052922","1052923",
+"1053054","1053055","1053056","1053057","1053058","1053059","1053060","1053061",
+"1053092","1053093","1053094","1053095","1053096",
+"1053221","1053222","1053223","1053224","1053225","1053226","1053227","1053228","1053229",
+"1053230","1053231","1053232","1053233","1053234",
+"1053247","1053248","1053249","1053250","1053251","1053252","1053253","1053254","1053255",
+"1053256","1053257","1053258","1053259","1053260","1053261","1053262","1053263","1053264",
+"1053265","1053297"
+]);
+function esPrecon(cat){ return CABLES_PRECON.has(String(cat).trim()); }
+
 let invSel=null, invSort={col:"exist",dir:-1};
 let invAlmacenSel=null; // almacén elegido para consultar (null = aún no se ha elegido en esta sesión)
 
@@ -141,6 +160,9 @@ function renderDetalleInv(){
   const base=matsArea(invSel);
   const ubis=[...new Set(base.map(m=>m.ubic).filter(Boolean))].sort();
   const areasEnTodo=esTodo?[...new Set(base.map(m=>m.area).filter(Boolean))].sort():[];
+  // El filtro de preconectorizados aplica al área Cables (y a "Todo", donde los cables también viven)
+  const nPrecon = base.filter(m=>esPrecon(m.cat)).length;
+  const hayPrecon = (esTodo || invSel==="Cables") && nPrecon>0;
   $("#moduleView").innerHTML=`
     <button class="linkish" id="invVolver" style="margin-bottom:10px">‹ Volver a áreas</button>
     <div class="controls">
@@ -149,6 +171,8 @@ function renderDetalleInv(){
         ? `<select id="invArea"><option value="">Todas las áreas</option>${areasEnTodo.map(a=>`<option>${a}</option>`).join("")}</select>`
         : `<select id="invUbi"><option value="">Todas las ubicaciones</option>${ubis.map(u=>`<option>${u}</option>`).join("")}</select>`}
       <label class="chk"><input type="checkbox" id="invCeros" checked> Ocultar sin existencia</label>
+      ${hayPrecon?`<label class="chk chk-precon"><input type="checkbox" id="invPrecon"> Preconectorizados
+        <span class="pill" style="margin-left:2px">${nfmt(nPrecon)}</span></label>`:""}
       <label class="chk"><input type="checkbox" id="invTras"> Solo con traslado</label>
       <label class="chk"><input type="checkbox" id="invLotes"> Solo con lotes</label>
       <label class="chk"><input type="checkbox" id="invLotesCeros" checked> Ocultar lotes en 0</label>
@@ -163,6 +187,7 @@ function renderDetalleInv(){
   $("#invSearch").oninput=pintarInv;
   if(esTodo) $("#invArea").onchange=pintarInv; else $("#invUbi").onchange=pintarInv;
   $("#invCeros").onchange=pintarInv;
+  if($("#invPrecon")) $("#invPrecon").onchange=pintarInv;
   $("#invTras").onchange=pintarInv;
   $("#invLotes").onchange=pintarInv;
   $("#invLotesCeros").onchange=pintarInv;
@@ -178,8 +203,10 @@ function filasInv(){
   const soloTras=$("#invTras")?.checked;
   const ubiSel=$("#invUbi")?.value||"";
   const areaSel=$("#invArea")?.value||"";
+  const soloPrecon=$("#invPrecon")?.checked;
   let rows=matsArea(invSel).filter(m=>{
     if(q && !(m.cat.toLowerCase().includes(q)||m.desc.toLowerCase().includes(q))) return false;
+    if(soloPrecon && !esPrecon(m.cat)) return false;
     if(ubiSel && m.ubic!==ubiSel) return false;
     if(areaSel && m.area!==areaSel) return false;
     if(ceros && !(m.exist!==null && m.exist>0)) return false;
@@ -263,8 +290,9 @@ function exportarArea(area,soloExist){
 // export del detalle respetando filtros actuales
 function exportarFiltrado(){
   const mats=filasInv(); if(!mats.length){ alert("No hay materiales con los filtros actuales."); return; }
-  const nom=invSel===TODO?"Todo":invSel.replace(/ /g,"_");
-  descargarXLSX(expFilas(mats), (invSel===TODO?"Todo":invSel).substring(0,28), `Inventario_${nom}_${fechaTag()}`);
+  const pre=$("#invPrecon")?.checked ? "_Precon" : "";
+  const nom=(invSel===TODO?"Todo":invSel.replace(/ /g,"_"))+pre;
+  descargarXLSX(expFilas(mats), ((invSel===TODO?"Todo":invSel)+(pre?" Precon":"")).substring(0,28), `Inventario_${nom}_${fechaTag()}`);
 }
 
 /* ---- Modal de exportación multi-área ---- */
@@ -336,7 +364,8 @@ function imprimirConteo(){
 function _generarImpresion(grupos, ubis){
   const ocultarLotesCeros = $("#invLotesCeros")?.checked;
   const hoy=new Date().toLocaleDateString('es-MX',{day:'2-digit',month:'long',year:'numeric'});
-  const label=invSel===TODO?"TODO EL INVENTARIO":invSel.toUpperCase();
+  const label=(invSel===TODO?"TODO EL INVENTARIO":invSel.toUpperCase())
+              + ($("#invPrecon")?.checked ? " · PRECONECTORIZADOS" : "");
   const almP=invAlmacenSel||DIST();
   const almPDesc=((DB.directorio.almacenes[almP]||{}).desc||almP).toUpperCase();
   const pa=$("#printArea"); pa.innerHTML="";
