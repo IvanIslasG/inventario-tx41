@@ -1987,6 +1987,52 @@ var _GUIAS_TRANSPORTES_BASE = [
   ]}
 ];
 
+// Personal que habitualmente surte las guías — tarjetas de llenado rápido
+var _GUIAS_SURTIDORES = [
+  "Misrrain Maldonado Villegas",
+  "Iván Islas Galván",
+  "Elisa Molina Cortés",
+  "Carolina García Villegas",
+  "Roberto Triano Vega",
+  "Ana Reyes Ramírez"
+];
+
+function _guiasElegirSurtio(nombre){
+  var el = document.getElementById("gSurtio");
+  if(!el) return;
+  el.value = nombre;
+  if(_guiaActual) _guiaActual.surtio = nombre;
+  _guiasMarcarSurtidor();
+}
+
+// Resalta la tarjeta que coincide con lo que hay escrito en el campo
+function _guiasMarcarSurtidor(){
+  var el = document.getElementById("gSurtio");
+  if(!el) return;
+  var val = (el.value || "").trim().toLowerCase();
+  var cont = document.getElementById("gSurtidores");
+  if(!cont) return;
+  cont.querySelectorAll("button[data-surtidor]").forEach(function(b){
+    var on = b.dataset.surtidor.toLowerCase() === val;
+    b.style.background = on ? "var(--primary)" : "white";
+    b.style.color      = on ? "white" : "var(--primary)";
+  });
+}
+
+function _guiasTarjetasSurtidoresHtml(){
+  return "<div style=\"font-size:10.5px;color:var(--muted);margin-bottom:6px\">" +
+    "Qui&eacute;n surti&oacute; &mdash; toca un nombre</div>" +
+    "<div id=\"gSurtidores\" style=\"display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px\">" +
+    _GUIAS_SURTIDORES.map(function(n){
+      return "<button type=\"button\" data-surtidor=\"" + _escAttr(n) + "\"" +
+        " onclick=\"_guiasElegirSurtio('" + _escAttr(n).replace(/'/g,"\\'") + "')\"" +
+        " style=\"padding:6px 11px;background:white;border:1.5px solid var(--primary);" +
+        "color:var(--primary);border-radius:8px;font-size:11px;font-weight:600;" +
+        "cursor:pointer;font-family:inherit\">" + n + "</button>";
+    }).join("") +
+    "</div>";
+}
+
 function _guiasElegirTransporteBase(linea, tipo, placas, operador){
   var f = function(id, val){ var el = document.getElementById(id); if(el) el.value = val; };
   f("gTransporteRev", linea);
@@ -2096,6 +2142,7 @@ function _guiasRevision(){
     "letter-spacing:.4px;margin-bottom:12px\">Datos para la guía</div>" +
     "<div style=\"font-size:10.5px;color:var(--muted);margin-bottom:6px\">Transporte conocido &mdash; toca para llenar automático</div>" +
     "<div style=\"display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px\">" + _guiasTarjetasTransporteHtml() + "</div>" +
+    _guiasTarjetasSurtidoresHtml() +
     "<div style=\"display:grid;grid-template-columns:1fr 1fr;gap:12px\">" +
     _tplCampoFirma("gPedido", "No. Pedido", _guiaActual.pedido || "0") +
     _tplCampoFirma("gSiatel", "Siatel", _guiaActual.siatel || "0") +
@@ -2122,6 +2169,9 @@ function _guiasRevision(){
 
   _grSel = null;
   _guiasRenderGranelPanel();
+  _guiasMarcarSurtidor();
+  var _sf = document.getElementById("gSurtio");
+  if(_sf) _sf.addEventListener("input", _guiasMarcarSurtidor);
 }
 
 function _tplCampoFirma(id, label, valor){
@@ -2514,6 +2564,7 @@ function _guiasBloquesImpresion(lineas, area){
 
   // BLOQUE(S) GRANEL: cada caja colectiva es un bloque que nunca se parte entre hojas
   if(grupos.granel.length > 0){
+    var grupos_granel = grupos.granel;
     var nCajasG = parseInt((_guiaActual && _guiaActual.cajasGranel) || 0, 10);
     if(isNaN(nCajasG) || nCajasG < 0) nCajasG = 0;
 
@@ -2534,20 +2585,30 @@ function _guiasBloquesImpresion(lineas, area){
       bloques.push(b);
     };
 
+    // Se arman primero los grupos para saber cuántas cajas colectivas salen de verdad
+    var grupos = [];   // {caja: n|null, lineas: []}
     if(nCajasG < 1){
-      // Sin reparto: un solo encabezado colectivo, como siempre
-      armarBloque(colectivo, grupos.granel);
+      grupos.push({ caja:null, lineas: grupos_granel });
     } else {
       for(var c=1; c<=nCajasG; c++){
-        var enCaja = grupos.granel.filter(function(l){ return l.cajaGranel === c; });
-        if(enCaja.length) armarBloque("Caja " + c + " de " + colectivo + ":", enCaja);
+        var enCaja = grupos_granel.filter(function(l){ return l.cajaGranel === c; });
+        if(enCaja.length) grupos.push({ caja:c, lineas:enCaja });
       }
-      // Lo que quedó sin caja no se pierde: sale al final con el encabezado simple
-      var sueltos = grupos.granel.filter(function(l){
+      var sueltos = grupos_granel.filter(function(l){
         return !l.cajaGranel || l.cajaGranel < 1 || l.cajaGranel > nCajasG;
       });
-      if(sueltos.length) armarBloque(colectivo, sueltos);
+      if(sueltos.length) grupos.push({ caja:null, lineas:sueltos });
     }
+
+    // Una sola caja colectiva en toda la guía: se nombra "1 caja de …"
+    var unaSola = grupos.length === 1;
+    grupos.forEach(function(g){
+      var titulo;
+      if(unaSola)            titulo = "1 caja de " + colectivo + ":";
+      else if(g.caja)        titulo = "Caja " + g.caja + " de " + colectivo + ":";
+      else                   titulo = colectivo;
+      armarBloque(titulo, g.lineas);
+    });
   }
 
   return bloques;
