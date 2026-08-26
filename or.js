@@ -500,6 +500,7 @@ function _tplPanelOR(orAlm, mCPM, mStk, areaSel){
     Object.keys(ESTADOS_OR).map(k=>`<option value="${k}">${ESTADOS_OR[k].label}</option>`).join("") +
     "</select>" +
     "<button class=\"btn-prim\" id=\"orExport\">&#8681; Exportar OR</button>" +
+    "<button class=\"btn btn-outline btn-sm\" onclick=\"_orAbrirSolicitud()\">&#128203; Solicitud de correo</button>" +
     "</div>" +
     "<div style=\"display:flex;gap:8px;flex-wrap:wrap;margin:8px 0;font-size:12px\">" +
     "<span class=\"pill\" id=\"orResumen\"></span>" +
@@ -741,32 +742,34 @@ function _orNGToggleMobile(){
   if(btn) btn.textContent = (open ? "▲" : "▼") + " Filtrar por grupo (NG)";
 }
 
-function calcularOR(){
-  const D=DIST(), cons=DB.consumos?.[orAlm]||{};
+function _orCalcFila(cat, orAlmParam){
+  const alm=orAlmParam||orAlm, D=DIST();
+  const cons=DB.consumos?.[alm]||{};
   const mCPM=Math.max(1,+$("#orMCPM")?.value||6), mStk=Math.max(0.1,+$("#orMS")?.value||1.5);
+  const consumo = cons[cat] || 0;
+  const info=mat(cat), ng=ngDe(cat)||"SIN SUSTITUTO";
+  const cpm=consumo/mCPM;
+  const exAux=(DB.existencias?.[cat]?.[alm])||0;
+  const exD=(DB.existencias?.[cat]?.[D])||0;
+  const calcSurtir=mStk*cpm-exAux;
+  const man=_orManual[alm+"|"+cat]||{};
+  const esSinSust=ng==="SIN SUSTITUTO";
+  const sugerido=esSinSust ? Math.max(0,Math.min(Math.round(calcSurtir),exD)) : 0;
+  const xsurtir=man.xs!=null ? man.xs : sugerido;
+  const mdInv=cpm>0?exAux/cpm:null;
+  const excedente=(3*cpm-exAux)<0;
+  // El faltante se calcula EN VIVO contra el pedido guardado — si luego se sube el X Surtir a mano
+  // (o con otra solicitud) y ya cubre lo pedido, la marca desaparece sola, sin tener que reprocesar nada.
+  const faltanteSolicitud=man.pedidoSolicitud!=null ? Math.max(0,man.pedidoSolicitud-xsurtir) : 0;
+  return {cat,desc:info.desc,um:info.um,area:info.area||"Sin clasificar",ng,consumo,cpm,exAux,exD,calcSurtir,xsurtir,mdInv,excedente,
+          obs:man.obs||"",estado:man.estado||"pendiente",faltanteSolicitud};
+}
+
+function calcularOR(){
   const out=[];
-
-  const calcFila=(cat)=>{
-    const consumo = cons[cat] || 0;
-    const info=mat(cat), ng=ngDe(cat)||"SIN SUSTITUTO";
-    const cpm=consumo/mCPM;
-    const exAux=(DB.existencias?.[cat]?.[orAlm])||0;
-    const exD=(DB.existencias?.[cat]?.[D])||0;
-    const calcSurtir=mStk*cpm-exAux;
-    const man=_orManual[orAlm+"|"+cat]||{};
-    const esSinSust=ng==="SIN SUSTITUTO";
-    const sugerido=esSinSust ? Math.max(0,Math.min(Math.round(calcSurtir),exD)) : 0;
-    const xsurtir=man.xs!=null ? man.xs : sugerido;
-    const mdInv=cpm>0?exAux/cpm:null;
-    const excedente=(3*cpm-exAux)<0;
-    return {cat,desc:info.desc,um:info.um,area:info.area||"Sin clasificar",ng,consumo,cpm,exAux,exD,calcSurtir,xsurtir,mdInv,excedente,obs:man.obs||"",estado:man.estado||"pendiente"};
-  };
-
-  // Todos los materiales del maestro — el consumo se usa para calcular, no para filtrar
   for(const cat of Object.keys(DB.materiales||{})){
-    out.push(calcFila(cat));
+    out.push(_orCalcFila(cat));
   }
-
   return out;
 }
 
@@ -867,7 +870,7 @@ function pintarOR(){
     const est=ESTADOS_OR[r.estado]||ESTADOS_OR.pendiente;
     const estadoOpts=Object.keys(ESTADOS_OR).map(k=>`<option value="${k}" ${k===r.estado?"selected":""}>${ESTADOS_OR[k].label}</option>`).join("");
     return `<tr ${rowBg} style="border-left:4px solid ${est.color}">
-      <td class="cat num">${r.cat}</td>
+      <td class="cat num">${r.cat}${r.faltanteSolicitud>0?`<span title="Se solicitó por correo y faltó existencia en D041 para cubrir ${fmt1(r.faltanteSolicitud)}" style="margin-left:5px;cursor:help">🚫</span>`:""}</td>
       <td class="desc">${r.desc||"—"}</td>
       <td><span class="area-tag">${r.area}</span></td>
       <td style="${ngStyle}">${r.ng}</td>
@@ -1065,7 +1068,229 @@ function abrirModalOR(){
   };
 }
 
-/* ---- Export JSON para exportar_or.py ---- */
+/* ---- Solicitud de correo: pegar tabla o subir Excel, cruzar contra existencia D041 ---- */
+// Reutiliza _guiasDetectarHeaderYColumnas(rows) de guias.js (ya cargado globalmente) para
+// identificar las columnas de Catálogo y Cantidad, sea cual sea el formato de la tabla.
+
+function _orAbrirSolicitud(){
+  if(!orAlm){ alert("Primero entra a la OR de un almacén."); return; }
+  const modal=document.createElement("div"); modal.className="modal on"; modal.id="orSolModal";
+  modal.innerHTML=
+    `<div class="modal-box" style="max-width:640px">
+      <h3 style="margin:0 0 6px">📋 Solicitud de correo — ${orAlm}</h3>
+      <p style="font-size:12px;color:var(--muted);margin:0 0 12px">
+        Pega la tabla del correo (Ctrl+V) <b>o</b> sube el Excel que te mandaron. El sistema cruza cada
+        catálogo contra la existencia actual de D041 y te dice si se puede surtir completo, parcial o nada.</p>
+      <div id="orSolPasteArea" contenteditable="true"
+        style="min-height:140px;max-height:280px;overflow:auto;border:1.5px dashed var(--line);
+        border-radius:8px;padding:12px;font-size:12px" data-placeholder="Pega aquí la tabla…"></div>
+      <div style="display:flex;align-items:center;gap:10px;margin:10px 0;font-size:12px;color:var(--muted)">
+        <span style="flex:1;border-top:1px solid var(--line)"></span>o<span style="flex:1;border-top:1px solid var(--line)"></span>
+      </div>
+      <label class="btn" style="cursor:pointer;display:inline-block">📁 Elegir archivo Excel
+        <input type="file" id="orSolFile" accept=".xlsx,.xls,.csv" hidden></label>
+      <span id="orSolFileName" style="font-size:12px;color:var(--muted);margin-left:8px">Ningún archivo</span>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
+        <button class="btn" onclick="this.closest('.modal').remove()">Cancelar</button>
+        <button class="btn-prim" id="orSolProcesar">Procesar</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  setTimeout(()=>document.getElementById("orSolPasteArea")?.focus(),50);
+  let archivoSol=null;
+  $("#orSolFile").onchange=e=>{ archivoSol=e.target.files[0]||null; $("#orSolFileName").textContent=archivoSol?archivoSol.name:"Ningún archivo"; };
+  $("#orSolProcesar").onclick=()=>_orProcesarSolicitud(archivoSol);
+}
+
+// Extrae filas [][] desde el área de pegado (tabla HTML real, o texto tabulado/alineado por espacios)
+function _orExtraerFilasPegado(area){
+  let rows=[];
+  const tabla=area.querySelector("table");
+  if(tabla){
+    tabla.querySelectorAll("tr").forEach(tr=>{
+      const celdas=[...tr.querySelectorAll("td,th")].map(td=>td.innerText.trim());
+      if(celdas.length) rows.push(celdas);
+    });
+  }
+  if(rows.length<2){
+    rows=[];
+    (area.innerText||"").split(/\n/).forEach(linea=>{
+      linea=linea.replace(/\s+$/,"");
+      if(!linea.trim()) return;
+      const celdas=linea.indexOf("\t")>=0 ? linea.split("\t") : linea.split(/\s{2,}/);
+      rows.push(celdas.map(c=>c.trim()));
+    });
+  }
+  return rows;
+}
+
+// Lee un archivo Excel/CSV subido y regresa filas [][] (usa la misma librería XLSX ya cargada en la app)
+async function _orLeerFilasXLSX(file){
+  const buf=await file.arrayBuffer();
+  const wb=XLSX.read(buf,{type:"array"});
+  const ws=wb.Sheets[wb.SheetNames[0]];
+  return XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:""}).map(r=>r.map(c=>String(c==null?"":c)));
+}
+
+async function _orProcesarSolicitud(archivo){
+  let rows=[];
+  try{
+    if(archivo){
+      rows=await _orLeerFilasXLSX(archivo);
+    } else {
+      const area=document.getElementById("orSolPasteArea");
+      rows=area ? _orExtraerFilasPegado(area) : [];
+    }
+  }catch(err){
+    alert("No se pudo leer el archivo: "+err.message);
+    return;
+  }
+  if(rows.length<2){
+    alert("No se detectó una tabla válida. Pega la tabla completa (con encabezados) o sube el Excel.");
+    return;
+  }
+  const det=_guiasDetectarHeaderYColumnas(rows);
+  if(!det){
+    alert("No pude identificar las columnas de Catálogo y Cantidad. Verifica que la tabla tenga encabezados como \"Catálogo\" y \"Cantidad\" (o \"Piezas\", \"Surtir\", etc.).");
+    return;
+  }
+  const pares=[];
+  for(let r=det.hdrIdx+1;r<rows.length;r++){
+    const row=rows[r];
+    const cat=String(row[det.iCat]||"").trim();
+    const cant=String(row[det.iXS]||"").replace(/[,\s]/g,"").trim();
+    if(!cat && !cant) continue;
+    pares.push([cat,cant]);
+  }
+  if(!pares.length){ alert("No se encontraron líneas con catálogo y cantidad."); return; }
+  document.getElementById("orSolModal")?.remove();
+  _orAbrirRevisionSolicitud(pares);
+}
+
+// Clasifica una línea de la solicitud contra lo YA comprometido en esta OR + lo disponible en D041.
+// No sobrescribe: si el X Surtir actual ya cubre lo pedido, no se mueve; si falta, se agrega solo la
+// diferencia, topada por lo que realmente queda libre en D041 (existencia menos lo ya comprometido).
+function _orEvaluarSolicitud(cat, pedido){
+  const fila=_orCalcFila(cat);
+  const xsActual=fila.xsurtir||0;
+  const exD=fila.exD||0;
+  const faltante=Math.max(0,pedido-xsActual);
+  const disponibleAdicional=Math.max(0,exD-xsActual);
+  const aAgregar=Math.min(faltante,disponibleAdicional);
+  const nuevoXS=xsActual+aAgregar;
+  const faltanteFinal=faltante-aAgregar; // lo que queda sin poder cubrir por falta de existencia
+  let estado,color,bg;
+  if(faltante<=0){ estado="✅ Ya cubierto (sin cambio)"; color="var(--ok,#16a34a)"; bg="var(--ok-bg,#e7f4ec)"; }
+  else if(faltanteFinal<=0){ estado=`✅ Se agrega ${fmt1(aAgregar)}`; color="var(--ok,#16a34a)"; bg="var(--ok-bg,#e7f4ec)"; }
+  else if(aAgregar>0){ estado=`⚠ Parcial: +${fmt1(aAgregar)}, faltan ${fmt1(faltanteFinal)}`; color="var(--dist,#b8860b)"; bg="var(--dist-bg,#fdf6e3)"; }
+  else { estado="❌ Sin existencia adicional"; color="var(--rojo,#dc2626)"; bg="#fde8e8"; }
+  return {xsActual,exD,faltante,disponibleAdicional,aAgregar,nuevoXS,faltanteFinal,estado,color,bg,sugerido:nuevoXS};
+}
+
+function _orTplFilaSolicitud(cat, solicitado){
+  const m=mat(cat), info=cat && DB.materiales[cat] ? _orEvaluarSolicitud(cat, solicitado) : null;
+  const desc=cat ? (m.desc||"— catálogo no encontrado en el maestro —") : "";
+  const yaTenia=info?`<span style="color:var(--muted);font-size:10.5px">ya: ${fmt1(info.xsActual)}</span>`:"";
+  return `<div class="or-sol-row" data-cat-orig="${cat}" style="display:grid;grid-template-columns:110px 1fr 90px 90px 150px 34px;
+    gap:8px;align-items:center;padding:6px 4px;border-bottom:1px solid var(--line);font-size:12.5px">
+    <input type="text" class="orSolCat" value="${cat}" placeholder="Catálogo"
+      style="padding:6px 8px;border:1px solid var(--line);border-radius:6px;font-family:inherit;font-size:12.5px">
+    <span class="orSolDesc" style="color:var(--muted);font-size:11.5px">${desc}</span>
+    <input type="text" inputmode="numeric" class="orSolPedido" value="${solicitado}" placeholder="Pedido"
+      style="padding:6px 8px;border:1px solid var(--line);border-radius:6px;font-family:inherit;font-size:12.5px;text-align:right">
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:1px">
+      <input type="text" inputmode="numeric" class="orSolDar" value="${info?info.nuevoXS:""}" placeholder="X Surtir"
+        style="width:100%;padding:6px 8px;border:1.5px solid var(--primary);border-radius:6px;font-family:inherit;font-size:12.5px;text-align:right;font-weight:700">
+      ${yaTenia}
+    </div>
+    <span class="orSolEstado" style="font-size:10.5px;font-weight:700;padding:3px 6px;border-radius:6px;text-align:center;
+      ${info?`color:${info.color};background:${info.bg}`:""}">${info?info.estado:(cat?"Revisar":"")}</span>
+    <button type="button" onclick="this.closest('.or-sol-row').remove()" title="Quitar línea"
+      style="border:none;background:none;color:var(--rojo,#dc2626);font-size:18px;line-height:1;cursor:pointer;font-weight:700">&times;</button>
+  </div>`;
+}
+
+function _orAbrirRevisionSolicitud(pares){
+  const filasHtml=pares.map(p=>_orTplFilaSolicitud(p[0], +String(p[1]).replace(/[^\d.]/g,"")||0)).join("");
+  const modal=document.createElement("div"); modal.className="modal on"; modal.id="orSolRevModal";
+  modal.innerHTML=`<div class="modal-box" style="max-width:780px">
+    <h3 style="margin:0 0 6px">Revisar solicitud antes de integrar — ${orAlm}</h3>
+    <p style="font-size:12px;color:var(--muted);margin:0 0 10px">
+      No se sobrescribe lo que ya tenías: si el X Surtir actual ya cubre lo pedido, no se mueve; si falta,
+      se suma solo la diferencia, topada por lo que realmente queda libre en D041.</p>
+    <div style="display:grid;grid-template-columns:110px 1fr 90px 90px 150px 34px;gap:8px;padding:0 4px 6px;
+      font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px">
+      <span>Catálogo</span><span>Descripción</span><span>Pedido</span><span>X Surtir final</span><span>Resultado</span><span></span>
+    </div>
+    <div id="orSolRowsWrap" style="max-height:360px;overflow-y:auto">${filasHtml}</div>
+    <button type="button" onclick="_orAgregarFilaSolicitud()"
+      style="margin-top:8px;border:1.5px dashed var(--line);background:none;border-radius:6px;
+      padding:7px 12px;font-family:inherit;font-size:12px;color:var(--primary);cursor:pointer;width:100%">
+      + Agregar línea</button>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px">
+      <button class="btn" onclick="this.closest('.modal').remove()">Cancelar</button>
+      <button class="btn-prim" onclick="_orConfirmarSolicitud()">Confirmar e integrar a la OR</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+  _orWireFilasSolicitud();
+}
+
+// Recalcula descripción/disponibilidad de una fila cuando el usuario edita catálogo o cantidad pedida
+function _orRepintarFilaSolicitud(fila){
+  const cat=fila.querySelector(".orSolCat").value.trim();
+  const pedido=+fila.querySelector(".orSolPedido").value.replace(/[^\d.]/g,"")||0;
+  const m=cat?mat(cat):null;
+  const desc=cat ? (DB.materiales[cat]?(m.desc||"—"):"— catálogo no encontrado en el maestro —") : "";
+  fila.querySelector(".orSolDesc").textContent=desc;
+  const estadoEl=fila.querySelector(".orSolEstado");
+  if(cat && DB.materiales[cat]){
+    const info=_orEvaluarSolicitud(cat, pedido);
+    estadoEl.textContent=info.estado; estadoEl.style.color=info.color; estadoEl.style.background=info.bg;
+    if(!fila.dataset.darEditado) fila.querySelector(".orSolDar").value=info.sugerido;
+  } else {
+    estadoEl.textContent=cat?"Revisar":""; estadoEl.style.background=""; estadoEl.style.color="";
+  }
+}
+function _orWireFilasSolicitud(){
+  document.querySelectorAll("#orSolRowsWrap .or-sol-row").forEach(fila=>{
+    fila.querySelector(".orSolCat").addEventListener("input",()=>_orRepintarFilaSolicitud(fila));
+    fila.querySelector(".orSolPedido").addEventListener("input",()=>_orRepintarFilaSolicitud(fila));
+    fila.querySelector(".orSolDar").addEventListener("input",()=>{ fila.dataset.darEditado="1"; });
+  });
+}
+function _orAgregarFilaSolicitud(){
+  const wrap=document.getElementById("orSolRowsWrap");
+  if(!wrap) return;
+  wrap.insertAdjacentHTML("beforeend", _orTplFilaSolicitud("",""));
+  _orWireFilasSolicitud();
+  const filas=wrap.querySelectorAll(".or-sol-row .orSolCat");
+  filas[filas.length-1]?.focus();
+}
+
+function _orConfirmarSolicitud(){
+  const wrap=document.getElementById("orSolRowsWrap");
+  if(!wrap) return;
+  let integrados=0;
+  wrap.querySelectorAll(".or-sol-row").forEach(fila=>{
+    const cat=fila.querySelector(".orSolCat").value.trim();
+    if(!cat || !DB.materiales[cat]) return;
+    const xsFinal=+fila.querySelector(".orSolDar").value.replace(/[^\d.]/g,"")||0;
+    const pedido=+fila.querySelector(".orSolPedido").value.replace(/[^\d.]/g,"")||0;
+    const man=(_orManual[orAlm+"|"+cat]||={xs:0,obs:""});
+    man.xs=xsFinal;
+    // Se guarda el TOTAL pedido (no un faltante fijo) — el faltante real se recalcula en vivo en
+    // _orCalcFila contra el X Surtir que haya en cada momento, así se autolimpia si se cubre después.
+    man.pedidoSolicitud=pedido;
+    integrados++;
+  });
+  if(!integrados){ alert("No quedó ninguna línea válida para integrar."); return; }
+  _orGuardar();
+  document.getElementById("orSolRevModal")?.remove();
+  pintarOR(); _repintarBandaNG();
+}
+
+
 function _exportarORJson(rows, numReabasto, generador, areasSeleccionadas){
   const hoy=new Date().toLocaleDateString("es-MX",{day:"2-digit",month:"2-digit",year:"numeric"});
   const mCPM=+$("#orMCPM")?.value||6, mStk=+$("#orMS")?.value||1.5;
