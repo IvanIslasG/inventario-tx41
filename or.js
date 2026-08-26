@@ -762,7 +762,7 @@ function _orCalcFila(cat, orAlmParam){
   // (o con otra solicitud) y ya cubre lo pedido, la marca desaparece sola, sin tener que reprocesar nada.
   const faltanteSolicitud=man.pedidoSolicitud!=null ? Math.max(0,man.pedidoSolicitud-xsurtir) : 0;
   return {cat,desc:info.desc,um:info.um,area:info.area||"Sin clasificar",ng,consumo,cpm,exAux,exD,calcSurtir,xsurtir,mdInv,excedente,
-          obs:man.obs||"",estado:man.estado||"pendiente",faltanteSolicitud};
+          obs:man.obs||"",estado:man.estado||"pendiente",faltanteSolicitud,agregadoSolicitud:man.agregadoSolicitud||0};
 }
 
 function calcularOR(){
@@ -870,7 +870,7 @@ function pintarOR(){
     const est=ESTADOS_OR[r.estado]||ESTADOS_OR.pendiente;
     const estadoOpts=Object.keys(ESTADOS_OR).map(k=>`<option value="${k}" ${k===r.estado?"selected":""}>${ESTADOS_OR[k].label}</option>`).join("");
     return `<tr ${rowBg} style="border-left:4px solid ${est.color}">
-      <td class="cat num">${r.cat}${r.faltanteSolicitud>0?`<span title="Se solicitó por correo y faltó existencia en D041 para cubrir ${fmt1(r.faltanteSolicitud)}" style="margin-left:5px;cursor:help">🚫</span>`:""}</td>
+      <td class="cat num">${r.cat}${r.agregadoSolicitud>0?`<span title="Se agregaron ${fmt1(r.agregadoSolicitud)} por una solicitud de correo" style="margin-left:5px;cursor:help">📩</span>`:""}${r.faltanteSolicitud>0?`<span title="Se solicitó por correo y faltó existencia en D041 para cubrir ${fmt1(r.faltanteSolicitud)}" style="margin-left:5px;cursor:help">🚫</span>`:""}</td>
       <td class="desc">${r.desc||"—"}</td>
       <td><span class="area-tag">${r.area}</span></td>
       <td style="${ngStyle}">${r.ng}</td>
@@ -1277,11 +1277,14 @@ function _orConfirmarSolicitud(){
     if(!cat || !DB.materiales[cat]) return;
     const xsFinal=+fila.querySelector(".orSolDar").value.replace(/[^\d.]/g,"")||0;
     const pedido=+fila.querySelector(".orSolPedido").value.replace(/[^\d.]/g,"")||0;
+    const xsAntes=_orCalcFila(cat).xsurtir||0; // lo que ya tenía ANTES de esta solicitud, para saber cuánto se sumó de verdad
     const man=(_orManual[orAlm+"|"+cat]||={xs:0,obs:""});
     man.xs=xsFinal;
     // Se guarda el TOTAL pedido (no un faltante fijo) — el faltante real se recalcula en vivo en
     // _orCalcFila contra el X Surtir que haya en cada momento, así se autolimpia si se cubre después.
     man.pedidoSolicitud=pedido;
+    // Cuánto se agregó de verdad en esta solicitud (para la marca silenciosa 📩 en la tabla).
+    man.agregadoSolicitud=Math.max(0,xsFinal-xsAntes);
     integrados++;
   });
   if(!integrados){ alert("No quedó ninguna línea válida para integrar."); return; }
