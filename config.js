@@ -21,6 +21,18 @@ function modConfig(){
       </div></div>
     </div>
 
+    <div class="panel"><div class="panel-head"><h2>✏️ Editar un material</h2><span class="pill">Admin</span></div>
+      <div style="padding:16px;display:grid;gap:12px">
+        <p style="margin:0;color:var(--muted);font-size:13px">Corrige a mano el área, ubicación, descripción o UM de un catálogo del maestro
+          (ej. si un material quedó marcado como "patio" sin serlo). El cambio se guarda al descargar o publicar, igual que cualquier otro.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <input type="text" id="cfgMatBuscar" placeholder="Número de catálogo…" style="flex:1;min-width:160px;padding:9px 11px;border:1px solid var(--line);border-radius:8px;font:inherit">
+          <button class="btn" id="cfgMatBuscarBtn">Buscar</button>
+        </div>
+        <div id="cfgMatForm"></div>
+      </div>
+    </div>
+
     <div class="panel"><div class="panel-head"><h2>🔄 Actualizar existencias</h2><span class="pill">Admin</span></div>
       <div style="padding:16px;display:grid;gap:14px">
         <p style="margin:0;color:var(--muted);font-size:13px">Sube el export <b>TOTAL</b> de S/4HANA (.xlsx). Se recalculan existencias, traslados y lotes; el directorio y el maestro se conservan.</p>
@@ -65,6 +77,45 @@ function modConfig(){
 
     <div class="panel"><div style="padding:16px"><button class="btn" id="cfgOut">Recargar datos</button></div></div>
   </div>`;
+
+  // Editar un material
+  const cfgMatBuscar=()=>{
+    const cat=$("#cfgMatBuscar").value.trim();
+    const materiales=_materialesActivos();
+    const form=$("#cfgMatForm");
+    if(!cat){ form.innerHTML=""; return; }
+    const m=materiales[cat];
+    if(!m){ form.innerHTML=`<div style="color:#c0392b;font-size:13px;padding:8px 0">No se encontró el catálogo <b>${cat}</b> en el maestro.</div>`; return; }
+    form.innerHTML=`
+      <div style="border:1px solid var(--line);border-radius:10px;padding:14px;display:grid;gap:10px">
+        <div style="font-weight:700">${cat}</div>
+        <label style="display:grid;gap:3px;font-size:12px;color:var(--muted)">Descripción
+          <input type="text" id="cfgMatDesc" value="${(m.desc||"").replace(/"/g,"&quot;")}" style="padding:8px 10px;border:1px solid var(--line);border-radius:8px;font:inherit"></label>
+        <div style="display:flex;gap:10px">
+          <label style="flex:1;display:grid;gap:3px;font-size:12px;color:var(--muted)">UM
+            <input type="text" id="cfgMatUm" value="${(m.um||"").replace(/"/g,"&quot;")}" style="padding:8px 10px;border:1px solid var(--line);border-radius:8px;font:inherit"></label>
+          <label style="flex:1;display:grid;gap:3px;font-size:12px;color:var(--muted)">Área
+            <input type="text" id="cfgMatArea" value="${(m.area||"").replace(/"/g,"&quot;")}" style="padding:8px 10px;border:1px solid var(--line);border-radius:8px;font:inherit"></label>
+        </div>
+        <label style="display:grid;gap:3px;font-size:12px;color:var(--muted)">Ubicación (usa exactamente "patio" para que Guías lo trate como material de patio)
+          <input type="text" id="cfgMatUbic" value="${(m.ubic||"").replace(/"/g,"&quot;")}" style="padding:8px 10px;border:1px solid var(--line);border-radius:8px;font:inherit"></label>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn-prim" id="cfgMatGuardarBtn">Guardar cambio</button>
+          <span id="cfgMatOk" style="font-size:12.5px;color:var(--ok)"></span>
+        </div>
+      </div>`;
+    $("#cfgMatGuardarBtn").onclick=()=>{
+      m.desc=$("#cfgMatDesc").value.trim();
+      m.um=$("#cfgMatUm").value.trim();
+      m.area=$("#cfgMatArea").value.trim();
+      m.ubic=$("#cfgMatUbic").value.trim();
+      actualizarGenResumen();
+      $("#cfgMatOk").textContent="✅ Guardado — se incluirá al descargar o publicar";
+      setTimeout(()=>{ const ok=$("#cfgMatOk"); if(ok) ok.textContent=""; }, 4000);
+    };
+  };
+  $("#cfgMatBuscarBtn").onclick=cfgMatBuscar;
+  $("#cfgMatBuscar").addEventListener("keydown", e=>{ if(e.key==="Enter") cfgMatBuscar(); });
 
   // Actualizar existencias
   let totalFile=null;
@@ -149,6 +200,12 @@ function actualizarGenResumen(){
   $("#genResumen").innerHTML = partes.length
     ? `Listo para generar: <b>${partes.join(" + ")}</b>. Descarga, usa o publica.`
     : "Procesa un TOTAL o agrega consumos para generar un paquete nuevo. También puedes re-publicar el actual.";
+}
+// Devuelve el objeto de materiales que realmente se va a publicar: si ya hay un TOTAL
+// procesado y pendiente de publicar (_adminTotal), edita AHÍ; si no, edita el DB actual.
+// Así una edición manual de material nunca se pierde por quedar en el objeto equivocado.
+function _materialesActivos(){
+  return _adminTotal ? _adminTotal.materiales : DB.materiales;
 }
 // Combina: TOTAL nuevo (o DB actual) + consumos (nuevos sobre los existentes)
 function fechaLocalISO(){

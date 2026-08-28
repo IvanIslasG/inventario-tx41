@@ -22,6 +22,9 @@ const _GUIAS_TARIMA_SEED = [
   {cat:"1039312", um:"PZA", subTipo:"Caja",   subCant:153, subCont:1,   freq:1}
 ];
 const _GUIAS_LS_TARIMA = "guias_bd_tarimas_v1";
+const _GUIAS_LS_DRAFT  = "guias_borrador_v1";
+const _GUIAS_LS_ULTBK  = "guias_ultimo_backup_v1";
+const _GUIAS_BACKUP_INTERVALO_DIAS = 7; // cada cuántos días se dispara el respaldo automático
 
 // ── Cargar/guardar BD de empaques ────────────────────────────────────────────
 var _guiasBDSeedMerged = false;
@@ -243,7 +246,9 @@ function _guiasHistAgregar(guia){
   var idx = hist.findIndex(function(g){ return g.folio===guia.folio && g.area===guia.area; });
   if(idx >= 0) hist[idx] = guia;
   else hist.unshift(guia);
-  if(hist.length > 50) hist = hist.slice(0,50);
+  // Techo de seguridad muy alto (no un límite real de uso) — solo para evitar que localStorage
+  // crezca sin control si algún día pasa algo raro. Con uso normal, nunca debería alcanzarse.
+  if(hist.length > 5000) hist = hist.slice(0,5000);
   _guiasHistGuardar(hist);
 }
 
@@ -265,6 +270,51 @@ function _guiasAlmInfo(sigla){
 // ── Estado de la guía en progreso ─────────────────────────────────────────────
 var _guiaActual = null; // { destino, area, folio, fecha, lineas:[], transporte:'' }
 var _guiaEditandoOriginal = null; // { folio, area } de la guía que se está editando desde el historial, o null si es nueva
+
+// ── Borrador automático de la guía en progreso ────────────────────────────────
+// Guarda _guiaActual en localStorage cada pocos segundos MIENTRAS se está armando,
+// independiente del guardado final al generar. Así, si se va la luz o se cierra el
+// navegador a medias, al volver a entrar se puede recuperar lo que ya se había capturado.
+var _guiasDraftUltimoJSON = null;
+function _guiasDraftGuardar(){
+  if(!_guiaActual) return;
+  // Solo vale la pena respaldar si ya hay algo capturado (destino elegido o al menos una línea)
+  if(!_guiaActual.destino && (!_guiaActual.lineas || !_guiaActual.lineas.length)) return;
+  try{
+    var snap = JSON.stringify({guardado: Date.now(), datos: _guiaActual, editando: _guiaEditandoOriginal});
+    if(snap === _guiasDraftUltimoJSON) return; // nada cambió, no reescribir
+    localStorage.setItem(_GUIAS_LS_DRAFT, snap);
+    _guiasDraftUltimoJSON = snap;
+  }catch(e){}
+}
+function _guiasDraftCargar(){
+  try{
+    var raw = localStorage.getItem(_GUIAS_LS_DRAFT);
+    return raw ? JSON.parse(raw) : null;
+  }catch(e){ return null; }
+}
+function _guiasDraftBorrar(){
+  try{ localStorage.removeItem(_GUIAS_LS_DRAFT); }catch(e){}
+  _guiasDraftUltimoJSON = null;
+}
+// Autoguardado periódico mientras haya una guía en progreso, más un intento extra
+// al cambiar de pestaña/minimizar o cerrar — para no depender de un solo momento.
+setInterval(_guiasDraftGuardar, 4000);
+document.addEventListener("visibilitychange", function(){ if(document.hidden) _guiasDraftGuardar(); });
+window.addEventListener("beforeunload", _guiasDraftGuardar);
+function _guiasDraftRetomar(){
+  var d = _guiasDraftCargar();
+  if(!d) return;
+  _guiaActual = d.datos;
+  _guiaEditandoOriginal = d.editando || null;
+  _guiasDraftBorrar();
+  _guiasCapturaMateriales();
+}
+function _guiasDraftDescartar(){
+  if(!confirm("¿Descartar el borrador sin terminar? Esta acción no se puede deshacer.")) return;
+  _guiasDraftBorrar();
+  modGuias();
+}
 var _guiasEditandoLineaIdx = null; // índice de línea que se está reemplazando (edición desde Revisión), o null
 
 // Lotes reales (excluye el lote "NUEVO", que significa sin lote/no aplica)
@@ -330,7 +380,7 @@ function _guiasExportarTodo(){
   _guiasExportarSeleccion(null); // null = todas
 }
 
-function _guiasExportarSeleccion(indices){
+function _guiasExportarSeleccion(indices, nombreArchivo){
   var hist = _guiasHistCargar();
   var bd   = _guiasBDCargar();
   var datos = indices === null ? hist : indices.map(function(i){ return hist[i]; });
@@ -349,9 +399,27 @@ function _guiasExportarSeleccion(indices){
   var url  = URL.createObjectURL(blob);
   var a    = document.createElement("a");
   a.href   = url;
-  a.download = "guias_tx41_" + new Date().toLocaleDateString("es-MX").replace(/\//g,"-") + ".json";
+  a.download = nombreArchivo || ("guias_tx41_" + new Date().toLocaleDateString("es-MX").replace(/\//g,"-") + ".json");
   a.click();
   URL.revokeObjectURL(url);
+}
+
+// ── Respaldo automático programado ────────────────────────────────────────────
+// No es un cron real del sistema (esto es una página web, solo corre si está abierta):
+// cada vez que se abre el menú de Guías, si ya pasó _GUIAS_BACKUP_INTERVALO_DIAS desde el
+// último respaldo, se descarga solo el historial completo, sin pedir nada.
+function _guiasBackupAutoCheck(){
+  try{
+    var hist = _guiasHistCargar();
+    if(!hist.length) return; // nada que respaldar todavía
+    var ultimo = +localStorage.getItem(_GUIAS_LS_ULTBK) || 0;
+    var dias = (Date.now() - ultimo) / 86400000;
+    if(dias < _GUIAS_BACKUP_INTERVALO_DIAS) return;
+    var fecha = new Date().toLocaleDateString("es-MX").replace(/\//g,"-");
+    _guiasExportarSeleccion(null, "Respaldo_automatico_guias_" + fecha + ".json");
+    localStorage.setItem(_GUIAS_LS_ULTBK, String(Date.now()));
+    _guiasToast("📦 Respaldo automático descargado — revisa tu carpeta de Descargas", "ok");
+  }catch(e){}
 }
 
 function _guiasImportar(){
@@ -528,6 +596,7 @@ function _guiasAgrupar(hist){
 }
 
 function modGuias(){
+  _guiasBackupAutoCheck();
   var hist = _guiasHistCargar();
   var porArea = _guiasAgrupar(hist);
 
@@ -547,14 +616,41 @@ function modGuias(){
       "</div>";
   });
 
+  // Si quedó un borrador de una guía sin terminar (ej. por un apagón o cierre inesperado),
+  // se ofrece recuperarlo antes que nada — sin él, ese trabajo se hubiera perdido por completo.
+  var draft = (!_guiaActual) ? _guiasDraftCargar() : null;
+  var draftHtml = "";
+  if(draft && draft.datos){
+    var dd = draft.datos;
+    var cuando = new Date(draft.guardado).toLocaleString('es-MX',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+    draftHtml =
+      "<div style=\"background:#fff8e1;border:1.5px solid #f0c93a;border-radius:12px;padding:14px 16px;margin-bottom:14px;" +
+      "display:flex;align-items:center;gap:12px;flex-wrap:wrap\">" +
+      "<div style=\"flex:1;min-width:220px\">" +
+      "<div style=\"font-weight:700;font-size:13.5px\">📝 Hay una guía sin terminar</div>" +
+      "<div style=\"font-size:12px;color:var(--muted);margin-top:2px\">" +
+      (dd.area||"Sin área") + (dd.folio?(" · No. "+dd.folio):"") + (dd.destino?(" · "+dd.destino):"") +
+      " · " + (dd.lineas?dd.lineas.length:0) + " línea(s) · respaldada " + cuando + "</div></div>" +
+      "<button onclick=\"_guiasDraftRetomar()\" style=\"padding:8px 16px;background:var(--primary);color:#fff;" +
+      "border:none;border-radius:8px;font-weight:700;font-size:12.5px;cursor:pointer;font-family:inherit\">Continuar</button>" +
+      "<button onclick=\"_guiasDraftDescartar()\" style=\"padding:8px 14px;background:none;color:#a8390f;" +
+      "border:1.5px solid #f0c93a;border-radius:8px;font-size:12.5px;cursor:pointer;font-family:inherit\">Descartar</button>" +
+      "</div>";
+  }
+
+  var ultBk = +localStorage.getItem(_GUIAS_LS_ULTBK) || 0;
+  var ultBkTxt = ultBk ? new Date(ultBk).toLocaleDateString('es-MX',{day:'2-digit',month:'short'}) : "nunca";
+
   $("#moduleView").innerHTML =
     "<div style=\"max-width:900px;margin:0 auto;padding:16px 0\">" +
     "<div class=\"menu-h\" style=\"margin-bottom:14px\">" +
     "<h1>Guías de Embarque</h1>" +
-    "<p>" + DIST() + " &middot; " + hist.length + " guía" + (hist.length===1?"":"s") + " guardada" + (hist.length===1?"":"s") + "</p>" +
+    "<p>" + DIST() + " &middot; " + hist.length + " guía" + (hist.length===1?"":"s") + " guardada" + (hist.length===1?"":"s") +
+    " &middot; último respaldo automático: " + ultBkTxt + "</p>" +
     "</div>" +
+    draftHtml +
 
-    "<button onclick=\"_guiaActual=null;_guiaEditandoOriginal=null;_guiasNueva()\"" +
+    "<button onclick=\"_guiasDraftBorrar();_guiaActual=null;_guiaEditandoOriginal=null;_guiasNueva()\"" +
     " style=\"width:100%;padding:14px;background:var(--primary);color:white;border:none;" +
     "border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;" +
     "margin-bottom:10px\">+ Nueva guía de embarque</button>" +
@@ -1213,7 +1309,7 @@ function _guiasPedirEmpaque(cat, desc, um, opciones){
       bultos: cant, patio: true, granel: false
     });
     var inp = document.getElementById("gCatInput");
-    if(inp){ inp.value = ""; document.getElementById("gCatInfo").textContent = ""; }
+    if(inp) _limpiarCatInput();
     _guiasRefrescarVista();
     return;
   }
@@ -1233,7 +1329,7 @@ function _guiasPedirEmpaque(cat, desc, um, opciones){
     var estrella = op.preferido ? "&#9733;" : "&#9734;"; // ★ / ☆
     btnsConocidos +=
       "<div style=\"display:flex;align-items:center;gap:4px;margin-bottom:6px\">" +
-      "<button onclick=\"_guiasSeleccionarEmpaque('" + catEsc + "','" + descEsc + "','" + um + "','" +
+      "<button class=\"gEmpBtn\" onclick=\"_guiasSeleccionarEmpaque('" + catEsc + "','" + descEsc + "','" + um + "','" +
       op.tipo + "'," + op.cont + ")\"" +
       " style=\"flex:1;text-align:left;padding:10px 14px;background:#f0f4ff;" +
       "border:1.5px solid var(--primary);border-radius:8px;cursor:pointer;" +
@@ -1261,7 +1357,7 @@ function _guiasPedirEmpaque(cat, desc, um, opciones){
     var estrellaT = tp.preferido ? "&#9733;" : "&#9734;";
     btnsTarimas +=
       "<div style=\"display:flex;align-items:center;gap:4px;margin-bottom:6px\">" +
-      "<button onclick=\"_guiasSeleccionarTarima('" + catEsc + "','" + descEsc + "','" + um + "','" +
+      "<button class=\"gEmpBtn\" onclick=\"_guiasSeleccionarTarima('" + catEsc + "','" + descEsc + "','" + um + "','" +
       tp.subTipo + "'," + tp.subCant + "," + tp.subCont + ")\"" +
       " style=\"flex:1;text-align:left;padding:10px 14px;background:#fdf4e7;" +
       "border:1.5px solid #b8722a;border-radius:8px;cursor:pointer;" +
@@ -1387,34 +1483,100 @@ function _guiasPedirEmpaque(cat, desc, um, opciones){
     "</div></div>";
 
   document.body.appendChild(modal);
+  // Navegación con flechas entre los empaques/tarimas conocidas (sin tocar el mouse):
+  // ↓/↑ mueve el foco solo entre los botones de selección (no las estrellas ni la ×).
+  modal.addEventListener("keydown", function(e){
+    if(e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+    var btns = [].slice.call(modal.querySelectorAll(".gEmpBtn"));
+    if(!btns.length) return;
+    e.preventDefault();
+    var idx = btns.indexOf(document.activeElement);
+    if(idx === -1){ btns[0].focus(); return; }
+    var next = e.key === "ArrowDown" ? (idx + 1) % btns.length : (idx - 1 + btns.length) % btns.length;
+    btns[next].focus();
+  });
   setTimeout(function(){
-    var el = document.getElementById(opciones.length === 0 ? "gEmpCant" : "gGranelCant");
+    // Si hay algo conocido, el foco arranca ahí (el primero es siempre el preferido/más usado)
+    // para poder confirmar con solo Enter; si no, cae al campo de captura manual.
+    var primero = modal.querySelector(".gEmpBtn");
+    var el = primero || document.getElementById(opciones.length === 0 ? "gEmpCant" : "gGranelCant");
     if(el) el.focus();
   }, 100);
 }
 
 function _guiasSeleccionarEmpaque(cat, desc, um, tipo, cont){
   cont = parseInt(cont);
-  var cant = prompt("Cantidad total de " + cat + ":", "");
-  if(!cant || isNaN(cant) || parseInt(cant) < 1){ _guiasEditandoLineaIdx = null; return; }
-  cant = parseInt(cant);
+  var catEsc  = cat.replace(/'/g,"&#39;").replace(/"/g,"&quot;");
+  var descEsc = desc.replace(/'/g,"&#39;").replace(/"/g,"&quot;");
+  var tipoEsc = String(tipo).replace(/'/g,"&#39;").replace(/"/g,"&quot;");
+  var box = document.querySelector(".modal .modal-box");
+  if(!box) return;
+  // Paso 2 dentro del mismo modal (sin prompt()): solo pide la cantidad total, con Enter para confirmar.
+  box.innerHTML =
+    "<div style=\"padding:24px\">" +
+    "<h3 style=\"margin:0 0 4px\">" + cat + "</h3>" +
+    "<div style=\"font-size:12px;color:var(--muted);margin-bottom:16px\">" + desc + "</div>" +
+    "<div style=\"background:#f0f4ff;border:1.5px solid var(--primary);border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:13px\">" +
+    "<b>" + tipo + "</b> de " + cont + " " + um + "</div>" +
+    "<label style=\"font-size:11px;color:var(--muted)\">Cantidad total</label>" +
+    "<input id=\"gEmpCantInline\" type=\"number\" min=\"1\" autocomplete=\"off\"" +
+    " onkeydown=\"if(event.key==='Enter'){event.preventDefault();_guiasConfirmarCantidadInline('" + catEsc + "','" + descEsc + "','" + um + "','" + tipoEsc + "'," + cont + ");}\"" +
+    " style=\"width:100%;padding:10px;border:1.5px solid var(--primary);border-radius:8px;" +
+    "font-family:inherit;font-size:17px;font-weight:700;color:var(--primary);margin-top:4px\">" +
+    "<div style=\"display:flex;gap:8px;margin-top:18px\">" +
+    "<button class=\"btn\" onclick=\"_guiasPedirEmpaque('" + catEsc + "','" + descEsc + "','" + um + "',_guiasBDOpciones('" + catEsc + "'))\" style=\"flex:1;padding:10px\">&larr; Regresar</button>" +
+    "<button class=\"btn-prim\" onclick=\"_guiasConfirmarCantidadInline('" + catEsc + "','" + descEsc + "','" + um + "','" + tipoEsc + "'," + cont + ")\" style=\"flex:1;padding:10px\">Agregar</button>" +
+    "</div></div>";
+  setTimeout(function(){ document.getElementById("gEmpCantInline")?.focus(); }, 50);
+}
+
+function _guiasSeleccionarTarima(cat, desc, um, subTipo, subCant, subCont){
+  var catEsc  = cat.replace(/'/g,"&#39;").replace(/"/g,"&quot;");
+  var descEsc = desc.replace(/'/g,"&#39;").replace(/"/g,"&quot;");
+  var subTipoEsc = String(subTipo).replace(/'/g,"&#39;").replace(/"/g,"&quot;");
+  var box = document.querySelector(".modal .modal-box");
+  if(!box) return;
+  box.innerHTML =
+    "<div style=\"padding:24px\">" +
+    "<h3 style=\"margin:0 0 4px\">" + cat + "</h3>" +
+    "<div style=\"font-size:12px;color:var(--muted);margin-bottom:16px\">" + desc + "</div>" +
+    "<div style=\"background:#fdf4e7;border:1.5px solid #b8722a;border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:13px\">" +
+    "<b>Tarima</b> de " + subCant + " " + subTipo + " c/ " + subCont + " " + um + "</div>" +
+    "<label style=\"font-size:11px;color:var(--muted)\">¿Cuántas tarimas van?</label>" +
+    "<input id=\"gTarimaNumInline\" type=\"number\" min=\"1\" value=\"1\" autocomplete=\"off\"" +
+    " onkeydown=\"if(event.key==='Enter'){event.preventDefault();_guiasConfirmarTarimasInline('" + catEsc + "','" + descEsc + "','" + um + "','" + subTipoEsc + "'," + subCant + "," + subCont + ");}\"" +
+    " style=\"width:100%;padding:10px;border:1.5px solid #b8722a;border-radius:8px;" +
+    "font-family:inherit;font-size:17px;font-weight:700;color:#b8722a;margin-top:4px\">" +
+    "<div style=\"display:flex;gap:8px;margin-top:18px\">" +
+    "<button class=\"btn\" onclick=\"_guiasPedirEmpaque('" + catEsc + "','" + descEsc + "','" + um + "',_guiasBDOpciones('" + catEsc + "'))\" style=\"flex:1;padding:10px\">&larr; Regresar</button>" +
+    "<button class=\"btn-prim\" onclick=\"_guiasConfirmarTarimasInline('" + catEsc + "','" + descEsc + "','" + um + "','" + subTipoEsc + "'," + subCant + "," + subCont + ")\" style=\"flex:1;padding:10px\">Agregar</button>" +
+    "</div></div>";
+  setTimeout(function(){ document.getElementById("gTarimaNumInline")?.focus(); }, 50);
+}
+
+// Confirma el paso 2 (cantidad) de un empaque conocido — sin prompt(), dentro del mismo modal, con Enter.
+function _guiasConfirmarCantidadInline(cat, desc, um, tipo, cont){
+  var cant = parseInt(document.getElementById("gEmpCantInline")?.value || "0");
+  if(!cant || cant < 1){ alert("Ingresa una cantidad válida."); return; }
   document.querySelector(".modal")?.remove();
-
-  var nCajas  = Math.floor(cant / cont);
-  var residuo = cant % cont;
-
+  var nCajas = Math.floor(cant / cont), residuo = cant % cont;
   if(nCajas > 0 && residuo > 0){
-    // División automática: cajas cerradas + granel (la línea vieja, si aplica, se limpia dentro de _guiasAgregarLineaSilente)
     _guiasAgregarLineaSilente(cat, desc, um, tipo, cont, nCajas * cont, false);
     _guiasAgregarLineaSilente(cat, desc, um, "Granel", 0, residuo, true);
-      _limpiarCatInput();
+    _limpiarCatInput();
     _guiasRefrescarVista();
   } else {
-    // Todo en cajas cerradas o todo a granel
-    var esGranel = (nCajas === 0);
-    _guiasAgregarLinea(cat, desc, um, tipo, cont, cant, esGranel);
+    _guiasAgregarLinea(cat, desc, um, tipo, cont, cant, nCajas === 0);
   }
   _guiasBDActualizarEmpaque(cat, tipo, cont, um);
+}
+// Confirma el paso 2 (número de tarimas) de una tarima conocida — mismo criterio, sin prompt().
+function _guiasConfirmarTarimasInline(cat, desc, um, subTipo, subCant, subCont){
+  var num = parseInt(document.getElementById("gTarimaNumInline")?.value || "0");
+  if(!num || num < 1){ alert("Ingresa cuántas tarimas van."); return; }
+  document.querySelector(".modal")?.remove();
+  _guiasTarimaBDActualizar(cat, subTipo, subCant, subCont, um);
+  _guiasAgregarLineaTarima(cat, desc, um, subTipo, subCant, subCont, num);
 }
 
 function _guiasAPatioModal(cat, desc, um){
@@ -1428,8 +1590,7 @@ function _guiasAPatioModal(cat, desc, um){
     cant: cant, tipoEmp: "Patio", contEmp: 1,
     bultos: bultos, patio: true, granel: false
   });
-  var inp = document.getElementById("gCatInput");
-  if(inp){ inp.value = ""; document.getElementById("gCatInfo").textContent = ""; }
+  _limpiarCatInput();
   _guiasRefrescarVista();
 }
 
@@ -1474,7 +1635,13 @@ function _guiasConfirmarEmpaque(cat, desc, um){
 
 function _limpiarCatInput(){
   var inp = document.getElementById("gCatInput");
-  if(inp){ inp.value = ""; document.getElementById("gCatInfo").textContent = ""; }
+  if(inp){
+    inp.value = "";
+    document.getElementById("gCatInfo").textContent = "";
+    // Regresa el cursor al catálogo automáticamente — así se puede seguir capturando
+    // solo con teclado, sin usar el mouse para volver a dar clic ahí cada vez.
+    setTimeout(function(){ inp.focus(); }, 30);
+  }
 }
 
 function _guiasAgregarLineaSilente(cat, desc, um, tipoEmp, contEmp, cant, esGranel){
@@ -2847,6 +3014,7 @@ function _guiasGenerar(){
     lineas: _guiaActual.lineas.length,
     datos: JSON.parse(JSON.stringify(_guiaActual))
   });
+  _guiasDraftBorrar(); // ya quedó a salvo en el historial, el borrador transitorio ya no hace falta
 
   // Si veníamos editando una guía existente y cambió folio/área, limpiar el registro anterior
   if(_guiaEditandoOriginal &&
