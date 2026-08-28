@@ -9,27 +9,29 @@ function modConfig(){
   const m=DB.meta;
   const consActuales=DB.consumos?Object.keys(DB.consumos):[];
   $("#moduleView").innerHTML=`
-  <div class="cfg">
-    <div class="panel"><div class="panel-head"><h2>Datos del paquete actual</h2></div>
-      <div style="padding:16px"><div class="cfg">
-        <div class="row"><b>Paquete generado</b><span>${new Date(m.generado).toLocaleString('es-MX')}</span></div>
-        <div class="row"><b>Almacén distribuidor</b><span>${m.almacen_distribuidor} · PUEBLA</span></div>
-        <div class="row"><b>Materiales en maestro</b><span class="num">${nfmt(m.n_materiales)}</span></div>
-        <div class="row"><b>Almacenes en directorio</b><span class="num">${m.n_almacenes}</span></div>
-        <div class="row"><b>Materiales con existencia</b><span class="num">${nfmt(m.n_con_existencia)}</span></div>
-        <div class="row"><b>Consumos cargados</b><span>${consActuales.length?consActuales.join(", "):"ninguno"}</span></div>
-      </div></div>
-    </div>
+  <div class="cfg" style="max-width:1040px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start">
+      <div class="panel"><div class="panel-head"><h2>Datos del paquete actual</h2></div>
+        <div style="padding:16px"><div class="cfg">
+          <div class="row"><b>Paquete generado</b><span>${new Date(m.generado).toLocaleString('es-MX')}</span></div>
+          <div class="row"><b>Almacén distribuidor</b><span>${m.almacen_distribuidor} · PUEBLA</span></div>
+          <div class="row"><b>Materiales en maestro</b><span class="num">${nfmt(m.n_materiales)}</span></div>
+          <div class="row"><b>Almacenes en directorio</b><span class="num">${m.n_almacenes}</span></div>
+          <div class="row"><b>Materiales con existencia</b><span class="num">${nfmt(m.n_con_existencia)}</span></div>
+          <div class="row"><b>Consumos cargados</b><span>${consActuales.length?consActuales.join(", "):"ninguno"}</span></div>
+        </div></div>
+      </div>
 
-    <div class="panel"><div class="panel-head"><h2>✏️ Editar un material</h2><span class="pill">Admin</span></div>
-      <div style="padding:16px;display:grid;gap:12px">
-        <p style="margin:0;color:var(--muted);font-size:13px">Corrige a mano el área, ubicación, descripción o UM de un catálogo del maestro
-          (ej. si un material quedó marcado como "patio" sin serlo). El cambio se guarda al descargar o publicar, igual que cualquier otro.</p>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <input type="text" id="cfgMatBuscar" placeholder="Número de catálogo…" style="flex:1;min-width:160px;padding:9px 11px;border:1px solid var(--line);border-radius:8px;font:inherit">
-          <button class="btn" id="cfgMatBuscarBtn">Buscar</button>
+      <div class="panel"><div class="panel-head"><h2>✏️ Editar un material</h2><span class="pill">Admin</span></div>
+        <div style="padding:16px;display:grid;gap:12px">
+          <p style="margin:0;color:var(--muted);font-size:13px">Corrige a mano el área, ubicación, descripción o UM de un catálogo del maestro
+            (ej. si un material quedó marcado como "patio" sin serlo). El cambio se guarda al descargar o publicar, igual que cualquier otro.</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <input type="text" id="cfgMatBuscar" placeholder="Número de catálogo…" style="flex:1;min-width:160px;padding:9px 11px;border:1px solid var(--line);border-radius:8px;font:inherit">
+            <button class="btn" id="cfgMatBuscarBtn">Buscar</button>
+          </div>
+          <div id="cfgMatForm"></div>
         </div>
-        <div id="cfgMatForm"></div>
       </div>
     </div>
 
