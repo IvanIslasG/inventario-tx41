@@ -2209,8 +2209,8 @@ function _guiasTarjetasTransporteHtml(){
         "<div style=\"font-size:11px;color:var(--muted);font-family:monospace;margin-bottom:6px\">" + v.placas + "</div>" +
         (unOperador ?
           "<button type=\"button\" onclick=\"_guiasElegirTransporteBase('" + t.linea + "','" + v.tipo + "','" + v.placas + "','" + v.operadores[0] + "')\"" +
-          " style=\"width:100%;padding:6px;background:var(--primary);color:white;border:none;" +
-          "border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit\">Usar &mdash; " + v.operadores[0] + "</button>"
+          " style=\"width:100%;padding:5px 9px;background:white;border:1.5px solid var(--primary);color:var(--primary);" +
+          "border-radius:7px;font-size:10.5px;font-weight:600;cursor:pointer;font-family:inherit\">" + v.operadores[0] + "</button>"
           :
           "<div style=\"font-size:10px;color:var(--muted);margin-bottom:3px\">Operador:</div>" +
           "<div style=\"display:flex;flex-wrap:wrap;gap:4px\">" +
