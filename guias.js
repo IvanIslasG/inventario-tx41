@@ -871,21 +871,11 @@ function _guiasNueva(){
     "</div>" +
 
     // Fecha
-    "<div style=\"margin-bottom:16px\">" +
+    "<div style=\"margin-bottom:24px\">" +
     "<label style=\"font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;" +
     "letter-spacing:.4px;display:block;margin-bottom:6px\">Fecha</label>" +
     "<input id=\"gFecha\" type=\"date\"" +
     (editando && _guiaActual.fecha ? " value=\"" + _escAttr(_guiaActual.fecha) + "\"" : "") +
-    " style=\"width:100%;padding:10px 14px;border:1.5px solid var(--line);border-radius:10px;" +
-    "font-size:14px;font-family:inherit;box-sizing:border-box\">" +
-    "</div>" +
-
-    // Transporte
-    "<div style=\"margin-bottom:24px\">" +
-    "<label style=\"font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;" +
-    "letter-spacing:.4px;display:block;margin-bottom:6px\">Línea de transporte (opcional)</label>" +
-    "<input id=\"gTransporte\" type=\"text\" placeholder=\"DHL, Transporte\"" +
-    (editando && _guiaActual.transporte ? " value=\"" + _escAttr(_guiaActual.transporte) + "\"" : "") +
     " style=\"width:100%;padding:10px 14px;border:1.5px solid var(--line);border-radius:10px;" +
     "font-size:14px;font-family:inherit;box-sizing:border-box\">" +
     "</div>" +
@@ -1009,7 +999,6 @@ function _guiasContinuarMateriales(){
   var raw = document.getElementById("gDestino").value.trim();
   var destino = raw.split(" ")[0].split("—")[0].trim().toUpperCase();
   var fecha   = document.getElementById("gFecha").value;
-  var transp  = document.getElementById("gTransporte").value.trim();
 
   if(!folio){ alert("Ingresa el número de guía."); return; }
   if(!destino){ alert("Selecciona el almacén destino."); return; }
@@ -1018,7 +1007,7 @@ function _guiasContinuarMateriales(){
   var previa = _guiaActual; // si venimos de editar, aquí ya hay materiales y otros datos capturados
   _guiaActual = {
     area: area, folio: parseInt(folio), destino: destino,
-    almInfo: almInfo, fecha: fecha, transporte: transp,
+    almInfo: almInfo, fecha: fecha, transporte: previa ? previa.transporte : '', // se captura en la pantalla de firma
     lineas: previa ? previa.lineas : [],
     surtio:    previa ? previa.surtio    : '',
     operador:  previa ? previa.operador  : '',
@@ -2311,8 +2300,8 @@ function _guiasRevision(){
     "<div style=\"display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px\">" + _guiasTarjetasTransporteHtml() + "</div>" +
     _guiasTarjetasSurtidoresHtml() +
     "<div style=\"display:grid;grid-template-columns:1fr 1fr;gap:12px\">" +
-    _tplCampoFirma("gPedido", "No. Pedido", _guiaActual.pedido || "0") +
-    _tplCampoFirma("gSiatel", "Siatel", _guiaActual.siatel || "0") +
+    _tplCampoFirma("gPedido", "No. Pedido", _guiaActual.pedido || "0", true) +
+    _tplCampoFirma("gSiatel", "Siatel", _guiaActual.siatel || "0", true) +
     _tplCampoFirma("gSurtio", "Surtió (quien despacha)", _guiaActual.surtio) +
     _tplCampoFirma("gTransporteRev", "Línea de transporte", _guiaActual.transporte) +
     _tplCampoFirma("gOperador", "Operador", _guiaActual.operador) +
@@ -2341,10 +2330,11 @@ function _guiasRevision(){
   if(_sf) _sf.addEventListener("input", _guiasMarcarSurtidor);
 }
 
-function _tplCampoFirma(id, label, valor){
+function _tplCampoFirma(id, label, valor, seleccionarTodo){
   return "<div><label style=\"font-size:11px;color:var(--muted);display:block;margin-bottom:4px\">" +
     label + "</label>" +
     "<input id=\"" + id + "\" type=\"text\" value=\"" + (valor||"") + "\"" +
+    (seleccionarTodo ? " onfocus=\"this.select()\"" : "") +
     " style=\"width:100%;padding:8px 12px;border:1.5px solid var(--line);border-radius:8px;" +
     "font-family:inherit;font-size:13px\"></div>";
 }
@@ -2805,15 +2795,20 @@ function _guiasGenerar(){
     return;
   }
 
-  // Capturar datos de firma
-  _guiaActual.pedido     = document.getElementById("gPedido")?.value.trim() || "0";
-  _guiaActual.siatel     = document.getElementById("gSiatel")?.value.trim() || "0";
-  _guiaActual.surtio     = document.getElementById("gSurtio")?.value || "";
-  _guiaActual.transporte = document.getElementById("gTransporteRev")?.value || "";
-  _guiaActual.operador   = document.getElementById("gOperador")?.value || "";
-  _guiaActual.tipoVeh    = document.getElementById("gTipoVeh")?.value || "";
-  _guiaActual.placas     = document.getElementById("gPlacas")?.value || "";
-  _guiaActual.observaciones = document.getElementById("gObservaciones")?.value || "";
+  // Capturar datos de firma — SOLO si el formulario de firma está en pantalla (flujo normal
+  // de captura). Al reimprimir desde el historial se llega aquí sin pasar por esa pantalla,
+  // así que esos campos no existen en el DOM; si se leyeran de todos modos, se borraría con
+  // "" lo que ya se había cargado correctamente desde el historial.
+  if(document.getElementById("gSurtio")){
+    _guiaActual.pedido     = document.getElementById("gPedido")?.value.trim() || "0";
+    _guiaActual.siatel     = document.getElementById("gSiatel")?.value.trim() || "0";
+    _guiaActual.surtio     = document.getElementById("gSurtio")?.value || "";
+    _guiaActual.transporte = document.getElementById("gTransporteRev")?.value || "";
+    _guiaActual.operador   = document.getElementById("gOperador")?.value || "";
+    _guiaActual.tipoVeh    = document.getElementById("gTipoVeh")?.value || "";
+    _guiaActual.placas     = document.getElementById("gPlacas")?.value || "";
+    _guiaActual.observaciones = document.getElementById("gObservaciones")?.value || "";
+  }
 
   var alm      = _guiaActual.almInfo;
   var hoy      = _guiaActual.fecha ? new Date(_guiaActual.fecha+"T12:00:00") : new Date();
