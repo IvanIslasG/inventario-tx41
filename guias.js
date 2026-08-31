@@ -2195,6 +2195,12 @@ function _guiasElegirTransporteBase(linea, tipo, placas, operador){
   f("gTipoVeh", tipo);
   f("gPlacas", placas);
   f("gOperador", operador);
+  // Marcar visualmente cuál quedó elegido, sin redibujar toda la pantalla
+  var keySel = linea + "|" + tipo + "|" + placas + "|" + operador;
+  document.querySelectorAll(".gTransBtn").forEach(function(btn){
+    var esEsta = btn.getAttribute("data-key") === keySel;
+    btn.style.cssText = (btn.style.width === "100%" ? "width:100%;" : "") + _guiasEstiloBtnTransporte(esEsta);
+  });
 }
 
 function _guiasTarjetasTransporteHtml(){
@@ -2208,22 +2214,36 @@ function _guiasTarjetasTransporteHtml(){
         "<div style=\"font-size:12px;font-weight:800;color:var(--primary)\">" + t.linea + " &mdash; " + v.tipo + "</div>" +
         "<div style=\"font-size:11px;color:var(--muted);font-family:monospace;margin-bottom:6px\">" + v.placas + "</div>" +
         (unOperador ?
-          "<button type=\"button\" onclick=\"_guiasElegirTransporteBase('" + t.linea + "','" + v.tipo + "','" + v.placas + "','" + v.operadores[0] + "')\"" +
-          " style=\"width:100%;padding:5px 9px;background:white;border:1.5px solid var(--primary);color:var(--primary);" +
-          "border-radius:7px;font-size:10.5px;font-weight:600;cursor:pointer;font-family:inherit\">" + v.operadores[0] + "</button>"
+          _guiasTplBtnTransporte(t.linea, v.tipo, v.placas, v.operadores[0], true)
           :
           "<div style=\"font-size:10px;color:var(--muted);margin-bottom:3px\">Operador:</div>" +
           "<div style=\"display:flex;flex-wrap:wrap;gap:4px\">" +
           v.operadores.map(function(op){
-            return "<button type=\"button\" onclick=\"_guiasElegirTransporteBase('" + t.linea + "','" + v.tipo + "','" + v.placas + "','" + op + "')\"" +
-              " style=\"padding:5px 9px;background:white;border:1.5px solid var(--primary);color:var(--primary);" +
-              "border-radius:7px;font-size:10.5px;font-weight:600;cursor:pointer;font-family:inherit\">" + op + "</button>";
+            return _guiasTplBtnTransporte(t.linea, v.tipo, v.placas, op, false);
           }).join("") +
           "</div>") +
         "</div>";
     });
   });
   return html;
+}
+
+// Un botón de operador — marcado como seleccionado (fondo sólido) solo si coincide
+// exactamente con lo que ya está elegido para esta guía en este momento.
+function _guiasTplBtnTransporte(linea, tipo, placas, operador, ancho100){
+  var key = linea + "|" + tipo + "|" + placas + "|" + operador;
+  var sel = _guiaActual && _guiaActual.transporte === linea && _guiaActual.tipoVeh === tipo &&
+            _guiaActual.placas === placas && _guiaActual.operador === operador;
+  return "<button type=\"button\" class=\"gTransBtn\" data-key=\"" + _escAttr(key) + "\"" +
+    " onclick=\"_guiasElegirTransporteBase('" + _escAttr(linea) + "','" + _escAttr(tipo) + "','" + _escAttr(placas) + "','" + _escAttr(operador) + "')\"" +
+    " style=\"" + (ancho100 ? "width:100%;" : "") + _guiasEstiloBtnTransporte(sel) + "\">" + operador + "</button>";
+}
+function _guiasEstiloBtnTransporte(sel){
+  return sel
+    ? "padding:5px 9px;background:var(--primary);border:1.5px solid var(--primary);color:#fff;" +
+      "border-radius:7px;font-size:10.5px;font-weight:700;cursor:pointer;font-family:inherit"
+    : "padding:5px 9px;background:white;border:1.5px solid var(--primary);color:var(--primary);" +
+      "border-radius:7px;font-size:10.5px;font-weight:600;cursor:pointer;font-family:inherit";
 }
 
 function _guiasRevision(){
