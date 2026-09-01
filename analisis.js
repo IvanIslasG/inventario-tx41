@@ -22,6 +22,7 @@ let anTab_="hub", anSortCatCol="dist", anSortCatDir=-1, anSortAlmCol="dist", anS
 let anDatosCat=[], anDatosAlm=[], anCatSel=null;
 let anDatosCrit=[], anSortCritCol="rest", anSortCritDir=1, anCriticoAlmSel=null;
 let anBuscarCatSel=null;
+let anDatosSust=[], anSustExpandido=null, anSortSustCol="restan", anSortSustDir=1;
 let _anFijadas=[]; // filas fijadas para tabla custom
 
 function modAnalisis(){
@@ -68,18 +69,23 @@ function modAnalisis(){
         <div class="ico">🔎</div><h3>Encontrar material</h3>
         <p>Busca un catálogo y ve en qué almacenes hay existencia.</p>
       </div>
+      <div class="an-hub-card" data-v="sustitutos" style="animation-delay:.24s">
+        <div class="ico">🔄</div><h3>Por sustitutos</h3>
+        <p>Ver cada Nombre Genérico como grupo — existencia y consumo combinados de todos sus catálogos.</p>
+      </div>
     </div>`;
     $("#moduleView").querySelectorAll(".an-hub-card").forEach(c=>c.onclick=()=>{
       anTab_=c.dataset.v;
       if(anTab_==="critico") anCriticoAlmSel=null;
       if(anTab_==="buscar") anBuscarCatSel=null;
+      if(anTab_==="sustitutos") anSustExpandido=null;
       modAnalisis();
     });
     return;
   }
 
 
-  const anTituloVista={cat:"📊 Distribución por catálogo",alm:"🏭 Distribución por almacén",critico:"⚠️ Críticos",buscar:"🔎 Encontrar material"}[anTab_]||"";
+  const anTituloVista={cat:"📊 Distribución por catálogo",alm:"🏭 Distribución por almacén",critico:"⚠️ Críticos",buscar:"🔎 Encontrar material",sustitutos:"🔄 Por sustitutos"}[anTab_]||"";
   $("#moduleView").innerHTML=`
     <div class="controls">
       <button class="btn" id="anBtnHome" title="Volver al menú">🏠 Menú</button>
@@ -90,10 +96,12 @@ function modAnalisis(){
     <!-- Panel de filas fijadas -->
     <div class="fijadas-bar" id="an-fijadas-bar">
       <h4>📌 Tabla personalizada
+        <button class="linkish" id="an-toggle-expand" style="margin-left:8px"></button>
         <button class="btn" id="an-exp-custom" style="margin-left:auto">⬇ Exportar tabla</button>
         <button class="linkish" id="an-clear-custom" style="color:#c0392b">Limpiar todo</button>
       </h4>
       <div class="fijadas-chips" id="an-fijadas-chips"></div>
+      <div id="an-fijadas-tabla" style="display:none;margin-top:8px"></div>
     </div>
     <!-- Panel POR CATÁLOGO -->
     <div id="an-panel-cat" ${anTab_!=="cat"?"hidden":""}>
@@ -160,6 +168,16 @@ function modAnalisis(){
       <div id="an-buscar-desc" class="an-desc" style="font-size:13px;color:var(--muted);padding:4px 2px">Escribe un catálogo para ver en qué almacenes hay existencia.</div>
       <div class="panel"><div class="panel-head"><h2>Almacenes con existencia</h2><span class="pill" id="an-buscar-count"></span></div>
         <div class="scroll" id="an-tabla-buscar"></div></div>
+    </div>
+    <!-- Panel POR SUSTITUTOS -->
+    <div id="an-panel-sustitutos" ${anTab_!=="sustitutos"?"hidden":""}>
+      <div class="controls" style="margin-top:4px">
+        <input type="search" id="an-sust-buscar" placeholder="Buscar Nombre Genérico…">
+        <button class="btn" id="an-btn-exp-sust" style="margin-left:auto">⬇ Exportar</button>
+      </div>
+      <div style="font-size:12px;color:var(--muted);padding:2px 2px 4px">🚫 Sin existencia = ningún catálogo del grupo tiene existencia en D041 · consumo y existencia son la suma de todos los sustitutos del grupo</div>
+      <div class="panel"><div class="panel-head"><h2>Nombres genéricos (sustitutos)</h2><span class="pill" id="an-sust-count"></span></div>
+        <div class="scroll" id="an-tabla-sust"></div></div>
     </div>`;
 
   // ---- Volver al menú ----
@@ -168,6 +186,7 @@ function modAnalisis(){
   _renderFijadas();
   document.getElementById("an-clear-custom")?.addEventListener("click",()=>{ _anFijadas=[]; _renderFijadas(); });
   document.getElementById("an-exp-custom")?.addEventListener("click", _exportarCustom);
+  document.getElementById("an-toggle-expand")?.addEventListener("click", _toggleFijadasExpandida);
   // ---- Params ----
   const repintarCat=()=>{ if(anCatSel) anRenderTablaCat(anSortCatCol); };
   const repintarAlm=()=>{ if($("#an-alm-sel")?.value) anRenderAlm(); };
@@ -255,6 +274,12 @@ function modAnalisis(){
     });
     document.addEventListener("click", e=>{ if(!bSugs.contains(e.target)&&e.target!==bInp) bSugs.style.display="none"; },{once:false,capture:false});
     document.getElementById("an-btn-exp-buscar")?.addEventListener("click", anExportarBuscar);
+  }
+  // ---- Por sustitutos ----
+  if(anTab_==="sustitutos"){
+    anRenderSustitutos();
+    $("#an-sust-buscar")?.addEventListener("input", _pintarTablaSustitutos);
+    document.getElementById("an-btn-exp-sust")?.addEventListener("click", anExportarSustitutos);
   }
   // ---- Buscador almacén ----
   if(tieneConsumos){
@@ -344,6 +369,7 @@ function anRenderTablaCat(col){
     anRenderTablaCat(anSortCatCol);
   });
 }
+let _anFijadasExpandida=false;
 function _fijarFila(fila){
   const idx=_anFijadas.findIndex(f=>f.cat===fila.cat&&f.alm===fila.alm);
   if(idx>=0) _anFijadas.splice(idx,1); // toggle: si ya existe, quitar
@@ -353,14 +379,56 @@ function _fijarFila(fila){
 function _renderFijadas(){
   const bar=document.getElementById("an-fijadas-bar");
   const chips=document.getElementById("an-fijadas-chips");
+  const tablaWrap=document.getElementById("an-fijadas-tabla");
+  const btnExpand=document.getElementById("an-toggle-expand");
   if(!bar||!chips) return;
-  if(!_anFijadas.length){ bar.classList.remove("on"); return; }
+  if(!_anFijadas.length){ bar.classList.remove("on"); _anFijadasExpandida=false; return; }
   bar.classList.add("on");
   chips.innerHTML=_anFijadas.map((f,i)=>`
     <div class="fijada-chip">
       <span><b>${f.cat}</b> · ${f.alm} <span style="color:var(--muted);font-size:11px">${(f.desc||"").substring(0,25)}</span></span>
       <button onclick="_quitarFijada(${i})" title="Quitar">×</button>
     </div>`).join("");
+  if(btnExpand) btnExpand.textContent=_anFijadasExpandida?"▴ Colapsar":`▾ Expandir (${_anFijadas.length})`;
+  if(tablaWrap){
+    tablaWrap.style.display=_anFijadasExpandida?"block":"none";
+    if(_anFijadasExpandida) tablaWrap.innerHTML=_tplTablaFijadas();
+  }
+}
+function _toggleFijadasExpandida(){ _anFijadasExpandida=!_anFijadasExpandida; _renderFijadas(); }
+// Misma cuenta que usa la exportación, pero renderizada en pantalla — así con varios
+// catálogos fijados se ve la tabla real (existencia, consumo, meses restantes) sin
+// tener que descargar el Excel nada más para revisarla.
+function _tplTablaFijadas(){
+  const obj=anMStk();
+  const anFmt=(n,d=0)=>n==null||isNaN(n)?"-":Number(n).toLocaleString("es-MX",{minimumFractionDigits:d,maximumFractionDigits:d});
+  const filas=_anFijadas.map(f=>{
+    const m=mat(f.cat);
+    const cons=(DB.consumos?.[f.alm]?.[f.cat])||0;
+    const per=anPerAlm(f.alm);
+    const mens=cons/per, nec=mens*obj;
+    const ex=DB.existencias?.[f.cat]?.[f.alm]||0;
+    const dist=Math.max(0,nec-ex);
+    const exD=(DB.existencias?.[f.cat]?.[DIST()])||0;
+    const restan=mens>0 ? ex/mens : null;
+    const critico=restan!=null&&restan<1;
+    return {...f,desc:m.desc||f.desc,um:m.um||f.um,cons,mens,ex,nec,dist,exD,restan,critico};
+  });
+  return `<div class="scroll" style="max-height:320px"><table>
+    <thead><tr>
+      <th>Catálogo</th><th>Descripción</th><th>Almacén</th><th class="r">UM</th>
+      <th class="r">Cons. mensual</th><th class="r">Existencia</th><th class="r">Meses restantes</th><th></th>
+    </tr></thead><tbody>${filas.map((f,i)=>`
+      <tr ${f.critico?'style="background:var(--low-bg)"':""}>
+        <td class="cat num">${f.cat}</td>
+        <td style="font-size:12px;max-width:220px">${f.desc||""}</td>
+        <td style="font-size:12px">${f.alm} · ${anNombre(f.alm)}</td>
+        <td class="r" style="font-size:11px;color:var(--muted)">${f.um||""}</td>
+        <td class="r num">${anFmt(f.mens,1)}</td>
+        <td class="r num">${anFmt(f.ex)}</td>
+        <td class="r num" style="${f.critico?"font-weight:700;color:var(--low)":""}">${f.restan==null?"—":anFmt(f.restan,2)}</td>
+        <td><button class="linkish" onclick="_quitarFijada(${i})" style="color:#c0392b">Quitar</button></td>
+      </tr>`).join("")}</tbody></table></div>`;
 }
 function _quitarFijada(i){ _anFijadas.splice(i,1); _renderFijadas(); }
 function _exportarCustom(){
@@ -440,10 +508,11 @@ function _pintarTablaAlm(obj){
       <th class="r" onclick="_anSortAlm('nec')">Stock obj.(${o.toFixed(1)}m)${ic("nec")}</th>
       <th class="r" onclick="_anSortAlm('dist')">Distribución${ic("dist")}</th>
       <th class="r" onclick="_anSortAlm('exD')">D041 disponible${ic("exD")}</th>
-      <th>D041</th>
-    </tr></thead><tbody>${filas.map(({cat,desc,um,mens,ex,nec,dist,exD})=>{
+      <th>D041</th><th></th>
+    </tr></thead><tbody>${filas.map(({cat,desc,um,cons,mens,ex,nec,dist,exD})=>{
       const badge=dist<0.5?""
         :exD>=dist?`<span class="an-badge v">✓</span>`:`<span class="an-badge r">Insuf.</span>`;
+      const yaFijada=_anFijadas.some(f=>f.cat===cat&&f.alm===alm);
       return `<tr>
         <td class="cat num">${cat}</td>
         <td style="font-size:12px;max-width:220px">${desc||""}</td>
@@ -453,9 +522,18 @@ function _pintarTablaAlm(obj){
         <td class="r num">${anFmt(nec,1)}</td>
         <td class="r num" style="font-weight:700;color:${dist>0.5?"var(--low)":"var(--ok)"}">${dist>0.5?anFmt(dist,1):"—"}</td>
         <td class="r num">${anFmt(exD)}</td>
-        <td>${badge}</td></tr>`;
+        <td>${badge}</td>
+        <td><button class="btn an-fijar-alm" data-cat="${cat}" data-alm="${alm}"
+            data-desc="${(desc||"").replace(/"/g,"")}" data-um="${um||""}" data-cons="${cons}" data-ex="${ex}"
+            style="${yaFijada?"background:var(--primary);color:#fff":""}"
+            title="${yaFijada?"Ya fijada":"Fijar en tabla personalizada"}">📌</button></td></tr>`;
     }).join("")}</tbody></table></div>`;
   if(btnExp) btnExp.style.display="inline-flex";
+  wrap.querySelectorAll(".an-fijar-alm").forEach(btn=>btn.onclick=()=>{
+    const {cat,alm,desc,um,cons,ex}=btn.dataset;
+    _fijarFila({cat,alm,desc,um,cons:+cons,ex:+ex,dist:0});
+    _pintarTablaAlm(o);
+  });
 }
 function _anSortAlm(col){
   if(col===anSortAlmCol) anSortAlmDir=-anSortAlmDir; else { anSortAlmCol=col; anSortAlmDir=["cat","desc","area"].includes(col)?1:-1; }
@@ -647,6 +725,121 @@ function anExportarBuscar(){
     [],["Almacén","Nombre","Existencia"],
     ...anDatosBuscar.map(r=>[r.alm,r.nombre,r.ex])
   ],"Existencias",`Buscar_${anBuscarCatSel}_${fechaTag()}`);
+}
+
+/* ---- Por sustitutos: cada Nombre Genérico como grupo, existencia/consumo combinados en D041 ---- */
+function anRenderSustitutos(){
+  const D=DIST(), per=anPerAlm(D);
+  const cD=DB.consumos?.[D]||{};
+  const eD={};
+  for(const [cat,e] of Object.entries(DB.existencias)) if(D in e) eD[cat]=e[D];
+
+  const grupos={};
+  for(const cat of Object.keys(DB.materiales)){
+    const ng=ngDe(cat);
+    if(!ng) continue; // sin Nombre Genérico = no tiene sustitutos, no entra en este análisis
+    if(!grupos[ng]) grupos[ng]={ng,cats:[],exTotal:0,consTotal:0};
+    grupos[ng].cats.push(cat);
+    grupos[ng].exTotal+=eD[cat]||0;
+    grupos[ng].consTotal+=Math.max(0,cD[cat]||0); // consumos negativos (ajustes) no cuentan como demanda
+  }
+  anDatosSust=Object.values(grupos).map(g=>{
+    const mens=g.consTotal/per;
+    const restan=mens>0 ? g.exTotal/mens : null;
+    return {...g,nCats:g.cats.length,mens,restan,critico:g.exTotal<=0};
+  });
+  anSortSustCol="restan"; anSortSustDir=1;
+  anSustExpandido=null;
+  _pintarTablaSustitutos();
+}
+function _filasSustitutos(){
+  const q=($("#an-sust-buscar")?.value||"").toLowerCase();
+  const col=anSortSustCol, dir=anSortSustDir;
+  return anDatosSust.filter(g=>!q||g.ng.toLowerCase().includes(q))
+    .sort((a,b)=>{
+      if(col==="ng") return a.ng.localeCompare(b.ng)*dir;
+      const av=a[col]==null?Infinity:a[col], bv=b[col]==null?Infinity:b[col];
+      return (av-bv)*dir;
+    });
+}
+function _pintarTablaSustitutos(){
+  const ic=c=>c===anSortSustCol?(anSortSustDir===1?" ▲":" ▼"):" ⇅";
+  const anFmt=(n,d=0)=>n==null||isNaN(n)?"-":Number(n).toLocaleString("es-MX",{minimumFractionDigits:d,maximumFractionDigits:d});
+  const wrap=document.getElementById("an-tabla-sust");
+  if(!wrap) return;
+  const filas=_filasSustitutos();
+  if(!filas.length){ wrap.innerHTML=`<div class="empty" style="padding:24px">${anDatosSust.length?"Sin coincidencias.":"No hay Nombres Genéricos con sustitutos definidos."}</div>`; return; }
+  $("#an-sust-count").textContent=`${filas.length} grupos`;
+  wrap.innerHTML=`<div class="scroll"><table>
+    <thead><tr>
+      <th onclick="_anSortSust('ng')">Nombre genérico${ic("ng")}</th>
+      <th class="r" onclick="_anSortSust('nCats')"># Catálogos${ic("nCats")}</th>
+      <th class="r" onclick="_anSortSust('mens')">Cons. mensual D041${ic("mens")}</th>
+      <th class="r" onclick="_anSortSust('exTotal')">Existencia D041 (grupo)${ic("exTotal")}</th>
+      <th class="r" onclick="_anSortSust('restan')">Meses restantes${ic("restan")}</th>
+      <th></th><th></th>
+    </tr></thead><tbody>${filas.map(g=>`
+      <tr ${g.critico?'style="background:var(--low-bg)"':""}>
+        <td style="font-weight:700;font-size:12.5px">${g.ng}</td>
+        <td class="r num">${g.nCats}</td>
+        <td class="r num">${anFmt(g.mens,1)}</td>
+        <td class="r num" style="${g.critico?"font-weight:700;color:var(--low)":""}">${anFmt(g.exTotal)}</td>
+        <td class="r num">${g.restan==null?"—":anFmt(g.restan,2)}</td>
+        <td>${g.critico?'<span class="an-badge r">🚫 Sin existencia</span>':""}</td>
+        <td><button class="linkish" onclick="_anToggleSustGrupo('${g.ng.replace(/'/g,"\\'")}')">${anSustExpandido===g.ng?"▴ Ocultar":"▾ Ver catálogos"}</button></td>
+      </tr>
+      ${anSustExpandido===g.ng?`<tr><td colspan="7" style="padding:0">${_tplDetalleSustGrupo(g)}</td></tr>`:""}
+    `).join("")}</tbody></table></div>`;
+  wrap.querySelectorAll(".an-fijar-sust").forEach(btn=>btn.onclick=()=>{
+    const {cat,alm,desc,um,ex}=btn.dataset;
+    _fijarFila({cat,alm,desc,um,cons:0,ex:+ex,dist:0});
+    _pintarTablaSustitutos();
+  });
+}
+function _anSortSust(col){
+  if(col===anSortSustCol) anSortSustDir=-anSortSustDir; else { anSortSustCol=col; anSortSustDir=col==="ng"?1:-1; }
+  _pintarTablaSustitutos();
+}
+function _anToggleSustGrupo(ng){
+  anSustExpandido = anSustExpandido===ng ? null : ng;
+  _pintarTablaSustitutos();
+}
+function _tplDetalleSustGrupo(g){
+  const D=DIST();
+  const anFmt=(n,d=0)=>n==null||isNaN(n)?"-":Number(n).toLocaleString("es-MX",{minimumFractionDigits:d,maximumFractionDigits:d});
+  const filas=g.cats.map(cat=>{
+    const m=mat(cat);
+    const ex=(DB.existencias?.[cat]?.[D])||0;
+    const yaFijada=_anFijadas.some(f=>f.cat===cat&&f.alm===D);
+    return {cat,desc:m.desc,um:m.um,ex,yaFijada};
+  }).sort((a,b)=>b.ex-a.ex);
+  return `<div style="padding:10px 14px 14px 30px;background:#fbfcfe;border-top:1px solid var(--line)">
+    <table style="width:100%">
+      <thead><tr style="font-size:10.5px;color:var(--muted);text-transform:uppercase">
+        <th style="text-align:left">Catálogo</th><th style="text-align:left">Descripción</th>
+        <th class="r">UM</th><th class="r">Existencia D041</th><th></th>
+      </tr></thead>
+      <tbody>${filas.map(f=>`
+        <tr>
+          <td class="cat num" style="font-size:12px">${f.cat}</td>
+          <td style="font-size:12px">${f.desc||""}</td>
+          <td class="r" style="font-size:11px;color:var(--muted)">${f.um||""}</td>
+          <td class="r num" style="font-size:12px">${anFmt(f.ex)}</td>
+          <td><button class="btn an-fijar-sust" data-cat="${f.cat}" data-alm="${D}"
+              data-desc="${(f.desc||"").replace(/"/g,"")}" data-um="${f.um||""}" data-ex="${f.ex}"
+              style="${f.yaFijada?"background:var(--primary);color:#fff":""}" title="${f.yaFijada?"Ya fijada":"Fijar"}">📌</button></td>
+        </tr>`).join("")}</tbody>
+    </table></div>`;
+}
+function anExportarSustitutos(){
+  if(!anDatosSust.length) return;
+  const filas=_filasSustitutos();
+  descargarXLSX([
+    [`Análisis por sustitutos (Nombre Genérico) — Almacén Distribuidor D041`,""],
+    [`Consumo y existencia son la suma de todos los catálogos de cada grupo`,""],
+    [],["Nombre genérico","# Catálogos","Cons. mensual D041","Existencia D041 (grupo)","Meses restantes","Sin existencia"],
+    ...filas.map(g=>[g.ng,g.nCats,+(g.mens.toFixed(2)),g.exTotal,g.restan==null?"":+(g.restan.toFixed(2)),g.critico?"Sí":"No"])
+  ],"Por sustitutos",`Sustitutos_${fechaTag()}`);
 }
 
 
