@@ -154,13 +154,14 @@ function _guiasTarimaBDGuardar(bd){
   try{ localStorage.setItem(_GUIAS_LS_TARIMA, JSON.stringify(bd)); }catch(e){}
 }
 
-function _guiasTarimaBDActualizar(cat, subTipo, subCant, subCont, um){
+function _guiasTarimaBDActualizar(cat, subTipo, subCant, subCont, um, grupoNombre){
   var bd = _guiasTarimaBDCargar();
   var idx = bd.findIndex(function(e){
     return e.cat === cat && e.subTipo === subTipo && e.subCant === subCant && e.subCont === subCont;
   });
-  if(idx >= 0){ bd[idx].freq = (bd[idx].freq || 1) + 1; }
-  else{ bd.push({cat: cat, um: um || '', subTipo: subTipo, subCant: subCant, subCont: subCont, freq: 1}); }
+  var nombre = (grupoNombre || "Tarima").trim() || "Tarima";
+  if(idx >= 0){ bd[idx].freq = (bd[idx].freq || 1) + 1; bd[idx].grupoNombre = nombre; }
+  else{ bd.push({cat: cat, um: um || '', subTipo: subTipo, subCant: subCant, subCont: subCont, freq: 1, grupoNombre: nombre}); }
   _guiasTarimaBDGuardar(bd);
 }
 
@@ -188,8 +189,9 @@ function _guiasTarimaTogglePreferido(cat, desc, um, subTipo, subCant, subCont){
   _guiasPedirEmpaque(cat, desc, um, _guiasBDOpciones(cat));
 }
 
-function _guiasTarimaBorrarOpcion(cat, desc, um, subTipo, subCant, subCont){
-  if(!confirm("¿Borrar esta tarima de la memoria?\n\nTarima de " + subCant + " " + subTipo + " c/ " + subCont + " " + um + "\n\nYa no se propondrá para este catálogo.")) return;
+function _guiasTarimaBorrarOpcion(cat, desc, um, subTipo, subCant, subCont, grupoNombre){
+  var nombre = grupoNombre || "Tarima";
+  if(!confirm("¿Borrar esta " + nombre.toLowerCase() + " de la memoria?\n\n" + nombre + " de " + subCant + " " + subTipo + " c/ " + subCont + " " + um + "\n\nYa no se propondrá para este catálogo.")) return;
   var bd = _guiasTarimaBDCargar();
   var idx = bd.findIndex(function(e){
     return e.cat === cat && e.subTipo === subTipo && e.subCant === subCant && e.subCont === subCont;
@@ -199,16 +201,17 @@ function _guiasTarimaBorrarOpcion(cat, desc, um, subTipo, subCant, subCont){
   _guiasPedirEmpaque(cat, desc, um, _guiasBDOpciones(cat));
 }
 
-// Agrega una línea de tarima (contenedor anidado: N tarimas de X contenedores de Y c/u)
-function _guiasAgregarLineaTarima(cat, desc, um, subTipo, subCant, subCont, numTarimas){
+// Agrega una línea de empaque agrupado (contenedor anidado: N grupos de X contenedores de Y c/u)
+function _guiasAgregarLineaTarima(cat, desc, um, subTipo, subCant, subCont, numTarimas, grupoNombre){
   if(_guiasEditandoLineaIdx !== null){ _guiaActual.lineas.splice(_guiasEditandoLineaIdx, 1); _guiasEditandoLineaIdx = null; }
-  var contEmp = subCant * subCont; // cantidad total que representa una tarima
+  var contEmp = subCant * subCont; // cantidad total que representa un grupo
   var cant = numTarimas * contEmp;
   _guiaActual.lineas.push({
     cat: cat, desc: desc, um: um,
     cant: cant, tipoEmp: "Tarima", contEmp: contEmp,
     bultos: numTarimas, patio: false, granel: false,
-    tarimaSubTipo: subTipo, tarimaSubCant: subCant, tarimaSubCont: subCont
+    tarimaSubTipo: subTipo, tarimaSubCant: subCant, tarimaSubCont: subCont,
+    grupoNombre: (grupoNombre || "Tarima").trim() || "Tarima" // nombre a mostrar (Tarima, Caja maestra, Paquete…)
   });
   _limpiarCatInput();
   document.querySelector(".modal")?.remove();
@@ -227,12 +230,13 @@ function _guiasConfirmarTarimaNueva(cat, desc, um){
   var subCant = parseInt(document.getElementById("gTarimaSubCant")?.value || "0");
   var subCont = parseInt(document.getElementById("gTarimaSubCont")?.value || "0");
   var numTarimas = parseInt(document.getElementById("gTarimaNum")?.value || "0");
+  var grupoNombre = (document.getElementById("gTarimaNombreGrupo")?.value || "Tarima").trim() || "Tarima";
   if(!subTipo){ alert("Indica el tipo de contenedor (Caja, Bobina, Rollo...)."); return; }
-  if(!subCant || subCant < 1){ alert("Indica cuántos contenedores lleva cada tarima."); return; }
+  if(!subCant || subCant < 1){ alert("Indica cuántos contenedores lleva cada " + grupoNombre.toLowerCase() + "."); return; }
   if(!subCont || subCont < 1){ alert("Indica el contenido de cada contenedor."); return; }
-  if(!numTarimas || numTarimas < 1){ alert("Indica cuántas tarimas van."); return; }
-  _guiasTarimaBDActualizar(cat, subTipo, subCant, subCont, um);
-  _guiasAgregarLineaTarima(cat, desc, um, subTipo, subCant, subCont, numTarimas);
+  if(!numTarimas || numTarimas < 1){ alert("Indica cuántos(as) " + grupoNombre.toLowerCase() + "(s) van."); return; }
+  _guiasTarimaBDActualizar(cat, subTipo, subCant, subCont, um, grupoNombre);
+  _guiasAgregarLineaTarima(cat, desc, um, subTipo, subCant, subCont, numTarimas, grupoNombre);
 }
 
 // ── Historial de guías ────────────────────────────────────────────────────────
@@ -1126,7 +1130,7 @@ function _tplLineaGuia(l, idx){
     "<div style=\"font-size:12px;font-weight:700;font-family:monospace;color:var(--primary)\">" + l.cat + badgeHtml + "</div>" +
     "<div style=\"font-size:12px;color:var(--text);margin:2px 0\">" + l.desc + "</div>" +
     "<div style=\"font-size:11px;color:var(--muted)\">" +
-    l.cant + " " + l.um + " &mdash; " + l.bultos + " " + l.tipoEmp +
+    l.cant + " " + l.um + " &mdash; " + l.bultos + " " + (l.tipoEmp === "Tarima" ? (l.grupoNombre || "Tarima") : l.tipoEmp) +
     (l.tipoEmp === "Tarima" ? " (" + l.tarimaSubCant + " " + l.tarimaSubTipo + " c/ " + l.tarimaSubCont + " " + l.um + ")"
       : l.contEmp > 1 ? " de " + l.contEmp + " " + l.um : "") +
     (l.patio ? " &mdash; <b>PATIO</b>" : "") +
@@ -1338,28 +1342,30 @@ function _guiasPedirEmpaque(cat, desc, um, opciones){
       "</div>";
   }
 
-  // Botones de tarimas conocidas para este catálogo
+  // Botones de empaques agrupados conocidos para este catálogo (Tarima, Caja maestra, Paquete…)
   var tarimasCat = _guiasTarimaOpciones(cat);
   var btnsTarimas = "";
   for(var ti=0; ti<tarimasCat.length; ti++){
     var tp = tarimasCat[ti];
+    var nombreT = tp.grupoNombre || "Tarima";
+    var nombreTEsc = nombreT.replace(/'/g,"&#39;").replace(/"/g,"&quot;");
     var estrellaT = tp.preferido ? "&#9733;" : "&#9734;";
     btnsTarimas +=
       "<div style=\"display:flex;align-items:center;gap:4px;margin-bottom:6px\">" +
       "<button class=\"gEmpBtn\" onclick=\"_guiasSeleccionarTarima('" + catEsc + "','" + descEsc + "','" + um + "','" +
-      tp.subTipo + "'," + tp.subCant + "," + tp.subCont + ")\"" +
+      tp.subTipo + "'," + tp.subCant + "," + tp.subCont + ",'" + nombreTEsc + "')\"" +
       " style=\"flex:1;text-align:left;padding:10px 14px;background:#fdf4e7;" +
       "border:1.5px solid #b8722a;border-radius:8px;cursor:pointer;" +
       "font-family:inherit;font-size:13px\">" +
-      "<b>Tarima</b> de " + tp.subCant + " " + tp.subTipo + " c/ " + tp.subCont + " " + um +
+      "<b>" + nombreT + "</b> de " + tp.subCant + " " + tp.subTipo + " c/ " + tp.subCont + " " + um +
       (tp.preferido ? " <span style=\"color:#f59e0b;font-size:10px;font-weight:700\">PREFERIDA</span>" : "") +
       "</button>" +
       "<button onclick=\"_guiasTarimaTogglePreferido('" + catEsc + "','" + descEsc + "','" + um + "','" + tp.subTipo + "'," + tp.subCant + "," + tp.subCont + ")\"" +
       " title=\"" + (tp.preferido ? "Preferida — siempre se propondrá primero" : "Marcar como preferida") + "\"" +
       " style=\"background:none;border:none;cursor:pointer;font-size:20px;line-height:1;" +
       "color:" + (tp.preferido ? "#f59e0b" : "#ccc") + ";flex-shrink:0\">" + estrellaT + "</button>" +
-      "<button onclick=\"_guiasTarimaBorrarOpcion('" + catEsc + "','" + descEsc + "','" + um + "','" + tp.subTipo + "'," + tp.subCant + "," + tp.subCont + ")\"" +
-      " title=\"Borrar esta tarima de la memoria\"" +
+      "<button onclick=\"_guiasTarimaBorrarOpcion('" + catEsc + "','" + descEsc + "','" + um + "','" + tp.subTipo + "'," + tp.subCant + "," + tp.subCont + ",'" + nombreTEsc + "')\"" +
+      " title=\"Borrar esta " + nombreT.toLowerCase() + " de la memoria\"" +
       " style=\"background:none;border:none;cursor:pointer;font-size:18px;line-height:1;" +
       "color:#dc2626;flex-shrink:0\">&times;</button>" +
       "</div>";
@@ -1430,12 +1436,16 @@ function _guiasPedirEmpaque(cat, desc, um, opciones){
     "</div></details>" +
     "<details style=\"margin-top:14px;border-top:1px dashed var(--line);padding-top:12px\">" +
     "<summary style=\"font-size:11px;font-weight:700;color:#b8722a;text-transform:uppercase;" +
-    "letter-spacing:.4px;cursor:pointer;padding:4px 0;list-style:none\">+ Nueva tarima</summary>" +
+    "letter-spacing:.4px;cursor:pointer;padding:4px 0;list-style:none\">+ Nuevo empaque agrupado</summary>" +
     "<div style=\"margin-top:10px;display:flex;flex-direction:column;gap:8px\">" +
-    "<div><label style=\"font-size:11px;color:var(--muted)\">Tipo de contenedor por tarima</label>" +
+    "<div><label style=\"font-size:11px;color:var(--muted)\">¿Cómo se llama este empaque? (Tarima, Caja maestra, Paquete…)</label>" +
+    "<input id=\"gTarimaNombreGrupo\" type=\"text\" value=\"Tarima\" placeholder=\"Tarima, Caja maestra, Paquete...\"" +
+    " style=\"width:100%;padding:8px;border:1.5px solid var(--line);border-radius:8px;" +
+    "font-family:inherit;margin-top:3px\"></div>" +
+    "<div><label style=\"font-size:11px;color:var(--muted)\">Tipo de contenedor adentro</label>" +
     tipoTarimaInputHtml + "</div>" +
     "<div style=\"display:flex;gap:8px\">" +
-    "<div style=\"flex:1\"><label style=\"font-size:11px;color:var(--muted)\">Contenedores por tarima</label>" +
+    "<div style=\"flex:1\"><label style=\"font-size:11px;color:var(--muted)\">Contenedores por empaque</label>" +
     "<input id=\"gTarimaSubCant\" type=\"number\" min=\"1\" placeholder=\"Ej. 60\"" +
     " style=\"width:100%;padding:8px;border:1.5px solid var(--line);border-radius:8px;" +
     "font-family:inherit;margin-top:3px\"></div>" +
@@ -1444,14 +1454,14 @@ function _guiasPedirEmpaque(cat, desc, um, opciones){
     " style=\"width:100%;padding:8px;border:1.5px solid var(--line);border-radius:8px;" +
     "font-family:inherit;margin-top:3px\"></div>" +
     "</div>" +
-    "<div><label style=\"font-size:11px;color:var(--muted)\">Cuántas tarimas van</label>" +
+    "<div><label style=\"font-size:11px;color:var(--muted)\">Cuántos van</label>" +
     "<input id=\"gTarimaNum\" type=\"number\" min=\"1\" value=\"1\"" +
     " onkeydown=\"if(event.key==='Enter'){event.preventDefault();_guiasConfirmarTarimaNueva('" + catEsc + "','" + descEsc + "','" + um + "');}\"" +
     " style=\"width:100%;padding:8px;border:1.5px solid var(--line);border-radius:8px;" +
     "font-family:inherit;font-size:15px;font-weight:700;color:#b8722a;margin-top:3px\"></div>" +
     "<button onclick=\"_guiasConfirmarTarimaNueva('" + catEsc + "','" + descEsc + "','" + um + "')\"" +
     " style=\"width:100%;padding:9px;background:#b8722a;color:white;border:none;border-radius:8px;" +
-    "font-weight:700;cursor:pointer;font-family:inherit;font-size:12.5px\">Agregar tarima</button>" +
+    "font-weight:700;cursor:pointer;font-family:inherit;font-size:12.5px\">Agregar</button>" +
     "</div></details>" +
     "</div>";
 
@@ -1519,10 +1529,12 @@ function _guiasSeleccionarEmpaque(cat, desc, um, tipo, cont){
   setTimeout(function(){ document.getElementById("gEmpCantInline")?.focus(); }, 50);
 }
 
-function _guiasSeleccionarTarima(cat, desc, um, subTipo, subCant, subCont){
+function _guiasSeleccionarTarima(cat, desc, um, subTipo, subCant, subCont, grupoNombre){
   var catEsc  = cat.replace(/'/g,"&#39;").replace(/"/g,"&quot;");
   var descEsc = desc.replace(/'/g,"&#39;").replace(/"/g,"&quot;");
   var subTipoEsc = String(subTipo).replace(/'/g,"&#39;").replace(/"/g,"&quot;");
+  var nombre = grupoNombre || "Tarima";
+  var nombreEsc = nombre.replace(/'/g,"&#39;").replace(/"/g,"&quot;");
   var box = document.querySelector(".modal .modal-box");
   if(!box) return;
   box.innerHTML =
@@ -1530,15 +1542,15 @@ function _guiasSeleccionarTarima(cat, desc, um, subTipo, subCant, subCont){
     "<h3 style=\"margin:0 0 4px\">" + cat + "</h3>" +
     "<div style=\"font-size:12px;color:var(--muted);margin-bottom:16px\">" + desc + "</div>" +
     "<div style=\"background:#fdf4e7;border:1.5px solid #b8722a;border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:13px\">" +
-    "<b>Tarima</b> de " + subCant + " " + subTipo + " c/ " + subCont + " " + um + "</div>" +
-    "<label style=\"font-size:11px;color:var(--muted)\">¿Cuántas tarimas van?</label>" +
+    "<b>" + nombre + "</b> de " + subCant + " " + subTipo + " c/ " + subCont + " " + um + "</div>" +
+    "<label style=\"font-size:11px;color:var(--muted)\">¿Cuántos(as) " + nombre.toLowerCase() + "(s) van?</label>" +
     "<input id=\"gTarimaNumInline\" type=\"number\" min=\"1\" value=\"1\" autocomplete=\"off\"" +
-    " onkeydown=\"if(event.key==='Enter'){event.preventDefault();_guiasConfirmarTarimasInline('" + catEsc + "','" + descEsc + "','" + um + "','" + subTipoEsc + "'," + subCant + "," + subCont + ");}\"" +
+    " onkeydown=\"if(event.key==='Enter'){event.preventDefault();_guiasConfirmarTarimasInline('" + catEsc + "','" + descEsc + "','" + um + "','" + subTipoEsc + "'," + subCant + "," + subCont + ",'" + nombreEsc + "');}\"" +
     " style=\"width:100%;padding:10px;border:1.5px solid #b8722a;border-radius:8px;" +
     "font-family:inherit;font-size:17px;font-weight:700;color:#b8722a;margin-top:4px\">" +
     "<div style=\"display:flex;gap:8px;margin-top:18px\">" +
     "<button class=\"btn\" onclick=\"_guiasPedirEmpaque('" + catEsc + "','" + descEsc + "','" + um + "',_guiasBDOpciones('" + catEsc + "'))\" style=\"flex:1;padding:10px\">&larr; Regresar</button>" +
-    "<button class=\"btn-prim\" onclick=\"_guiasConfirmarTarimasInline('" + catEsc + "','" + descEsc + "','" + um + "','" + subTipoEsc + "'," + subCant + "," + subCont + ")\" style=\"flex:1;padding:10px\">Agregar</button>" +
+    "<button class=\"btn-prim\" onclick=\"_guiasConfirmarTarimasInline('" + catEsc + "','" + descEsc + "','" + um + "','" + subTipoEsc + "'," + subCant + "," + subCont + ",'" + nombreEsc + "')\" style=\"flex:1;padding:10px\">Agregar</button>" +
     "</div></div>";
   setTimeout(function(){ document.getElementById("gTarimaNumInline")?.focus(); }, 50);
 }
@@ -1559,13 +1571,13 @@ function _guiasConfirmarCantidadInline(cat, desc, um, tipo, cont){
   }
   _guiasBDActualizarEmpaque(cat, tipo, cont, um);
 }
-// Confirma el paso 2 (número de tarimas) de una tarima conocida — mismo criterio, sin prompt().
-function _guiasConfirmarTarimasInline(cat, desc, um, subTipo, subCant, subCont){
+// Confirma el paso 2 (cuántos van) de un empaque agrupado conocido — mismo criterio, sin prompt().
+function _guiasConfirmarTarimasInline(cat, desc, um, subTipo, subCant, subCont, grupoNombre){
   var num = parseInt(document.getElementById("gTarimaNumInline")?.value || "0");
-  if(!num || num < 1){ alert("Ingresa cuántas tarimas van."); return; }
+  if(!num || num < 1){ alert("Ingresa cuántos van."); return; }
   document.querySelector(".modal")?.remove();
-  _guiasTarimaBDActualizar(cat, subTipo, subCant, subCont, um);
-  _guiasAgregarLineaTarima(cat, desc, um, subTipo, subCant, subCont, num);
+  _guiasTarimaBDActualizar(cat, subTipo, subCant, subCont, um, grupoNombre);
+  _guiasAgregarLineaTarima(cat, desc, um, subTipo, subCant, subCont, num, grupoNombre);
 }
 
 function _guiasAPatioModal(cat, desc, um){
@@ -2263,7 +2275,7 @@ function _guiasRevision(){
   var filasHtml = "";
   for(var i=0; i<_guiaActual.lineas.length; i++){
     var l = _guiaActual.lineas[i];
-    var descEmp = l.bultos + " " + l.tipoEmp +
+    var descEmp = l.bultos + " " + (l.tipoEmp === "Tarima" ? (l.grupoNombre || "Tarima") : l.tipoEmp) +
       (l.tipoEmp === "Tarima" ? " (" + l.tarimaSubCant + " " + l.tarimaSubTipo + " c/ " + l.tarimaSubCont + " " + l.um + ")"
         : l.contEmp>1?" de "+l.contEmp+" "+l.um:"") + (l.lote?" — L - "+l.lote:"");
     filasHtml +=
@@ -2711,7 +2723,7 @@ function _guiasBloquesImpresion(lineas, area){
     var nCajas = Math.floor(l.cant / l.contEmp);
     var descEmp;
     if(l.tipoEmp === "Tarima"){
-      descEmp = "Tarima de " + l.tarimaSubCant + " " + l.tarimaSubTipo + " c/ " + l.tarimaSubCont + " " + l.um;
+      descEmp = (l.grupoNombre || "Tarima") + " de " + l.tarimaSubCant + " " + l.tarimaSubTipo + " c/ " + l.tarimaSubCont + " " + l.um;
     } else {
       descEmp = _guiasAbrevTipo(l.tipoEmp) + " " + l.contEmp + " " + l.um;
     }
