@@ -485,6 +485,7 @@ function _guiasBDExportarSemilla(){
   var jsonArray = JSON.stringify(ordenado);
   var codigo = "const _GUIAS_BD_SEED = " + jsonArray + ";";
 
+  document.querySelectorAll(".modal").forEach(function(m){ m.remove(); });
   var modal = document.createElement("div");
   modal.className = "modal on";
   modal.innerHTML =
@@ -1283,6 +1284,7 @@ function _guiasConfirmarLotesSeleccionados(cat, desc, um){
 }
 
 function _guiasPedirEmpaque(cat, desc, um, opciones){
+  document.querySelectorAll(".modal").forEach(function(m){ m.remove(); }); // por si quedó alguna ventana anterior sin cerrar
   var modal = document.createElement("div");
   modal.className = "modal on";
 
@@ -1812,6 +1814,7 @@ function _guiasDetectarSinHeader(rows){
 
 // ── Pegar tabla copiada de un correo ──────────────────────────────────────────
 function _guiasAbrirPegarTabla(desdeNueva){
+  document.querySelectorAll(".modal").forEach(function(m){ m.remove(); });
   var modal = document.createElement("div");
   modal.className = "modal on";
   modal.innerHTML =
@@ -1927,6 +1930,7 @@ function _guiasTplFilaPegRevision(cat, xs){
 // ── Modal de revisión: tabla editable antes de importar ──────────────────────
 function _guiasAbrirRevisionTabla(pares, desdeNueva){
   var filasHtml = pares.map(function(p){ return _guiasTplFilaPegRevision(p[0], p[1]); }).join("");
+  document.querySelectorAll(".modal").forEach(function(m){ m.remove(); });
   var modal = document.createElement("div");
   modal.className = "modal on";
   modal.id = "gModalRevisionTabla";
