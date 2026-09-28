@@ -39,13 +39,13 @@ function modConfig(){
       <div style="padding:16px;display:grid;gap:14px">
         <p style="margin:0;color:var(--muted);font-size:13px">Sube el export <b>TOTAL</b> de S/4HANA (.xlsx, formato Z03MMMTR_0004). Se recalculan existencias, traslados, tránsito PT y lotes; el directorio y el maestro se conservan.</p>
         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-          <label class="btn" style="cursor:pointer">📁 Elegir TOTAL.xlsx<input type="file" id="upTotal" accept=".xlsx" hidden></label>
+          <label class="btn" tabindex="0" role="button" style="cursor:pointer" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.querySelector('input').click();}">📁 Elegir TOTAL.xlsx<input type="file" id="upTotal" accept=".xlsx" hidden></label>
           <span id="upTotalName" style="font-size:13px;color:var(--muted)">Ningún archivo</span>
         </div>
         <div style="border-top:1px dashed var(--line);padding-top:12px">
           <p style="margin:0 0 8px;color:var(--muted);font-size:12.5px">Opcional — si el TOTAL de arriba no trae detalle de lotes, sube aquí <b>el mismo reporte en el formato anterior (MB52)</b> nada más para completar los lotes. No genera un paquete aparte: se combina con el de arriba en un solo <code>datos.enc</code>.</p>
           <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-            <label class="btn" style="cursor:pointer">📁 Elegir TOTAL de lotes (opcional)<input type="file" id="upLotes" accept=".xlsx" hidden></label>
+            <label class="btn" tabindex="0" role="button" style="cursor:pointer" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.querySelector('input').click();}">📁 Elegir TOTAL de lotes (opcional)<input type="file" id="upLotes" accept=".xlsx" hidden></label>
             <span id="upLotesName" style="font-size:13px;color:var(--muted)">Ningún archivo</span>
           </div>
         </div>
