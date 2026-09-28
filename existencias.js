@@ -148,8 +148,8 @@ function renderDetalleInv(){
         ? `<select id="invArea"><option value="">Todas las áreas</option>${areasEnTodo.map(a=>`<option>${a}</option>`).join("")}</select>`
         : `<select id="invUbi"><option value="">Todas las ubicaciones</option>${ubis.map(u=>`<option>${u}</option>`).join("")}</select>`}
       <label class="chk"><input type="checkbox" id="invCeros" checked> Ocultar sin existencia</label>
-      <label class="chk"><input type="checkbox" id="invTras"> Solo con traslado</label>
-      <label class="chk"><input type="checkbox" id="invTransito"> Solo con tránsito PT</label>
+      <label class="chk" title="Marca los dos para ver los que tengan cualquiera de los dos"><input type="checkbox" id="invTras"> Solo con traslado</label>
+      <label class="chk" title="Marca los dos para ver los que tengan cualquiera de los dos"><input type="checkbox" id="invTransito"> Solo con tránsito PT</label>
       <label class="chk"><input type="checkbox" id="invLotes"> Solo con lotes</label>
       <label class="chk"><input type="checkbox" id="invLotesCeros" checked> Ocultar lotes en 0</label>
       <button class="btn" id="invConteo">🖨 Lista de conteo</button>
@@ -185,8 +185,13 @@ function filasInv(){
     if(ubiSel && m.ubic!==ubiSel) return false;
     if(areaSel && m.area!==areaSel) return false;
     if(ceros && !(m.exist!==null && m.exist>0)) return false;
-    if(soloTras && !(m.tras>0)) return false;
-    if(soloTransito && !(m.transitoPt>0)) return false;
+    // Traslado y Tránsito PT se combinan con OR: si marcas los dos, ves lo que tenga cualquiera de los dos
+    // (no exige que un mismo catálogo tenga ambos a la vez).
+    if(soloTras || soloTransito){
+      const pasaTras = soloTras && m.tras>0;
+      const pasaTransito = soloTransito && m.transitoPt>0;
+      if(!(pasaTras || pasaTransito)) return false;
+    }
     if($("#invLotes")?.checked && !(m.lotes&&m.lotes.length>0)) return false;
     return true;
   });
