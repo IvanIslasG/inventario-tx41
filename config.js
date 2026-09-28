@@ -134,7 +134,8 @@ function modConfig(){
       const bm=_adminTotal.meta;
       $("#upResumen").innerHTML=`<div style="background:var(--ok-bg);color:var(--ok);padding:10px 12px;border-radius:8px">
         ✅ Procesado: <b>${nfmt(bm.n_con_existencia)}</b> con existencia · <b>${parsed.nAlmacenes}</b> almacenes ·
-        <b>${nfmt(parsed.nTraslados)}</b> con traslado · <b>${nfmt(parsed.nLotesD041)}</b> con lotes en D041.</div>`;
+        <b>${nfmt(parsed.nTraslados)}</b> con traslado (mismo centro) · <b>${nfmt(parsed.nTransitoPT)}</b> en tránsito PT (dif. centro) ·
+        <b>${nfmt(parsed.nLotesD041)}</b> con lotes en D041.</div>`;
       actualizarGenResumen();
     }catch(err){ console.error(err);
       $("#upResumen").innerHTML=`<div style="background:#fde8e8;color:#c0392b;padding:10px 12px;border-radius:8px">Error: ${err.message}</div>`; }
@@ -286,7 +287,11 @@ function parseTotalJS(arrayBuffer){
     else if(h==="umb") col.umb=i;
     else if(h==="lote") col.lote=i;
     else if(h.startsWith("librutiliz")||h.includes("libre")) col.libre=i;
-    else if(h.startsWith("transytras")||h.includes("traslad")||h.includes("transy")) col.tras=i;
+    // Traslados = mismo centro. Formato viejo (MB52): "TransyTras"/"traslad"/"transy".
+    // Formato nuevo (Z03MMMTR_0004): "Traspasos".
+    else if(h==="traspasos"||h.includes("traspaso")||h.startsWith("transytras")||h.includes("traslad")||h.includes("transy")) col.tras=i;
+    // Tránsito PT = diferentes centros. Columna nueva de Z03MMMTR_0004, no existía en MB52.
+    else if(h.replace(/[^a-z]/g,"")==="transitopt"||h.includes("transito")) col.transitoPt=i;
   });
   ["centro","almacen","material","libre"].forEach(k=>{ if(!(k in col)) throw new Error("Falta columna: "+k); });
   const D="D041"; const materiales={}; const almacenes={};
@@ -295,18 +300,21 @@ function parseTotalJS(arrayBuffer){
     const ce=_txtJS(r[col.centro]), alm=_txtJS(r[col.almacen]), cat=_txtJS(r[col.material]);
     if(!(ce||alm||cat)) continue; if(!(cat&&alm)) continue;
     const libre=_numJS(r[col.libre]); const tras="tras"in col?_numJS(r[col.tras]):0;
+    const transitoPt="transitoPt"in col?_numJS(r[col.transitoPt]):0;
     const lote="lote"in col?_txtJS(r[col.lote]):""; const desc="desc"in col?_txtJS(r[col.desc]):""; const umb="umb"in col?_txtJS(r[col.umb]):"";
     almacenes[alm]=ce;
-    let m=materiales[cat]; if(!m){ m=materiales[cat]={desc:"",umb:"",almacenes:{},traslados:{},lotes:{}}; }
+    let m=materiales[cat]; if(!m){ m=materiales[cat]={desc:"",umb:"",almacenes:{},traslados:{},transitoPT:{},lotes:{}}; }
     if(desc&&!m.desc) m.desc=desc; if(umb&&!m.umb) m.umb=umb;
     const loteReal=lote&&lote.toUpperCase()!=="NUEVO";
-    if(loteReal){ (m.lotes[alm]||(m.lotes[alm]=[])).push({lote,lib:libre,tras}); }
+    if(loteReal){ (m.lotes[alm]||(m.lotes[alm]=[])).push({lote,lib:libre,tras,transitoPt}); }
     m.almacenes[alm]=(m.almacenes[alm]||0)+libre;
     if(tras) m.traslados[alm]=(m.traslados[alm]||0)+tras;
+    if(transitoPt) m.transitoPT[alm]=(m.transitoPT[alm]||0)+transitoPt;
   }
   return {materiales,almacenes,D,
     nAlmacenes:Object.keys(almacenes).length,
     nTraslados:Object.values(materiales).filter(m=>m.traslados[D]).length,
+    nTransitoPT:Object.values(materiales).filter(m=>m.transitoPT[D]).length,
     nLotesD041:Object.values(materiales).filter(m=>m.lotes[D]).length};
 }
 function construirBundleJS(parsed){
@@ -316,11 +324,12 @@ function construirBundleJS(parsed){
     if(!materiales[cat]) materiales[cat]={um:m.umb,desc:m.desc,area:"",ubic:""};
     else { if(!materiales[cat].desc) materiales[cat].desc=m.desc; if(!materiales[cat].um) materiales[cat].um=m.umb; }
   }
-  const existencias={}, traslados={}, lotes={}, lotesTodos={}, valoracion=[];
+  const existencias={}, traslados={}, transitoPT={}, lotes={}, lotesTodos={}, valoracion=[];
   for(const [cat,m] of Object.entries(parsed.materiales)){
     const ex={}; for(const[a,v]of Object.entries(m.almacenes)) if(v>0) ex[a]=v;
     if(Object.keys(ex).length) existencias[cat]=ex;
-    if(Object.keys(m.traslados).length) traslados[cat]=m.traslados;
+    if(Object.keys(m.traslados).length) traslados[cat]=m.traslados; // mismo centro
+    if(m.transitoPT&&Object.keys(m.transitoPT).length) transitoPT[cat]=m.transitoPT; // diferentes centros (Z03MMMTR_0004)
     if(m.lotes[D]&&m.lotes[D].length) lotes[cat]=m.lotes[D]; // D041 (se conserva igual, ya usado por OR/Guías/Conteo)
     if(Object.keys(m.lotes).length){
       valoracion.push(cat);
@@ -334,7 +343,7 @@ function construirBundleJS(parsed){
       n_materiales:Object.keys(materiales).length, n_almacenes:Object.keys(DB.directorio.almacenes).length,
       n_con_existencia:Object.keys(existencias).length,
       meses_cpm:DB.meta?.meses_cpm||6, meses_stock:DB.meta?.meses_stock||1.5 },
-    directorio:DB.directorio, materiales, existencias, traslados, lotes, lotesTodos, valoracion };
+    directorio:DB.directorio, materiales, existencias, traslados, transitoPT, lotes, lotesTodos, valoracion };
   if(DB.consumos) out.consumos=DB.consumos;
   if(DB.nombresGenericos) out.nombresGenericos=DB.nombresGenericos;
   return out;

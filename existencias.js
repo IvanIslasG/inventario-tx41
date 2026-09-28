@@ -1,32 +1,15 @@
 /* ============ INVENTARIO (D041 por área, con tarjetas) ============ */
 const AREA_ICON={Herramientas:"🔧",Misceláneos:"🔩",Papelería:"📄",Cables:"🔌","Ropa y Calzado":"👔",Baja:"📦"};
 const TODO="__TODO__";
-
-// Catálogos de cable preconectorizado (filtro rápido del área Cables)
-const CABLES_PRECON = new Set([
-"1035387","1035388","1035389","1035390","1035391","1035452","1035453","1035454","1035455",
-"1049689","1049690","1049691",
-"1051918","1051919","1051920","1051921","1051922","1051923","1051924","1051927","1051928",
-"1051929","1051930","1051931","1051932",
-"1052493","1052494","1052495","1052551","1052562","1052563",
-"1052844","1052845","1052846","1052847","1052922","1052923",
-"1053054","1053055","1053056","1053057","1053058","1053059","1053060","1053061",
-"1053092","1053093","1053094","1053095","1053096",
-"1053221","1053222","1053223","1053224","1053225","1053226","1053227","1053228","1053229",
-"1053230","1053231","1053232","1053233","1053234",
-"1053247","1053248","1053249","1053250","1053251","1053252","1053253","1053254","1053255",
-"1053256","1053257","1053258","1053259","1053260","1053261","1053262","1053263","1053264",
-"1053265","1053297"
-]);
-function esPrecon(cat){ return CABLES_PRECON.has(String(cat).trim()); }
-
 let invSel=null, invSort={col:"exist",dir:-1};
 let invAlmacenSel=null; // almacén elegido para consultar (null = aún no se ha elegido en esta sesión)
 
 // existencia del distribuidor para un catálogo (null si no aparece)
 function existDist(cat){ const e=DB.existencias[cat]; return e && DIST() in e ? e[DIST()] : null; }
-// traslado del distribuidor (0 si no hay)
+// traslado del distribuidor (0 si no hay) — mismo centro
 function trasDist(cat){ const t=DB.traslados&&DB.traslados[cat]; return t && DIST() in t ? t[DIST()] : 0; }
+// tránsito PT del distribuidor (0 si no hay) — diferentes centros
+function transitoPTDist(cat){ const t=DB.transitoPT&&DB.transitoPT[cat]; return t && DIST() in t ? t[DIST()] : 0; }
 // lotes reales del distribuidor (lista, vacío si no hay) — usada por OR/Guías/Conteo, no tocar
 function lotesDe(cat){ return (DB.lotes&&DB.lotes[cat])||[]; }
 // lotes reales de CUALQUIER almacén (el TOTAL trae lote por almacén, no solo D041)
@@ -34,7 +17,10 @@ function lotesDeAlm(cat, alm){ return (DB.lotesTodos && DB.lotesTodos[cat] && DB
 
 // existencia/traslado en CUALQUIER almacén de la red (no solo el distribuidor)
 function existEnAlm(cat, alm){ const e=DB.existencias[cat]; return e && alm in e ? e[alm] : null; }
+// Traslados = mismo centro (Z03MMMTR_0004 · "Traspasos"; antes MB52 "TransyTras")
 function trasEnAlm(cat, alm){ const t=DB.traslados&&DB.traslados[cat]; return t && alm in t ? t[alm] : 0; }
+// Tránsito PT = diferentes centros (Z03MMMTR_0004 · "TransitoPT" — no existía en MB52)
+function transitoPTEnAlm(cat, alm){ const t=DB.transitoPT&&DB.transitoPT[cat]; return t && alm in t ? t[alm] : 0; }
 
 // Construye filas desde el MAESTRO para un área (o TODO), sobre el almacén seleccionado.
 // Incluye materiales sin existencia (exist=null). Ubicación solo aplica al distribuidor D041; lotes aplican a cualquier almacén.
@@ -45,7 +31,7 @@ function matsArea(area){
   for(const [cat,m] of Object.entries(DB.materiales)){
     if(area!==TODO && (m.area||"")!==area) continue;
     out.push({cat,desc:m.desc||"",um:m.um||"",area:m.area||"Sin clasificar",ubic: esDist ? (m.ubic||"") : "",
-              exist:existEnAlm(cat,alm),tras:trasEnAlm(cat,alm),lotes: lotesDeAlm(cat,alm)});
+              exist:existEnAlm(cat,alm),tras:trasEnAlm(cat,alm),transitoPt:transitoPTEnAlm(cat,alm),lotes: lotesDeAlm(cat,alm)});
   }
   return out;
 }
@@ -59,7 +45,6 @@ function modInventario(){
 /* ---- Pantalla de selección de almacén ---- */
 function renderSelectorAlmacen(){
   $("#backBtn").onclick=mostrarMenu;
-  clearCtx();
   const conData=almacenesConExistencia();
   const codigos=Object.keys(DB.directorio.almacenes||{})
     .filter(c=>c===DIST()||conData.has(c))
@@ -106,8 +91,6 @@ function renderAreasInv(){
   const alm=invAlmacenSel||DIST();
   const esDist=alm===DIST();
   const almInfo=DB.directorio.almacenes[alm]||{};
-  setCtx({clave:alm, nombre:almInfo.desc||alm, tag:esDist?"Distribuidor":null,
-          onChange:()=>{ invAlmacenSel=null; modInventario(); window.scrollTo(0,0); }});
   // conteos por área: total en maestro y con existencia en el almacén seleccionado
   const tot={}, conx={};
   for(const [cat,m] of Object.entries(DB.materiales)){
@@ -153,16 +136,10 @@ function renderDetalleInv(){
   const esTodo=invSel===TODO, label=esTodo?"Todo el inventario":invSel;
   // back vuelve a las tarjetas (no al menú)
   $("#backBtn").onclick=()=>{ invSel=null; modInventario(); window.scrollTo(0,0); };
-  const almD=invAlmacenSel||DIST();
-  setCtx({clave:almD, nombre:(DB.directorio.almacenes[almD]||{}).desc||almD, tag:label,
-          onChange:()=>{ invAlmacenSel=null; invSel=null; modInventario(); window.scrollTo(0,0); }});
   // ubicaciones del área (para el select)
   const base=matsArea(invSel);
   const ubis=[...new Set(base.map(m=>m.ubic).filter(Boolean))].sort();
   const areasEnTodo=esTodo?[...new Set(base.map(m=>m.area).filter(Boolean))].sort():[];
-  // El filtro de preconectorizados aplica al área Cables (y a "Todo", donde los cables también viven)
-  const nPrecon = base.filter(m=>esPrecon(m.cat)).length;
-  const hayPrecon = (esTodo || invSel==="Cables") && nPrecon>0;
   $("#moduleView").innerHTML=`
     <button class="linkish" id="invVolver" style="margin-bottom:10px">‹ Volver a áreas</button>
     <div class="controls">
@@ -171,9 +148,8 @@ function renderDetalleInv(){
         ? `<select id="invArea"><option value="">Todas las áreas</option>${areasEnTodo.map(a=>`<option>${a}</option>`).join("")}</select>`
         : `<select id="invUbi"><option value="">Todas las ubicaciones</option>${ubis.map(u=>`<option>${u}</option>`).join("")}</select>`}
       <label class="chk"><input type="checkbox" id="invCeros" checked> Ocultar sin existencia</label>
-      ${hayPrecon?`<label class="chk chk-precon"><input type="checkbox" id="invPrecon"> Preconectorizados
-        <span class="pill" style="margin-left:2px">${nfmt(nPrecon)}</span></label>`:""}
       <label class="chk"><input type="checkbox" id="invTras"> Solo con traslado</label>
+      <label class="chk"><input type="checkbox" id="invTransito"> Solo con tránsito PT</label>
       <label class="chk"><input type="checkbox" id="invLotes"> Solo con lotes</label>
       <label class="chk"><input type="checkbox" id="invLotesCeros" checked> Ocultar lotes en 0</label>
       <button class="btn" id="invConteo">🖨 Lista de conteo</button>
@@ -187,8 +163,8 @@ function renderDetalleInv(){
   $("#invSearch").oninput=pintarInv;
   if(esTodo) $("#invArea").onchange=pintarInv; else $("#invUbi").onchange=pintarInv;
   $("#invCeros").onchange=pintarInv;
-  if($("#invPrecon")) $("#invPrecon").onchange=pintarInv;
   $("#invTras").onchange=pintarInv;
+  $("#invTransito").onchange=pintarInv;
   $("#invLotes").onchange=pintarInv;
   $("#invLotesCeros").onchange=pintarInv;
   $("#invExport").onclick=()=> exportarFiltrado();
@@ -201,22 +177,23 @@ function filasInv(){
   const q=($("#invSearch")?.value||"").trim().toLowerCase();
   const ceros=$("#invCeros")?.checked;
   const soloTras=$("#invTras")?.checked;
+  const soloTransito=$("#invTransito")?.checked;
   const ubiSel=$("#invUbi")?.value||"";
   const areaSel=$("#invArea")?.value||"";
-  const soloPrecon=$("#invPrecon")?.checked;
   let rows=matsArea(invSel).filter(m=>{
     if(q && !(m.cat.toLowerCase().includes(q)||m.desc.toLowerCase().includes(q))) return false;
-    if(soloPrecon && !esPrecon(m.cat)) return false;
     if(ubiSel && m.ubic!==ubiSel) return false;
     if(areaSel && m.area!==areaSel) return false;
     if(ceros && !(m.exist!==null && m.exist>0)) return false;
     if(soloTras && !(m.tras>0)) return false;
+    if(soloTransito && !(m.transitoPt>0)) return false;
     if($("#invLotes")?.checked && !(m.lotes&&m.lotes.length>0)) return false;
     return true;
   });
   rows.sort((a,b)=>{const c=invSort.col,k=invSort.dir;
     if(c==="exist") return ((a.exist??-1)-(b.exist??-1))*k;
     if(c==="tras") return ((a.tras||0)-(b.tras||0))*k;
+    if(c==="transitoPt") return ((a.transitoPt||0)-(b.transitoPt||0))*k;
     return String(a[c]||"").localeCompare(String(b[c]||""))*k;});
   return rows;
 }
@@ -227,17 +204,18 @@ function pintarInv(){
   $("#invCount").textContent=`${nfmt(rows.length)} materiales · ${nfmt(conx)} con existencia`;
   const colUbic = esDist ? `<th data-c="ubic">Ubicación</th>` : "";
   const cols=esTodo
-    ? `<th data-c="cat">Catálogo</th><th data-c="desc">Descripción</th><th data-c="area">Área</th>${colUbic}<th data-c="exist" class="r">Existencia</th><th data-c="tras" class="r">Traslado</th>`
-    : `<th data-c="cat">Catálogo</th><th data-c="desc">Descripción</th><th data-c="um">U.M.</th>${colUbic}<th data-c="exist" class="r">Existencia</th><th data-c="tras" class="r">Traslado</th>`;
-  const ncols = esDist?6:5;
+    ? `<th data-c="cat">Catálogo</th><th data-c="desc">Descripción</th><th data-c="area">Área</th>${colUbic}<th data-c="exist" class="r">Existencia</th><th data-c="tras" class="r">Traslado</th><th data-c="transitoPt" class="r">Tránsito PT</th>`
+    : `<th data-c="cat">Catálogo</th><th data-c="desc">Descripción</th><th data-c="um">U.M.</th>${colUbic}<th data-c="exist" class="r">Existencia</th><th data-c="tras" class="r">Traslado</th><th data-c="transitoPt" class="r">Tránsito PT</th>`;
+  const ncols = (esDist?6:5)+1;
   $("#invTable").innerHTML=`<thead><tr>${cols}</tr></thead><tbody>${
     rows.length? rows.map(r=>{
       const ex = r.exist===null ? `<span style="color:var(--zero);font-style:italic">—</span>`
                 : `<span class="stk ${stkClass(r.exist)}">${nfmt(r.exist)}</span>`;
       const tr = r.tras>0 ? `<span class="stk tras">${nfmt(r.tras)}</span>` : `<span style="color:var(--zero)">—</span>`;
+      const tp = r.transitoPt>0 ? `<span class="stk tras">${nfmt(r.transitoPt)}</span>` : `<span style="color:var(--zero)">—</span>`;
       const ocultarLotesCeros = $("#invLotesCeros")?.checked;
       const lotesVisibles = ocultarLotesCeros
-        ? (r.lotes||[]).filter(l=> (l.lib>0) || (l.tras>0))
+        ? (r.lotes||[]).filter(l=> (l.lib>0) || (l.tras>0) || (l.transitoPt>0))
         : (r.lotes||[]);
       const tieneLotes = lotesVisibles.length>0;
       const badge = tieneLotes ? ` <span class="lote-badge" data-lt="${r.cat}">📦 ${lotesVisibles.length} lote${lotesVisibles.length>1?'s':''}</span>` : "";
@@ -245,24 +223,21 @@ function pintarInv(){
       const main = esTodo
         ? `<tr><td class="cat num">${r.cat}</td><td class="desc">${r.desc||"—"}${badge}</td>
              <td><span class="area-tag">${r.area||"—"}</span></td>${tdUbic}
-             <td class="r">${ex} <small style="color:var(--muted)">${r.um}</small></td><td class="r">${tr}</td></tr>`
+             <td class="r">${ex} <small style="color:var(--muted)">${r.um}</small></td><td class="r">${tr}</td><td class="r">${tp}</td></tr>`
         : `<tr><td class="cat num">${r.cat}</td><td class="desc">${r.desc||"—"}${badge}</td>
              <td>${r.um||"—"}</td>${tdUbic}
-             <td class="r">${ex} <small style="color:var(--muted)">${r.um}</small></td><td class="r">${tr}</td></tr>`;
+             <td class="r">${ex} <small style="color:var(--muted)">${r.um}</small></td><td class="r">${tr}</td><td class="r">${tp}</td></tr>`;
       const filaLotes = tieneLotes
-        ? `<tr class="lotes-row" id="lt-${r.cat}" hidden><td colspan="${ncols}" class="lotes-cell">
-             <div class="lotes-wrap">
-               <div class="lotes-head"><span>Lote</span><span class="r">Libre</span><span class="r">Traslado</span></div>
-               ${lotesVisibles.map(l=>`<div class="lotes-item">
-                 <span class="lt-num">${l.lote}</span>
-                 <span class="r num">${nfmt(l.lib)}</span>
-                 <span class="r num lt-tras">${nfmt(l.tras||0)}</span></div>`).join("")}
-             </div></td></tr>`
+        ? `<tr class="lotes-row" id="lt-${r.cat}" hidden><td colspan="${ncols}" style="padding:0;background:#fffaf2">
+             <table class="lotes-sub"><thead><tr><th>Lote</th><th class="r">Libre</th><th class="r">Traslado</th><th class="r">Tránsito PT</th></tr></thead>
+             <tbody>${lotesVisibles.map(l=>`<tr><td class="num">${l.lote}</td><td class="r num">${nfmt(l.lib)}</td>
+               <td class="r num" style="color:var(--low)">${nfmt(l.tras||0)}</td>
+               <td class="r num" style="color:var(--low)">${nfmt(l.transitoPt||0)}</td></tr>`).join("")}</tbody></table></td></tr>`
         : "";
       return main+filaLotes;
     }).join("") : `<tr><td colspan="${ncols}" class="empty">Sin coincidencias.</td></tr>`}</tbody>`;
   $("#invTable").querySelectorAll("th[data-c]").forEach(th=> th.onclick=()=>{
-    const c=th.dataset.c; invSort={col:c,dir:invSort.col===c?-invSort.dir:(c==="exist"||c==="tras"?-1:1)}; pintarInv(); });
+    const c=th.dataset.c; invSort={col:c,dir:invSort.col===c?-invSort.dir:(c==="exist"||c==="tras"||c==="transitoPt"?-1:1)}; pintarInv(); });
   $("#invTable").querySelectorAll(".lote-badge").forEach(b=> b.onclick=()=>{
     const row=document.getElementById("lt-"+b.dataset.lt); if(row) row.hidden=!row.hidden; });
 }
@@ -270,11 +245,11 @@ function pintarInv(){
 /* ---- Exportaciones de Inventario ---- */
 function fechaTag(){ return new Date().toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric'}).replace(/\//g,'-'); }
 function expFilas(mats){
-  const aoa=[["Área","Catálogo","Descripción","U.M.","Ubicación","Existencia "+(invAlmacenSel||DIST()),"Traslado","Lote"]];
+  const aoa=[["Área","Catálogo","Descripción","U.M.","Ubicación","Existencia D041","Traslado","Tránsito PT","Lote"]];
   mats.forEach(m=>{
-    aoa.push([m.area,m.cat,m.desc,m.um,m.ubic, m.exist===null?"":m.exist, m.tras||0, ""]);
+    aoa.push([m.area,m.cat,m.desc,m.um,m.ubic, m.exist===null?"":m.exist, m.tras||0, m.transitoPt||0, ""]);
     if(m.lotes && m.lotes.length){
-      m.lotes.forEach(l=> aoa.push(["","  ↳ lote","","","", l.lib, l.tras||0, l.lote]));
+      m.lotes.forEach(l=> aoa.push(["","  ↳ lote","","","", l.lib, l.tras||0, l.transitoPt||0, l.lote]));
     }
   });
   return aoa;
@@ -290,9 +265,8 @@ function exportarArea(area,soloExist){
 // export del detalle respetando filtros actuales
 function exportarFiltrado(){
   const mats=filasInv(); if(!mats.length){ alert("No hay materiales con los filtros actuales."); return; }
-  const pre=$("#invPrecon")?.checked ? "_Precon" : "";
-  const nom=(invSel===TODO?"Todo":invSel.replace(/ /g,"_"))+pre;
-  descargarXLSX(expFilas(mats), ((invSel===TODO?"Todo":invSel)+(pre?" Precon":"")).substring(0,28), `Inventario_${nom}_${fechaTag()}`);
+  const nom=invSel===TODO?"Todo":invSel.replace(/ /g,"_");
+  descargarXLSX(expFilas(mats), (invSel===TODO?"Todo":invSel).substring(0,28), `Inventario_${nom}_${fechaTag()}`);
 }
 
 /* ---- Modal de exportación multi-área ---- */
@@ -364,31 +338,29 @@ function imprimirConteo(){
 function _generarImpresion(grupos, ubis){
   const ocultarLotesCeros = $("#invLotesCeros")?.checked;
   const hoy=new Date().toLocaleDateString('es-MX',{day:'2-digit',month:'long',year:'numeric'});
-  const label=(invSel===TODO?"TODO EL INVENTARIO":invSel.toUpperCase())
-              + ($("#invPrecon")?.checked ? " · PRECONECTORIZADOS" : "");
-  const almP=invAlmacenSel||DIST();
-  const almPDesc=((DB.directorio.almacenes[almP]||{}).desc||almP).toUpperCase();
+  const label=invSel===TODO?"TODO EL INVENTARIO":invSel.toUpperCase();
   const pa=$("#printArea"); pa.innerHTML="";
   ubis.forEach(u=>{
     const lista=(grupos[u]||[]).slice().sort((a,b)=>+a.cat - +b.cat); if(!lista.length) return;
     const div=document.createElement("div"); div.className="pg";
     div.innerHTML=`
       <div class="ph">
-        <div class="ph-top">TELMEX — ALMACÉN ${almP} · ${almPDesc} · ÁREA: ${label}</div>
+        <div class="ph-top">TELMEX — ALMACÉN DISTRIBUIDOR D041 PUEBLA · ÁREA: ${label}</div>
         <div class="ph-sub">Inventario físico · Lista de conteo</div>
         <div class="ph-ubi">Ubicación: ${u}</div>
         <div class="ph-meta">Fecha: <u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u>&nbsp;&nbsp;&nbsp;Responsable: <u>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</u></div>
       </div>
       <table class="pt"><thead><tr>
-        <th style="width:78px">Catálogo</th><th>Descripción</th>
-        <th style="width:34px;text-align:center">U.M.</th>
-        <th style="width:58px;text-align:center">Existencia</th>
-        <th style="width:50px;text-align:center">Traslado</th>
-        <th style="width:56px;text-align:center">Físico</th>
+        <th style="width:70px">Catálogo</th><th>Descripción</th>
+        <th style="width:30px;text-align:center">U.M.</th>
+        <th style="width:52px;text-align:center">Existencia</th>
+        <th style="width:46px;text-align:center">Traslado</th>
+        <th style="width:52px;text-align:center">Tránsito PT</th>
+        <th style="width:50px;text-align:center">Físico</th>
       </tr></thead><tbody>
         ${lista.map(m=>{
           const lotesVisibles = ocultarLotesCeros
-            ? (m.lotes||[]).filter(l=> (l.lib>0) || (l.tras>0))
+            ? (m.lotes||[]).filter(l=> (l.lib>0) || (l.tras>0) || (l.transitoPt>0))
             : (m.lotes||[]);
           const base=`<tr>
             <td style="font-family:monospace">${m.cat}</td>
@@ -396,17 +368,19 @@ function _generarImpresion(grupos, ubis){
             <td style="text-align:center">${m.um||"—"}</td>
             <td style="text-align:center">${m.exist===null?"—":nfmt(m.exist)}</td>
             <td style="text-align:center">${m.tras>0?nfmt(m.tras):"—"}</td>
+            <td style="text-align:center">${m.transitoPt>0?nfmt(m.transitoPt):"—"}</td>
             <td class="col-fis">&nbsp;</td></tr>`;
           const subs=lotesVisibles.length? lotesVisibles.map(l=>`<tr style="background:#fffaf2">
             <td style="font-family:monospace;font-size:7.5pt;padding-left:16px;color:#9a5a00">↳ ${l.lote}</td>
             <td style="font-size:7.5pt;color:#777;font-style:italic">Lote</td><td></td>
             <td style="text-align:center;font-size:7.5pt">${nfmt(l.lib)}</td>
             <td style="text-align:center;font-size:7.5pt">${nfmt(l.tras||0)}</td>
+            <td style="text-align:center;font-size:7.5pt">${nfmt(l.transitoPt||0)}</td>
             <td class="col-fis">&nbsp;</td></tr>`).join(""):"";
           return base+subs;
         }).join("")}
       </tbody></table>
-      <div class="pf"><span>${almP} · ${invSel===TODO?"Todo":invSel} · ${u} · ${lista.length} materiales</span><span>Generado: ${hoy}</span></div>`;
+      <div class="pf"><span>D041 · ${invSel===TODO?"Todo":invSel} · ${u} · ${lista.length} materiales</span><span>Generado: ${hoy}</span></div>`;
     pa.appendChild(div);
   });
   setTimeout(()=>{ window.print(); setTimeout(()=>{ pa.innerHTML=""; },800); },250);
