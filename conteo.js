@@ -241,7 +241,7 @@ function renderConteo(){
           <span class="cap-cat" style="color:#9a3412">${m.catalogo}</span>
           <span style="font-size:10px;background:#fed7aa;color:#9a3412;padding:2px 6px;border-radius:8px">📦 ${m.lotes.length} lotes</span>
           <div style="flex:1;font-size:12px;color:var(--texto)">${m.descripcion}</div>
-          ${m.transitoPt>0?`<span style="font-size:10px;background:#e0e7ff;color:#3730a3;padding:2px 6px;border-radius:8px" title="No está físicamente en D041 — informativo, no cuenta en el Total SAP">🚚 Tránsito PT: ${m.transitoPt.toLocaleString()}</span>`:""}
+          <span style="font-size:10px;background:#e0e7ff;color:#3730a3;padding:2px 6px;border-radius:8px" title="No está físicamente en D041 — informativo, no cuenta en el Total SAP">🚚 Tránsito PT: ${(m.transitoPt||0).toLocaleString()}</span>
           <div style="font-size:10px;color:var(--muted)">${m.ubicacion||"Sin ubicación"} · ${m.um||"—"}</div>
         </div>`;
 
@@ -266,7 +266,7 @@ function renderConteo(){
           <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#9a3412;font-weight:600;min-width:80px">${lote.lote}</div>
           <div class="cap-siatel"><div class="cap-siatel-n">${(lote.lib||0).toLocaleString()}</div><div class="cap-siatel-l">Libre</div></div>
           <div class="cap-siatel"><div class="cap-siatel-n" style="color:var(--naranja,#ea580c)">${(lote.tras||0).toLocaleString()}</div><div class="cap-siatel-l">Traslado</div></div>
-          ${lote.transitoPt>0?`<div class="cap-siatel" title="No está físicamente en D041 — informativo"><div class="cap-siatel-n" style="color:#3730a3">${lote.transitoPt.toLocaleString()}</div><div class="cap-siatel-l">Tránsito PT</div></div>`:""}
+          <div class="cap-siatel" title="No está físicamente en D041 — informativo"><div class="cap-siatel-n" style="color:#3730a3">${(lote.transitoPt||0).toLocaleString()}</div><div class="cap-siatel-l">Tránsito PT</div></div>
           <div style="flex:1"></div>
           <div class="cap-input-wrap">
             <input class="cap-input" type="number" inputmode="numeric" min="0" placeholder="—"
@@ -307,7 +307,7 @@ function renderConteo(){
         </div>
         <div class="cap-siatel"><div class="cap-siatel-n">${lib.toLocaleString()}</div><div class="cap-siatel-l">Libre</div></div>
         <div class="cap-siatel"><div class="cap-siatel-n" style="color:var(--naranja,#ea580c)">${tra.toLocaleString()}</div><div class="cap-siatel-l">Traslado</div></div>
-        ${m.transitoPt>0?`<div class="cap-siatel" title="No está físicamente en D041 — informativo, no cuenta en el Total SAP"><div class="cap-siatel-n" style="color:#3730a3">${m.transitoPt.toLocaleString()}</div><div class="cap-siatel-l">Tránsito PT</div></div>`:""}
+        <div class="cap-siatel" title="No está físicamente en D041 — informativo, no cuenta en el Total SAP"><div class="cap-siatel-n" style="color:#3730a3">${(m.transitoPt||0).toLocaleString()}</div><div class="cap-siatel-l">Tránsito PT</div></div>
         <div class="cap-input-wrap">
           <input class="cap-input" type="number" inputmode="numeric" min="0" placeholder="—"
             value="${cap?fis:""}"
