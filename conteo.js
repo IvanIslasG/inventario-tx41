@@ -495,14 +495,14 @@ function _conteoFabInit(){
   window.addEventListener('scroll', ()=>{
     g.classList.add('visible');
     clearTimeout(scrollTimer);
-    scrollTimer = setTimeout(()=>{ g.classList.remove('visible'); }, 2500);
+    scrollTimer = setTimeout(()=>{ g.classList.remove('visible'); }, 6000);
   }, {passive:true});
 
   // Mostrar siempre en móvil si se toca la pantalla
   document.addEventListener('touchstart', ()=>{
     g.classList.add('visible');
     clearTimeout(scrollTimer);
-    scrollTimer = setTimeout(()=>{ g.classList.remove('visible'); }, 3000);
+    scrollTimer = setTimeout(()=>{ g.classList.remove('visible'); }, 6000);
   }, {passive:true, once:false});
 }
 
