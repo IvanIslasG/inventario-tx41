@@ -37,10 +37,19 @@ function modConfig(){
 
     <div class="panel"><div class="panel-head"><h2>🔄 Actualizar existencias</h2><span class="pill">Admin</span></div>
       <div style="padding:16px;display:grid;gap:14px">
-        <p style="margin:0;color:var(--muted);font-size:13px">Sube el export <b>TOTAL</b> de S/4HANA (.xlsx). Se recalculan existencias, traslados y lotes; el directorio y el maestro se conservan.</p>
+        <p style="margin:0;color:var(--muted);font-size:13px">Sube el export <b>TOTAL</b> de S/4HANA (.xlsx, formato Z03MMMTR_0004). Se recalculan existencias, traslados, tránsito PT y lotes; el directorio y el maestro se conservan.</p>
         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
           <label class="btn" style="cursor:pointer">📁 Elegir TOTAL.xlsx<input type="file" id="upTotal" accept=".xlsx" hidden></label>
           <span id="upTotalName" style="font-size:13px;color:var(--muted)">Ningún archivo</span>
+        </div>
+        <div style="border-top:1px dashed var(--line);padding-top:12px">
+          <p style="margin:0 0 8px;color:var(--muted);font-size:12.5px">Opcional — si el TOTAL de arriba no trae detalle de lotes, sube aquí <b>el mismo reporte en el formato anterior (MB52)</b> nada más para completar los lotes. No genera un paquete aparte: se combina con el de arriba en un solo <code>datos.enc</code>.</p>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+            <label class="btn" style="cursor:pointer">📁 Elegir TOTAL de lotes (opcional)<input type="file" id="upLotes" accept=".xlsx" hidden></label>
+            <span id="upLotesName" style="font-size:13px;color:var(--muted)">Ningún archivo</span>
+          </div>
+        </div>
+        <div>
           <button class="btn-prim" id="upProcesar" disabled>Procesar</button>
         </div>
         <div id="upResumen" style="font-size:13px"></div>
@@ -120,22 +129,32 @@ function modConfig(){
   $("#cfgMatBuscar").addEventListener("keydown", e=>{ if(e.key==="Enter") cfgMatBuscar(); });
 
   // Actualizar existencias
-  let totalFile=null;
+  let totalFile=null, lotesFile=null;
   $("#upTotal").onchange=e=>{ totalFile=e.target.files[0]||null;
     $("#upTotalName").textContent=totalFile?totalFile.name:"Ningún archivo";
     $("#upProcesar").disabled=!totalFile; };
+  $("#upLotes").onchange=e=>{ lotesFile=e.target.files[0]||null;
+    $("#upLotesName").textContent=lotesFile?lotesFile.name:"Ningún archivo"; };
   $("#upProcesar").onclick=async()=>{
     if(!totalFile) return;
-    $("#upResumen").innerHTML=`<span style="color:var(--muted)">Procesando ${totalFile.name}…</span>`;
+    $("#upResumen").innerHTML=`<span style="color:var(--muted)">Procesando ${totalFile.name}${lotesFile?" + "+lotesFile.name:""}…</span>`;
     try{
       const buf=await totalFile.arrayBuffer();
       const parsed=parseTotalJS(buf);
-      _adminTotal=construirBundleJS(parsed);
+      const bundle=construirBundleJS(parsed);
+      let resumenLotes="";
+      if(lotesFile){
+        const bufL=await lotesFile.arrayBuffer();
+        const parsedLotes=parseTotalJS(bufL);
+        const nMezclados=mezclarLotesEnBundle(bundle, parsedLotes);
+        resumenLotes = ` · <b>${nfmt(nMezclados)}</b> catálogos con lote traídos de ${lotesFile.name}`;
+      }
+      _adminTotal=bundle;
       const bm=_adminTotal.meta;
       $("#upResumen").innerHTML=`<div style="background:var(--ok-bg);color:var(--ok);padding:10px 12px;border-radius:8px">
         ✅ Procesado: <b>${nfmt(bm.n_con_existencia)}</b> con existencia · <b>${parsed.nAlmacenes}</b> almacenes ·
         <b>${nfmt(parsed.nTraslados)}</b> con traslado (mismo centro) · <b>${nfmt(parsed.nTransitoPT)}</b> en tránsito PT (dif. centro) ·
-        <b>${nfmt(parsed.nLotesD041)}</b> con lotes en D041.</div>`;
+        <b>${nfmt(parsed.nLotesD041)}</b> con lotes en D041 (del TOTAL principal)${resumenLotes}.</div>`;
       actualizarGenResumen();
     }catch(err){ console.error(err);
       $("#upResumen").innerHTML=`<div style="background:#fde8e8;color:#c0392b;padding:10px 12px;border-radius:8px">Error: ${err.message}</div>`; }
@@ -347,6 +366,30 @@ function construirBundleJS(parsed){
   if(DB.consumos) out.consumos=DB.consumos;
   if(DB.nombresGenericos) out.nombresGenericos=DB.nombresGenericos;
   return out;
+}
+// Combina el detalle de lotes de un TOTAL "de lotes" (típicamente formato anterior/MB52, que sí trae
+// número de lote por fila) dentro de un bundle ya construido a partir del TOTAL principal (Z03MMMTR_0004).
+// No toca existencias/traslados/transitoPT del bundle — el TOTAL principal siempre manda en eso.
+// El archivo de lotes manda en lotes/lotesTodos para los almacenes que sí trae con detalle.
+function mezclarLotesEnBundle(bundle, parsedLotes){
+  const D=parsedLotes.D;
+  let nMezclados=0;
+  for(const [cat,m] of Object.entries(parsedLotes.materiales)){
+    if(!Object.keys(m.lotes).length) continue;
+    if(!bundle.lotesTodos[cat]) bundle.lotesTodos[cat]={};
+    let tieneAlguno=false;
+    for(const [almK,ls] of Object.entries(m.lotes)){
+      if(!ls.length) continue;
+      bundle.lotesTodos[cat][almK]=ls;
+      tieneAlguno=true;
+    }
+    if(!tieneAlguno) continue;
+    if(m.lotes[D] && m.lotes[D].length) bundle.lotes[cat]=m.lotes[D];
+    if(!bundle.valoracion.includes(cat)) bundle.valoracion.push(cat);
+    nMezclados++;
+  }
+  bundle.valoracion.sort();
+  return nMezclados;
 }
 /* ---- Cifrado en navegador (replica publicar.py) ---- */
 function _b64enc(buf){
