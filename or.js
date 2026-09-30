@@ -523,6 +523,12 @@ function _tplPanelOR(orAlm, mCPM, mStk, areaSel){
     "cursor:pointer;font-size:11px;color:var(--muted);font-family:inherit;padding:0\">&times; Ninguno</button>" +
     "</div></div>" +
     "<div style=\"padding:6px 8px;border-bottom:1px solid var(--line)\">" +
+    "<button onclick=\"_orNGSoloSinSustituto()\" title=\"Marcar solo el grupo SIN SUSTITUTO\" style=\"width:100%;" +
+    "border:1.5px solid var(--primary);background:#eef4ff;color:var(--primary);cursor:pointer;" +
+    "font-size:11.5px;font-weight:700;font-family:inherit;padding:6px 8px;border-radius:7px\">" +
+    "&#9878; Solo sin sustituto</button>" +
+    "</div>" +
+    "<div style=\"padding:6px 8px;border-bottom:1px solid var(--line)\">" +
     "<input type=\"search\" id=\"orNGSearch\" placeholder=\"Buscar grupo...\" oninput=\"_orNGFiltrar(this.value)\"" +
     " style=\"width:100%;padding:5px 8px;border:1px solid var(--line);border-radius:7px;" +
     "font-size:11px;font-family:inherit;outline:none\">" +
@@ -533,6 +539,17 @@ function _tplPanelOR(orAlm, mCPM, mStk, areaSel){
     "<button onclick=\"_orNGToggleMobile()\" style=\"width:100%;padding:8px 14px;background:white;" +
     "border:1.5px solid var(--line);border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;" +
     "font-family:inherit;color:var(--primary);text-align:left\">&#9660; Filtrar por grupo (NG)</button>" +
+    "<div id=\"orNGMobileControles\" style=\"display:none;background:white;border-left:1px solid var(--line);" +
+    "border-right:1px solid var(--line);display:flex;gap:10px;align-items:center;padding:6px 10px\">" +
+    "<button onclick=\"_orNGTodos(true)\" style=\"border:none;background:none;cursor:pointer;font-size:11px;" +
+    "color:var(--primary);font-family:inherit;padding:0\">&check; Todos</button>" +
+    "<span style=\"color:var(--line)\">|</span>" +
+    "<button onclick=\"_orNGTodos(false)\" style=\"border:none;background:none;cursor:pointer;font-size:11px;" +
+    "color:var(--muted);font-family:inherit;padding:0\">&times; Ninguno</button>" +
+    "<span style=\"color:var(--line)\">|</span>" +
+    "<button onclick=\"_orNGSoloSinSustituto()\" style=\"border:none;background:none;cursor:pointer;font-size:11px;" +
+    "font-weight:700;color:var(--primary);font-family:inherit;padding:0\">&#9878; Solo sin sustituto</button>" +
+    "</div>" +
     "<div id=\"orNGMobilePanel\" style=\"display:none;background:white;border:1px solid var(--line);" +
     "border-radius:0 0 10px 10px;padding:8px 4px;max-height:200px;overflow-y:auto\"></div>" +
     "</div>" +
@@ -635,6 +652,21 @@ function _orNGRender(){
     if(sumaCalcPorNG[ngKey] > 0) necesitaMaterial.add(ngKey);
   }
 
+  // De los que necesitan surtido, ¿cuáles no tienen NADA de existencia en D041 en ninguno de sus
+  // sustitutos? Esos, aunque se marquen y se necesiten, no se van a poder atender ahorita.
+  var sumaExDPorNG = {};
+  for(var k2=0; k2<todasFilas.length; k2++){
+    var fr2 = todasFilas[k2];
+    if(fArea && fr2.area !== fArea) continue;
+    var ngKey2 = fr2.ng || "SIN SUSTITUTO";
+    if(ngKey2 === "SIN SUSTITUTO") continue; // no es un grupo real de sustitutos, no aplica
+    sumaExDPorNG[ngKey2] = (sumaExDPorNG[ngKey2] || 0) + fr2.exD;
+  }
+  var sinExistenciaGrupo = new Set();
+  necesitaMaterial.forEach(function(ng){
+    if(ng !== "SIN SUSTITUTO" && (sumaExDPorNG[ng] || 0) <= 0) sinExistenciaGrupo.add(ng);
+  });
+
   // Los que necesitan surtido van primero, para no tener que buscarlos entre los demás
   lista.sort(function(a,b){
     var na=necesitaMaterial.has(a), nb=necesitaMaterial.has(b);
@@ -649,6 +681,7 @@ function _orNGRender(){
     for(var j=0; j<lista.length; j++){
       var ng = lista[j];
       var necesita = necesitaMaterial.has(ng);
+      var sinExistencia = sinExistenciaGrupo.has(ng);
 
       var label = document.createElement("label");
       label.style.display = "flex";
@@ -659,8 +692,8 @@ function _orNGRender(){
       label.style.borderRadius = "7px";
       label.style.fontSize = "12px";
       if(necesita){
-        label.style.background = "#fff1e6";
-        label.style.borderLeft = "3px solid #e8590c";
+        label.style.background = sinExistencia ? "#fde8e8" : "#fff1e6";
+        label.style.borderLeft = "3px solid " + (sinExistencia ? "#dc2626" : "#e8590c");
       }
 
       var input = document.createElement("input");
@@ -674,11 +707,18 @@ function _orNGRender(){
 
       var span = document.createElement("span");
       span.textContent = ng;
-      if(necesita){ span.style.fontWeight = "700"; span.style.color = "#a8390f"; }
+      if(necesita){ span.style.fontWeight = "700"; span.style.color = sinExistencia ? "#a11" : "#a8390f"; }
 
       label.appendChild(input);
       label.appendChild(span);
-      if(necesita){
+      if(sinExistencia){
+        var dot2 = document.createElement("span");
+        dot2.textContent = "🚫";
+        dot2.title = "Se necesita, pero D041 no tiene existencia en ningún sustituto de este grupo";
+        dot2.style.fontSize = "10px";
+        dot2.style.marginLeft = "auto";
+        label.appendChild(dot2);
+      } else if(necesita){
         var dot = document.createElement("span");
         dot.textContent = "●";
         dot.title = "Tiene material por surtir";
@@ -721,6 +761,14 @@ function _orNGTodos(marcar){
   pintarOR();
 }
 
+// Atajo: deja marcado solo el grupo "SIN SUSTITUTO" (catálogos que no tienen sustitutos entre sí).
+// Reemplaza la selección actual — no hace falta desmarcar todo primero y luego buscarlo.
+function _orNGSoloSinSustituto(){
+  _orNGSeleccionados = new Set(["SIN SUSTITUTO"]);
+  _orNGRender();
+  pintarOR();
+}
+
 function _orNGFiltrar(q){
   var qn = (q || "").toLowerCase();
   var labels = document.querySelectorAll("#orNGList label, #orNGMobilePanel label");
@@ -735,10 +783,12 @@ function _orNGFiltrar(q){
 
 function _orNGToggleMobile(){
   var panel = document.getElementById("orNGMobilePanel");
+  var controles = document.getElementById("orNGMobileControles");
   var btn = document.querySelector("#orNGToggleWrap button");
   if(!panel) return;
   var open = panel.style.display === "none";
   panel.style.display = open ? "block" : "none";
+  if(controles) controles.style.display = open ? "flex" : "none";
   if(btn) btn.textContent = (open ? "▲" : "▼") + " Filtrar por grupo (NG)";
 }
 
