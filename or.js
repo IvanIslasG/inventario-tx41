@@ -895,10 +895,10 @@ function pintarOR(){
   const thExD=`style="background:#1a3a6a;color:#fff;font-weight:800"`;
   $("#orTable").innerHTML=`
   <colgroup>
-    <col style="width:90px"><col style="width:220px"><col style="width:110px">
-    <col style="width:140px"><col style="width:50px"><col style="width:80px">
-    <col style="width:70px"><col style="width:60px"><col style="width:90px">
-    <col style="width:90px"><col style="width:85px"><col style="width:82px">
+    <col style="width:85px"><col style="width:190px"><col style="width:95px">
+    <col style="width:115px"><col style="width:46px"><col style="width:65px">
+    <col style="width:58px"><col style="width:52px"><col style="width:86px">
+    <col style="width:86px"><col style="width:85px"><col style="width:86px">
     <col style="width:55px"><col>
   </colgroup>
   <thead><tr>
@@ -909,13 +909,15 @@ function pintarOR(){
     <th class="r" data-c="exAux" ${thEx}>Exist. ${orAlm}</th>
     <th class="r" data-c="exD" ${thExD}>Exist. D041</th>
     <th class="r" data-c="calcSurtir">Cálc. surtir</th>
-    <th class="r" data-c="xsurtir">X Surtir</th>
+    <th class="r" data-c="xsurtir" style="position:sticky;right:0;z-index:4;background:#fff8e6;
+      box-shadow:-3px 0 5px rgba(0,0,0,.12)">X Surtir</th>
     <th>Exced.</th><th>Observaciones</th>
   </tr></thead><tbody>${
   rows.length? rows.map(r=>{
     const nec=r.calcSurtir>0.5;
     const esSinSust=r.ng==="SIN SUSTITUTO";
-    const rowBg=nec?`style="background:#fdf1f1"`:(r.excedente?`style="background:var(--low-bg)"`:"");
+    const rowBgColor=nec?"#fdf1f1":(r.excedente?"var(--low-bg)":"#fff");
+    const rowBg=nec?`style="background:${rowBgColor}"`:(r.excedente?`style="background:${rowBgColor}"`:"");
     // resaltar ng cuando es sustituto (no SIN SUSTITUTO)
     const ngStyle=esSinSust?"color:var(--muted);font-size:12px":"color:#7a5c00;font-size:12px;font-weight:700";
     const est=ESTADOS_OR[r.estado]||ESTADOS_OR.pendiente;
@@ -931,9 +933,10 @@ function pintarOR(){
       <td class="r num" style="background:#eef5ff;font-weight:700">${nfmt(r.exAux)}</td>
       <td class="r num" style="background:#1a3a6a;color:#fff;font-weight:700">${nfmt(r.exD)}</td>
       <td class="r num" style="font-weight:700;color:${nec?"#c0392b":"var(--muted)"}">${fmt1(r.calcSurtir)}</td>
-      <td class="r">
+      <td class="r" style="position:sticky;right:0;z-index:3;background:${rowBgColor};
+        box-shadow:-3px 0 5px rgba(0,0,0,.12)">
         <input type="number" class="or-xs" data-cat="${r.cat}" value="${r.xsurtir}" min="0"
-          style="width:70px;text-align:right;padding:4px 6px;border:1px solid var(--line);border-radius:6px">
+          style="width:66px;box-sizing:border-box;text-align:right;padding:4px 6px;border:1px solid var(--line);border-radius:6px">
       </td>
       <td style="text-align:center">${r.excedente?"":""}</td>
       <td><input type="text" class="or-obs" data-cat="${r.cat}" value="${r.obs.replace(/"/g,"&quot;")}" placeholder="…"
