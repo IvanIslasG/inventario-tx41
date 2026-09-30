@@ -508,7 +508,7 @@ function _tplPanelOR(orAlm, mCPM, mStk, areaSel){
     "</div>" +
     "<div style=\"display:flex;gap:0;align-items:flex-start;margin-top:8px\">" +
     "<div id=\"orNGSidebar\" style=\"width:200px;flex-shrink:0;position:sticky;top:8px;" +
-    "max-height:calc(100vh - 120px);overflow-y:auto;background:white;border:1px solid var(--line);" +
+    "max-height:calc(100vh - 120px);overflow-y:auto;overflow-x:hidden;background:white;border:1px solid var(--line);" +
     "border-radius:12px;margin-right:12px;display:flex;flex-direction:column\">" +
     "<div style=\"padding:10px 12px;border-bottom:1px solid var(--line);display:flex;" +
     "align-items:center;justify-content:space-between;position:sticky;top:0;background:white;" +
@@ -530,7 +530,8 @@ function _tplPanelOR(orAlm, mCPM, mStk, areaSel){
     "</div>" +
     "<div style=\"padding:6px 8px;border-bottom:1px solid var(--line)\">" +
     "<input type=\"search\" id=\"orNGSearch\" placeholder=\"Buscar grupo...\" oninput=\"_orNGFiltrar(this.value)\"" +
-    " style=\"width:100%;padding:5px 8px;border:1px solid var(--line);border-radius:7px;" +
+    " style=\"-webkit-appearance:none;appearance:none;box-sizing:border-box;width:100%;max-width:100%;" +
+    "padding:5px 8px;border:1px solid var(--line);border-radius:7px;" +
     "font-size:11px;font-family:inherit;outline:none\">" +
     "</div>" +
     "<div id=\"orNGList\" style=\"padding:6px 4px;flex:1;overflow-y:auto\"></div>" +
