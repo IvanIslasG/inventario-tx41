@@ -899,7 +899,7 @@ function pintarOR(){
     <col style="width:140px"><col style="width:50px"><col style="width:80px">
     <col style="width:70px"><col style="width:60px"><col style="width:90px">
     <col style="width:90px"><col style="width:85px"><col style="width:82px">
-    <col style="width:55px"><col style="width:120px"><col>
+    <col style="width:55px"><col>
   </colgroup>
   <thead><tr>
     <th data-c="cat">Catálogo</th><th data-c="desc">Descripción</th>
@@ -910,7 +910,7 @@ function pintarOR(){
     <th class="r" data-c="exD" ${thExD}>Exist. D041</th>
     <th class="r" data-c="calcSurtir">Cálc. surtir</th>
     <th class="r" data-c="xsurtir">X Surtir</th>
-    <th>Exced.</th><th data-c="estado">Estado</th><th>Observaciones</th>
+    <th>Exced.</th><th>Observaciones</th>
   </tr></thead><tbody>${
   rows.length? rows.map(r=>{
     const nec=r.calcSurtir>0.5;
@@ -919,7 +919,6 @@ function pintarOR(){
     // resaltar ng cuando es sustituto (no SIN SUSTITUTO)
     const ngStyle=esSinSust?"color:var(--muted);font-size:12px":"color:#7a5c00;font-size:12px;font-weight:700";
     const est=ESTADOS_OR[r.estado]||ESTADOS_OR.pendiente;
-    const estadoOpts=Object.keys(ESTADOS_OR).map(k=>`<option value="${k}" ${k===r.estado?"selected":""}>${ESTADOS_OR[k].label}</option>`).join("");
     return `<tr ${rowBg} style="border-left:4px solid ${est.color}">
       <td class="cat num">${r.cat}${r.agregadoSolicitud>0?`<span title="Se agregaron ${fmt1(r.agregadoSolicitud)} por una solicitud de correo" style="margin-left:5px;cursor:help">📩</span>`:""}${r.faltanteSolicitud>0?`<span title="Se solicitó por correo y faltó existencia en D041 para cubrir ${fmt1(r.faltanteSolicitud)}" style="margin-left:5px;cursor:help">🚫</span>`:""}</td>
       <td class="desc">${r.desc||"—"}</td>
@@ -937,16 +936,10 @@ function pintarOR(){
           style="width:70px;text-align:right;padding:4px 6px;border:1px solid var(--line);border-radius:6px">
       </td>
       <td style="text-align:center">${r.excedente?"":""}</td>
-      <td>
-        <select class="or-estado" data-cat="${r.cat}" style="padding:4px 6px;border:1.5px solid ${est.color};
-          border-radius:6px;background:${est.bg};color:${est.color};font-weight:700;font-size:11.5px;font-family:inherit">
-          ${estadoOpts}
-        </select>
-      </td>
       <td><input type="text" class="or-obs" data-cat="${r.cat}" value="${r.obs.replace(/"/g,"&quot;")}" placeholder="…"
           style="min-width:100px;padding:4px 6px;border:1px solid var(--line);border-radius:6px"></td>
     </tr>`;
-  }).join("") : `<tr><td colspan="15" class="empty">Sin catálogos con estos filtros.</td></tr>`}</tbody>`;
+  }).join("") : `<tr><td colspan="14" class="empty">Sin catálogos con estos filtros.</td></tr>`}</tbody>`;
 
   // Orden por cabecera
   $("#orTable").querySelectorAll("th[data-c]").forEach(th=>th.onclick=()=>{
@@ -983,14 +976,6 @@ function pintarOR(){
     inp.addEventListener("input",()=>{ (_orManual[orAlm+"|"+inp.dataset.cat]||={xs:0,obs:""}).obs=inp.value; _orGuardar(); });
   });
 
-  // Guardar cambios de estado por partida
-  $("#orTable").querySelectorAll(".or-estado").forEach(sel=>{
-    sel.addEventListener("change",()=>{
-      (_orManual[orAlm+"|"+sel.dataset.cat]||={xs:0,obs:""}).estado=sel.value;
-      _orGuardar();
-      pintarOR();
-    });
-  });
 }
 
 function _htmlBandaNG(sumNG, open=true){
