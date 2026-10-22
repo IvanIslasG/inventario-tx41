@@ -9,6 +9,9 @@ let _conteoMats  = [];  // materiales del módulo actual (D041)
 
 // ── Pendientes de captura (se cuentan como Físico; se descontarán del stock al capturarse) ──
 let _conteoPend = {};   // cat (o cat__lote) → cantidad pendiente de captura en SAP
+let _cPendLog = [];      // bitácora de lo agregado en esta sesión (más reciente primero)
+let _cPendUltimos = [];  // folios agregados en la última carga
+let _cPendModoSel = 'folio';
 let _conteoFolios = {}; // folio → { cat (o cat__lote) → cantidad }
 function _cPendRecalc(){ _conteoPend={}; Object.values(_conteoFolios).forEach(f=>Object.keys(f).forEach(k=>{ _conteoPend[k]=(_conteoPend[k]||0)+f[k]; })); }
 function _cPendCargar(){
@@ -749,31 +752,41 @@ function _cPendAbrir(){
   let ov=document.getElementById("cPendModal"); if(ov) ov.remove();
   ov=document.createElement("div"); ov.id="cPendModal";
   ov.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:flex-start;justify-content:center;padding:16px;overflow:auto";
-  const n=Object.keys(_conteoPend).length;
+  const n=Object.keys(_conteoPend).length, nf=Object.keys(_conteoFolios).length;
+  const ult=_cPendLog[0];
+  const banner = ult ? `<div style="background:${ult.noEnc?"#fffbeb":"#f0fdf4"};border:2px solid ${ult.noEnc?"#f59e0b":"#22c55e"};border-radius:10px;padding:10px 12px;margin-bottom:10px">
+      <div style="font-size:14px;font-weight:700;color:${ult.noEnc?"#92400e":"#15803d"}">✅ Agregado: ${ult.folios.map(_cEsc).join(", ")}</div>
+      <div style="font-size:12.5px;color:#334155;margin-top:2px">${ult.partidas} partida${ult.partidas===1?"":"s"} · ${ult.piezas.toLocaleString()} pzas · ${ult.hora}${ult.omit?` · ${ult.omit} fila${ult.omit===1?"":"s"} omitida${ult.omit===1?"":"s"} (sin catálogo o cantidad)`:""}</div>
+      ${ult.noEnc?`<div style="font-size:12px;color:#92400e;margin-top:3px">⚠ ${ult.noEnc} catálogo${ult.noEnc===1?"":"s"} no existe${ult.noEnc===1?"":"n"} en D041 (aparecerán marcados en la conciliación).</div>`:""}
+      <div style="font-size:12px;color:#475569;margin-top:4px">Ya puedes cargar el siguiente folio abajo.</div>
+    </div>` : "";
+  const log = _cPendLog.length>1 ? `<div style="font-size:12px;color:var(--muted);margin:0 0 10px"><b>Agregado en esta sesión:</b>`+_cPendLog.map(e=>`<div>• ${e.hora} — ${e.folios.map(_cEsc).join(", ")}: ${e.partidas} partidas · ${e.piezas.toLocaleString()} pzas</div>`).join("")+`</div>` : "";
   ov.innerHTML=`<div style="background:white;border-radius:14px;max-width:760px;width:100%;padding:18px 18px 16px;margin:auto">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
       <h3 style="margin:0;font-size:17px;flex:1">⏳ Pendientes de captura</h3>
-      <button class="btn btn-outline btn-sm" onclick="document.getElementById('cPendModal').remove()">✕</button>
+      <button class="btn btn-sm" onclick="document.getElementById('cPendModal').remove()">Listo</button>
     </div>
-    <p style="margin:0 0 12px;font-size:12.5px;color:var(--muted);line-height:1.45">Material que ya salió o está por descontarse del stock pero aún no se captura en SAP. Estas cantidades <b>se suman al Físico</b> para calcular la diferencia: <code>Diferencia = Físico + Pendiente − Total SAP</code>.</p>
-
+    <p style="margin:0 0 10px;font-size:12.5px;color:var(--muted);line-height:1.45">Material que ya salió o está por descontarse del stock pero aún no se captura en SAP. Se <b>suma al Físico</b>: <code>Diferencia = Físico + Pendiente − Total SAP</code>. Puedes cargar <b>varios folios seguidos</b>: llena el folio, pega la tabla, procesa y repite.</p>
+    ${banner}${log}
     <div style="border:1px dashed var(--borde);border-radius:10px;padding:12px;margin-bottom:10px">
-      <div style="font-size:13px;font-weight:600;margin-bottom:6px">1. Carga un folio (Catálogo y Cantidad; Lote opcional)</div>
+      <div style="font-size:13px;font-weight:600;margin-bottom:6px">Cargar un folio (Catálogo y Cantidad; Lote opcional)</div>
       <input id="cPendFolio" type="text" placeholder="Nombre / número de folio (ej. Ropa 4500123456). Si la tabla trae columna Folio, se usa esa." style="width:100%;box-sizing:border-box;font-size:12.5px;margin-bottom:8px">
-      <input type="file" id="cPendFile" accept=".xlsx,.xls,.csv" onchange="_cPendDesdeArchivo(this)" style="font-size:12px;margin-bottom:8px;width:100%">
-      <textarea id="cPendTxt" rows="5" placeholder="…o pega aquí la tabla copiada del correo/Excel (con o sin encabezados)" style="width:100%;box-sizing:border-box;font-size:12px;font-family:'IBM Plex Mono',monospace"></textarea>
-      <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:8px;font-size:12.5px">
-        <label title="Si el folio ya estaba cargado, se reemplaza (no se duplica)"><input type="radio" name="cPendModo" value="folio" checked> Agregar folio (si existe, lo reemplaza)</label>
-        <label><input type="radio" name="cPendModo" value="sumar"> Sumar al folio</label>
-        <label><input type="radio" name="cPendModo" value="todo"> Reemplazar todo</label>
+      <textarea id="cPendTxt" rows="5" placeholder="Pega aquí la tabla copiada del correo/Excel (con o sin encabezados)" style="width:100%;box-sizing:border-box;font-size:12px;font-family:'IBM Plex Mono',monospace"></textarea>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:8px;font-size:12.5px">
+        <span style="color:var(--muted)">o archivo:</span><input type="file" id="cPendFile" accept=".xlsx,.xls,.csv" onchange="_cPendDesdeArchivo(this)" style="font-size:12px;max-width:220px">
         <div style="flex:1"></div>
-        <button class="btn btn-sm" onclick="_cPendProcesarTexto()">Procesar tabla</button>
+        <button class="btn btn-sm" onclick="_cPendProcesarTexto()">➕ Agregar folio</button>
+      </div>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:var(--muted)">
+        <label title="Si el folio ya estaba cargado, se reemplaza (no se duplica)"><input type="radio" name="cPendModo" value="folio" ${_cPendModoSel==="folio"?"checked":""} onchange="_cPendModoSel=this.value"> Agregar (si el folio existe, lo reemplaza)</label>
+        <label><input type="radio" name="cPendModo" value="sumar" ${_cPendModoSel==="sumar"?"checked":""} onchange="_cPendModoSel=this.value"> Sumar al folio</label>
+        <label><input type="radio" name="cPendModo" value="todo" ${_cPendModoSel==="todo"?"checked":""} onchange="_cPendModoSel=this.value"> Reemplazar todo</label>
       </div>
       <div id="cPendMsg" style="font-size:12px;margin-top:8px"></div>
     </div>
 
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
-      <div style="font-size:13px;font-weight:600;flex:1">2. Folios cargados: ${Object.keys(_conteoFolios).length} · ${n} material${n===1?"":"es"} (con totales sumados)</div>
+      <div style="font-size:13px;font-weight:600;flex:1">Folios cargados: ${nf} · ${n} material${n===1?"":"es"} (totales sumados)</div>
       <button class="btn btn-outline btn-sm" onclick="_cConciliacionVer()" ${n?"":"disabled"}>📊 Ver conciliación</button>
       <button class="btn btn-outline btn-sm" style="color:#dc2626" onclick="_cPendLimpiar()" ${n?"":"disabled"}>🗑 Vaciar todo</button>
     </div>
@@ -781,6 +794,7 @@ function _cPendAbrir(){
   </div>`;
   document.body.appendChild(ov);
   _cPendRenderLista();
+  setTimeout(()=>{ const f=document.getElementById("cPendFolio"); if(f && ult) f.focus(); },30);
 }
 function _cPendRenderLista(){
   const el=document.getElementById("cPendCuerpo"); if(!el) return;
@@ -790,9 +804,10 @@ function _cPendRenderLista(){
   el.innerHTML = folios.map(fo=>{
     const items=_conteoFolios[fo]; const ks=Object.keys(items).sort();
     const tot=ks.reduce((a,k)=>a+items[k],0);
-    return `<details style="border:1px solid var(--borde);border-radius:8px;margin-bottom:6px">
+    const nuevo=_cPendUltimos.includes(fo);
+    return `<details ${nuevo?"open":""} style="border:1px solid ${nuevo?"#22c55e":"var(--borde)"};border-radius:8px;margin-bottom:6px;${nuevo?"background:#f0fdf4":""}">
       <summary style="padding:7px 10px;cursor:pointer;font-size:13px;display:flex;gap:10px;align-items:center;list-style-position:inside">
-        <b style="flex:1">📄 ${_cEsc(fo)}</b><span style="color:var(--muted);font-size:12px">${ks.length} partidas · ${tot.toLocaleString()} pzas</span>
+        <b style="flex:1">📄 ${_cEsc(fo)}${nuevo?' <span style="background:#22c55e;color:white;font-size:10px;padding:1px 6px;border-radius:8px;margin-left:4px">NUEVO</span>':""}</b><span style="color:var(--muted);font-size:12px">${ks.length} partidas · ${tot.toLocaleString()} pzas</span>
         <button class="btn btn-outline btn-sm" style="padding:0 8px;color:#dc2626" onclick="event.preventDefault();_cPendQuitarFolio(decodeURIComponent('${encodeURIComponent(fo)}'))">🗑 Quitar folio</button>
       </summary>
       <div style="max-height:220px;overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><tbody>`+
@@ -801,8 +816,8 @@ function _cPendRenderLista(){
       `</tbody></table></div></details>`;
   }).join("");
 }
-function _cPendQuitar(folio,k){ if(_conteoFolios[folio]){ delete _conteoFolios[folio][k]; if(!Object.keys(_conteoFolios[folio]).length) delete _conteoFolios[folio]; } _cPendGuardar(); _cPendRefrescar(); }
-function _cPendQuitarFolio(folio){ if(!confirm('¿Quitar el folio "'+folio+'" completo ('+Object.keys(_conteoFolios[folio]||{}).length+' partidas)?')) return; delete _conteoFolios[folio]; _cPendGuardar(); _cPendRefrescar(); }
+function _cPendQuitar(folio,k){ _cPendUltimos=[]; _cPendLog=[]; if(_conteoFolios[folio]){ delete _conteoFolios[folio][k]; if(!Object.keys(_conteoFolios[folio]).length) delete _conteoFolios[folio]; } _cPendGuardar(); _cPendRefrescar(); }
+function _cPendQuitarFolio(folio){ _cPendUltimos=[]; _cPendLog=[]; if(!confirm('¿Quitar el folio "'+folio+'" completo ('+Object.keys(_conteoFolios[folio]||{}).length+' partidas)?')) return; delete _conteoFolios[folio]; _cPendGuardar(); _cPendRefrescar(); }
 function _cPendLimpiar(){ if(!confirm("¿Vaciar TODOS los folios de pendientes de captura?")) return; _conteoFolios={}; _cPendGuardar(); _cPendRefrescar(); }
 function _cPendRefrescar(){
   if(document.getElementById("cPendModal")) _cPendAbrir();
@@ -810,7 +825,6 @@ function _cPendRefrescar(){
   if(b) b.textContent="⏳ Pendientes de captura"+(n?` (${n})`:"");
   if(document.getElementById("conteo-lista")) filtrarConteo();
 }
-
 function _cPendNum(x){
   const t=String(x==null?"":x).trim().replace(/,/g,"");
   const m=t.match(/^(-?\d+(?:\.\d+)?)\s*(?:[a-záéíóúñ.\/]*)$/i);
@@ -861,23 +875,27 @@ function _cPendTextoAFilas(txt){
   });
 }
 function _cPendAplicar(res, omit){
-  const modo=(document.querySelector('input[name="cPendModo"]:checked')||{}).value||"folio";
+  const modo=(document.querySelector('input[name="cPendModo"]:checked')||{}).value||_cPendModoSel||"folio";
   const base=((document.getElementById("cPendFolio")||{}).value||"").trim()||"Sin folio";
   if(modo==="todo") _conteoFolios={};
-  const tocados=new Set();
+  const tocados=[]; let piezas=0;
+  const existen=new Set(_conteoMats.map(m=>m.catalogo));
+  const noEncSet=new Set();
   res.forEach(r=>{
     const fo=(r.folio||"").trim()||base;
-    if(modo==="folio" && !tocados.has(fo)){ delete _conteoFolios[fo]; }
-    tocados.add(fo);
+    if(modo==="folio" && !tocados.includes(fo)){ delete _conteoFolios[fo]; }
+    if(!tocados.includes(fo)) tocados.push(fo);
     const F=_conteoFolios[fo]||(_conteoFolios[fo]={});
     const k=r.lote?r.cat+"__"+r.lote:r.cat; F[k]=(F[k]||0)+r.cant;
+    piezas+=r.cant;
+    if(!existen.has(r.cat)) noEncSet.add(r.cat);
   });
   _cPendGuardar();
+  _cPendUltimos=tocados;
+  const hora=new Date().toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit"});
+  _cPendLog.unshift({hora,folios:tocados,partidas:res.length,piezas,omit,noEnc:noEncSet.size});
   _cPendRefrescar();
-  const nf=tocados.size;
-  const msg=document.getElementById("cPendMsg");
-  if(msg){ msg.style.color="#15803d"; msg.textContent=`✓ ${res.length} partida${res.length===1?"":"s"} guardada${res.length===1?"":"s"} en ${nf} folio${nf===1?"":"s"}`+(omit?` · ${omit} fila${omit===1?"":"s"} omitida${omit===1?"":"s"} (sin catálogo o cantidad)`:"")+"."; }
-  if(typeof _guiasToast==="function") try{ _guiasToast(`✓ ${res.length} pendientes de captura guardados`,"ok"); }catch(e){}
+  if(typeof _guiasToast==="function") try{ _guiasToast(`✓ Folio ${tocados.join(", ")} agregado (${res.length} partidas)`,"ok"); }catch(e){}
 }
 function _cPendProcesarTexto(){
   const txt=(document.getElementById("cPendTxt")||{}).value||"";
@@ -898,6 +916,7 @@ function _cPendDesdeArchivo(input){
       const {res,omit}=_cPendParsearFilas(rows);
       const msg=document.getElementById("cPendMsg");
       if(!res.length){ if(msg){msg.style.color="#b91c1c"; msg.textContent="No encontré partidas con catálogo y cantidad en el archivo.";} return; }
+      const fi=document.getElementById("cPendFolio"); if(fi && !fi.value.trim()) fi.value=f.name.replace(/\.[^.]+$/,"");
       _cPendAplicar(res,omit);
     }catch(err){ const msg=document.getElementById("cPendMsg"); if(msg){msg.style.color="#b91c1c"; msg.textContent="Error al leer el archivo: "+err.message;} }
   };
