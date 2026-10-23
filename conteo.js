@@ -12,6 +12,7 @@ let _conteoPend = {};   // cat (o cat__lote) → cantidad pendiente de captura e
 let _cPendLog = [];      // bitácora de lo agregado en esta sesión (más reciente primero)
 let _cPendUltimos = [];  // folios agregados en la última carga
 let _cPendModoSel = 'folio';
+let _conteoNotas = {};   // folio → { '#': nota del folio, cat(__lote): nota de la partida }
 let _conteoFolios = {}; // folio → { cat (o cat__lote) → cantidad }
 function _cPendRecalc(){ _conteoPend={}; Object.values(_conteoFolios).forEach(f=>Object.keys(f).forEach(k=>{ _conteoPend[k]=(_conteoPend[k]||0)+f[k]; })); }
 function _cPendCargar(){
@@ -22,9 +23,24 @@ function _cPendCargar(){
       _conteoFolios = Object.keys(viejo).length ? {"Sin folio":viejo} : {};
     }
   }catch(e){ _conteoFolios = {}; }
+  try{ _conteoNotas = JSON.parse(localStorage.getItem("conteo_tx41_pend_notas")||"{}"); }catch(e){ _conteoNotas = {}; }
   _cPendRecalc();
 }
-function _cPendGuardar(){ _cPendRecalc(); try{ localStorage.setItem("conteo_tx41_pend_folios", JSON.stringify(_conteoFolios)); }catch(e){} }
+// Origen de un pendiente: de qué folio(s) viene y con qué nota
+function _cPendOrigen(key){
+  const out=[];
+  Object.keys(_conteoFolios).forEach(fo=>{ const c=_conteoFolios[fo][key]; if(c){ const N=_conteoNotas[fo]||{}; out.push({folio:fo,cant:c,nota:N[key]||N["#"]||""}); } });
+  return out;
+}
+function _cPendOrigenTxt(key){ return _cPendOrigen(key).map(o=>o.folio+(o.nota?" ("+o.nota+")":"")+": "+o.cant.toLocaleString()).join(" · "); }
+function _cPendEditarNota(folio){
+  const N=_conteoNotas[folio]||(_conteoNotas[folio]={});
+  const v=prompt('Origen / nota del folio "'+folio+'":', N["#"]||"");
+  if(v===null) return;
+  if(v.trim()) N["#"]=v.trim(); else delete N["#"];
+  _cPendGuardar(); _cPendRefrescar();
+}
+function _cPendGuardar(){ _cPendRecalc(); try{ Object.keys(_conteoNotas).forEach(f=>{ if(!_conteoFolios[f]) delete _conteoNotas[f]; }); localStorage.setItem("conteo_tx41_pend_folios", JSON.stringify(_conteoFolios)); localStorage.setItem("conteo_tx41_pend_notas", JSON.stringify(_conteoNotas)); }catch(e){} }
 function _cPend(key){ return _conteoPend[key]||0; }
 function _cEsc(t){ return String(t==null?"":t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 // Filas planas (una por material, o por lote) para conciliar
@@ -315,7 +331,7 @@ function renderConteo(){
           <div class="cap-siatel"><div class="cap-siatel-n">${(lote.lib||0).toLocaleString()}</div><div class="cap-siatel-l">Libre</div></div>
           <div class="cap-siatel"><div class="cap-siatel-n" style="color:var(--naranja,#ea580c)">${(lote.tras||0).toLocaleString()}</div><div class="cap-siatel-l">Traslado</div></div>
           <div class="cap-siatel" title="Va a llegar a D041 — se suma al Total si la casilla está activa"><div class="cap-siatel-n" style="color:#3730a3">${(lote.transitoPt||0).toLocaleString()}</div><div class="cap-siatel-l">Tránsito PT</div></div>
-          ${penL>0?`<div class="cap-siatel" title="Pendiente de captura: cuenta como físico"><div class="cap-siatel-n" style="color:#b45309">+${penL.toLocaleString()}</div><div class="cap-siatel-l">Pend.</div></div>`:""}
+          ${penL>0?`<div class="cap-siatel" title="Pendiente de captura (cuenta como físico): ${_cEsc(_cPendOrigenTxt(key))}"><div class="cap-siatel-n" style="color:#b45309">+${penL.toLocaleString()}</div><div class="cap-siatel-l">Pend.</div></div>`:""}
           <div style="flex:1"></div>
           <div class="cap-input-wrap">
             <input class="cap-input" type="number" inputmode="numeric" min="0" placeholder="—"
@@ -354,11 +370,12 @@ function renderConteo(){
         <div style="flex:1">
           <div class="cap-desc">${m.descripcion}</div>
           <div class="cap-ubi">${m.ubicacion||"Sin ubicación"} · ${m.um||"—"}</div>
+          ${pen>0?`<div class="cap-ubi" style="color:#b45309">⏳ Pendiente de: ${_cEsc(_cPendOrigenTxt(m.catalogo))}</div>`:""}
         </div>
         <div class="cap-siatel"><div class="cap-siatel-n">${lib.toLocaleString()}</div><div class="cap-siatel-l">Libre</div></div>
         <div class="cap-siatel"><div class="cap-siatel-n" style="color:var(--naranja,#ea580c)">${tra.toLocaleString()}</div><div class="cap-siatel-l">Traslado</div></div>
         <div class="cap-siatel" title="Va a llegar a D041 — se suma al Total si la casilla 'Contar tránsito PT' está activa"><div class="cap-siatel-n" style="color:#3730a3">${(m.transitoPt||0).toLocaleString()}</div><div class="cap-siatel-l">Tránsito PT</div></div>
-        ${pen>0?`<div class="cap-siatel" title="Pendiente de captura: cuenta como físico"><div class="cap-siatel-n" style="color:#b45309">+${pen.toLocaleString()}</div><div class="cap-siatel-l">Pend.</div></div>`:""}
+        ${pen>0?`<div class="cap-siatel" title="Pendiente de captura (cuenta como físico): ${_cEsc(_cPendOrigenTxt(m.catalogo))}"><div class="cap-siatel-n" style="color:#b45309">+${pen.toLocaleString()}</div><div class="cap-siatel-l">Pend.</div></div>`:""}
         <div class="cap-input-wrap">
           <input class="cap-input" type="number" inputmode="numeric" min="0" placeholder="—"
             value="${cap?fis:""}"
@@ -742,6 +759,7 @@ function _cConciliar(){
     else { est="fueraarea"; nota="Pertenece al área "+(m.area||"—"); }
     out.push({key:k,cat,lote,desc:m?m.descripcion:"(no encontrado)",um:m?m.um:"",tot:m?(porKey[k]?porKey[k].tot:0):0,fis:undefined,pen,difFinal:null,est,estLabel:_C_EST[est].l,nota});
   });
+  out.forEach(f=>{ f.origen=_cPendOrigenTxt(f.key); });
   out.sort((a,b)=>_C_EST[a.est].o-_C_EST[b.est].o || a.cat.localeCompare(b.cat));
   const cnt={}; out.forEach(f=>cnt[f.est]=(cnt[f.est]||0)+1);
   return {filas:out,cnt};
@@ -769,8 +787,10 @@ function _cPendAbrir(){
     <p style="margin:0 0 10px;font-size:12.5px;color:var(--muted);line-height:1.45">Material que ya salió o está por descontarse del stock pero aún no se captura en SAP. Se <b>suma al Físico</b>: <code>Diferencia = Físico + Pendiente − Total SAP</code>. Puedes cargar <b>varios folios seguidos</b>: llena el folio, pega la tabla, procesa y repite.</p>
     ${banner}${log}
     <div style="border:1px dashed var(--borde);border-radius:10px;padding:12px;margin-bottom:10px">
-      <div style="font-size:13px;font-weight:600;margin-bottom:6px">Cargar un folio (Catálogo y Cantidad; Lote opcional)</div>
+      <div style="font-size:13px;font-weight:600;margin-bottom:2px">Cargar un folio (Catálogo y Cantidad; Lote opcional)</div>
+      <div style="font-size:11.5px;color:var(--muted);margin-bottom:6px">Si la tabla trae columnas <b>Folio</b> u <b>Origen/Nota</b>, se usan por partida.</div>
       <input id="cPendFolio" type="text" placeholder="Nombre / número de folio (ej. Ropa 4500123456). Si la tabla trae columna Folio, se usa esa." style="width:100%;box-sizing:border-box;font-size:12.5px;margin-bottom:8px">
+      <input id="cPendNota" type="text" placeholder="Origen / nota (ej. Salida a tienda Reforma, solicitó Juan, envío 123…) — opcional" style="width:100%;box-sizing:border-box;font-size:12.5px;margin-bottom:8px">
       <textarea id="cPendTxt" rows="5" placeholder="Pega aquí la tabla copiada del correo/Excel (con o sin encabezados)" style="width:100%;box-sizing:border-box;font-size:12px;font-family:'IBM Plex Mono',monospace"></textarea>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:8px;font-size:12.5px">
         <span style="color:var(--muted)">o archivo:</span><input type="file" id="cPendFile" accept=".xlsx,.xls,.csv" onchange="_cPendDesdeArchivo(this)" style="font-size:12px;max-width:220px">
@@ -805,20 +825,22 @@ function _cPendRenderLista(){
     const items=_conteoFolios[fo]; const ks=Object.keys(items).sort();
     const tot=ks.reduce((a,k)=>a+items[k],0);
     const nuevo=_cPendUltimos.includes(fo);
+    const NF=_conteoNotas[fo]||{};
     return `<details ${nuevo?"open":""} style="border:1px solid ${nuevo?"#22c55e":"var(--borde)"};border-radius:8px;margin-bottom:6px;${nuevo?"background:#f0fdf4":""}">
       <summary style="padding:7px 10px;cursor:pointer;font-size:13px;display:flex;gap:10px;align-items:center;list-style-position:inside">
-        <b style="flex:1">📄 ${_cEsc(fo)}${nuevo?' <span style="background:#22c55e;color:white;font-size:10px;padding:1px 6px;border-radius:8px;margin-left:4px">NUEVO</span>':""}</b><span style="color:var(--muted);font-size:12px">${ks.length} partidas · ${tot.toLocaleString()} pzas</span>
+        <b style="flex:1">📄 ${_cEsc(fo)}${nuevo?' <span style="background:#22c55e;color:white;font-size:10px;padding:1px 6px;border-radius:8px;margin-left:4px">NUEVO</span>':""}${NF["#"]?` <span style="font-weight:400;color:#475569;font-size:12px">— ${_cEsc(NF["#"])}</span>`:""}</b><span style="color:var(--muted);font-size:12px">${ks.length} partidas · ${tot.toLocaleString()} pzas</span>
         <button class="btn btn-outline btn-sm" style="padding:0 8px;color:#dc2626" onclick="event.preventDefault();_cPendQuitarFolio(decodeURIComponent('${encodeURIComponent(fo)}'))">🗑 Quitar folio</button>
       </summary>
+      <div style="padding:4px 10px;font-size:12px;color:#475569">📍 Origen: ${NF["#"]?_cEsc(NF["#"]):"<i>sin nota</i>"} <button class="btn btn-outline btn-sm" style="padding:0 6px;margin-left:6px" onclick="_cPendEditarNota(decodeURIComponent('${encodeURIComponent(fo)}'))">✎ Editar</button></div>
       <div style="max-height:220px;overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><tbody>`+
       ks.map(k=>{ const cat=k.split("__")[0], lote=k.split("__")[1]||""; const m=matPorCat[cat];
-        return `<tr style="border-top:1px solid var(--borde)"><td style="padding:4px 8px;font-family:'IBM Plex Mono',monospace">${_cEsc(cat)}</td><td>${_cEsc(m?m.descripcion:"— no existe en D041 —")}</td><td>${lote?"L - "+_cEsc(lote):""}</td><td style="text-align:right;padding-right:8px;font-weight:600">${items[k].toLocaleString()}</td><td><button class="btn btn-outline btn-sm" style="padding:0 6px" onclick="_cPendQuitar(decodeURIComponent('${encodeURIComponent(fo)}'),decodeURIComponent('${encodeURIComponent(k)}'))">×</button></td></tr>`; }).join("")+
+        return `<tr style="border-top:1px solid var(--borde)"><td style="padding:4px 8px;font-family:'IBM Plex Mono',monospace">${_cEsc(cat)}</td><td>${_cEsc(m?m.descripcion:"— no existe en D041 —")}</td><td>${lote?"L - "+_cEsc(lote):""}</td><td style="color:#64748b">${_cEsc(NF[k]||"")}</td><td style="text-align:right;padding-right:8px;font-weight:600">${items[k].toLocaleString()}</td><td><button class="btn btn-outline btn-sm" style="padding:0 6px" onclick="_cPendQuitar(decodeURIComponent('${encodeURIComponent(fo)}'),decodeURIComponent('${encodeURIComponent(k)}'))">×</button></td></tr>`; }).join("")+
       `</tbody></table></div></details>`;
   }).join("");
 }
-function _cPendQuitar(folio,k){ _cPendUltimos=[]; _cPendLog=[]; if(_conteoFolios[folio]){ delete _conteoFolios[folio][k]; if(!Object.keys(_conteoFolios[folio]).length) delete _conteoFolios[folio]; } _cPendGuardar(); _cPendRefrescar(); }
+function _cPendQuitar(folio,k){ _cPendUltimos=[]; _cPendLog=[]; if(_conteoFolios[folio]){ delete _conteoFolios[folio][k]; if(_conteoNotas[folio]) delete _conteoNotas[folio][k]; if(!Object.keys(_conteoFolios[folio]).length) delete _conteoFolios[folio]; } _cPendGuardar(); _cPendRefrescar(); }
 function _cPendQuitarFolio(folio){ _cPendUltimos=[]; _cPendLog=[]; if(!confirm('¿Quitar el folio "'+folio+'" completo ('+Object.keys(_conteoFolios[folio]||{}).length+' partidas)?')) return; delete _conteoFolios[folio]; _cPendGuardar(); _cPendRefrescar(); }
-function _cPendLimpiar(){ if(!confirm("¿Vaciar TODOS los folios de pendientes de captura?")) return; _conteoFolios={}; _cPendGuardar(); _cPendRefrescar(); }
+function _cPendLimpiar(){ if(!confirm("¿Vaciar TODOS los folios de pendientes de captura?")) return; _conteoFolios={}; _conteoNotas={}; _cPendGuardar(); _cPendRefrescar(); }
 function _cPendRefrescar(){
   if(document.getElementById("cPendModal")) _cPendAbrir();
   const b=document.getElementById("cPendBtn"); const n=Object.keys(_conteoPend).length;
@@ -833,7 +855,7 @@ function _cPendNum(x){
 function _cPendParsearFilas(rows){
   const clean=rows.map(r=>(r||[]).map(c=>String(c==null?"":c).trim()));
   // buscar encabezado
-  let h=-1, iC=-1, iQ=-1, iL=-1, iF=-1;
+  let h=-1, iC=-1, iQ=-1, iL=-1, iF=-1, iN=-1;
   for(let i=0;i<Math.min(clean.length,8);i++){
     const low=clean[i].map(c=>c.toLowerCase());
     const c=low.findIndex(x=>/^(cat[aá]logo|material|c[oó]digo|sku)/.test(x));
@@ -842,19 +864,21 @@ function _cPendParsearFilas(rows){
       iQ=low.findIndex(x=>/pend|cant|f[ií]sico|pzas|piezas|total|surtir/.test(x));
       iL=low.findIndex(x=>x==="lote");
       iF=low.findIndex(x=>/^(folio|documento|doc\.?)/.test(x));
+      iN=low.findIndex(x=>/origen|nota|observ|destino|coment|proced|motivo|solicit/.test(x));
       break;
     }
   }
   const res=[]; let omit=0;
   for(let i=h+1;i<clean.length;i++){
     const r=clean[i]; if(!r.some(x=>x)) continue;
-    let cat="", cant=null, lote="", folio="";
+    let cat="", cant=null, lote="", folio="", nota="";
     if(h>=0){
       cat=(r[iC]||"").replace(/\D/g,"");
       if(iQ>=0) cant=_cPendNum(r[iQ]);
       if(cant===null){ for(let j=r.length-1;j>iC;j--){ if(j===iL) continue; const v=_cPendNum(r[j]); if(v!==null){cant=v;break;} } }
       if(iL>=0) lote=r[iL]||"";
       if(iF>=0) folio=r[iF]||"";
+      if(iN>=0) nota=r[iN]||"";
     } else {
       const ic=r.findIndex(x=>/^\d{6,10}$/.test(x));
       if(ic<0){ omit++; continue; }
@@ -862,7 +886,7 @@ function _cPendParsearFilas(rows){
       for(let j=r.length-1;j>ic;j--){ const v=_cPendNum(r[j]); if(v!==null){cant=v;break;} }
     }
     if(!cat||cant===null||!(cant>0)){ omit++; continue; }
-    res.push({cat,cant,lote,folio});
+    res.push({cat,cant,lote,folio,nota});
   }
   return {res,omit};
 }
@@ -877,19 +901,22 @@ function _cPendTextoAFilas(txt){
 function _cPendAplicar(res, omit){
   const modo=(document.querySelector('input[name="cPendModo"]:checked')||{}).value||_cPendModoSel||"folio";
   const base=((document.getElementById("cPendFolio")||{}).value||"").trim()||"Sin folio";
-  if(modo==="todo") _conteoFolios={};
+  if(modo==="todo"){ _conteoFolios={}; _conteoNotas={}; }
+  const notaFolio=((document.getElementById("cPendNota")||{}).value||"").trim();
   const tocados=[]; let piezas=0;
   const existen=new Set(_conteoMats.map(m=>m.catalogo));
   const noEncSet=new Set();
   res.forEach(r=>{
     const fo=(r.folio||"").trim()||base;
-    if(modo==="folio" && !tocados.includes(fo)){ delete _conteoFolios[fo]; }
+    if(modo==="folio" && !tocados.includes(fo)){ delete _conteoFolios[fo]; delete _conteoNotas[fo]; }
     if(!tocados.includes(fo)) tocados.push(fo);
     const F=_conteoFolios[fo]||(_conteoFolios[fo]={});
     const k=r.lote?r.cat+"__"+r.lote:r.cat; F[k]=(F[k]||0)+r.cant;
+    if(r.nota){ (_conteoNotas[fo]||(_conteoNotas[fo]={}))[k]=r.nota; }
     piezas+=r.cant;
     if(!existen.has(r.cat)) noEncSet.add(r.cat);
   });
+  if(notaFolio) tocados.forEach(fo=>{ (_conteoNotas[fo]||(_conteoNotas[fo]={}))["#"]=notaFolio; });
   _cPendGuardar();
   _cPendUltimos=tocados;
   const hora=new Date().toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit"});
@@ -942,7 +969,7 @@ function _cConciliacionVer(){
       <tbody>${R.filas.map(f=>{ const e=_C_EST[f.est]; return `<tr style="border-top:1px solid var(--borde);background:${e.bg}">
         <td style="padding:5px 8px;color:${e.c};font-weight:600;white-space:nowrap">${e.l}</td>
         <td style="font-family:'IBM Plex Mono',monospace">${_cEsc(f.cat)}${f.lote?`<div style="font-size:10px;color:#9a3412">L - ${_cEsc(f.lote)}</div>`:""}</td>
-        <td>${_cEsc(f.desc)}<div style="font-size:11px;color:var(--muted)">${_cEsc(f.nota)}</div></td>
+        <td>${_cEsc(f.desc)}<div style="font-size:11px;color:var(--muted)">${_cEsc(f.nota)}</div>${f.origen?`<div style="font-size:11px;color:#b45309">⏳ ${_cEsc(f.origen)}</div>`:""}</td>
         <td style="text-align:right">${f.tot.toLocaleString()}</td>
         <td style="text-align:right">${f.fis===undefined?"—":f.fis.toLocaleString()}</td>
         <td style="text-align:right;color:#b45309;font-weight:600">${f.pen?("+"+f.pen.toLocaleString()):"—"}</td>
@@ -1027,10 +1054,10 @@ function exportarConteo(){
   if(Object.keys(_conteoPend).length){
     const R=_cConciliar();
     const cData=[["CONCILIACIÓN DE PENDIENTES DE CAPTURA — D041 — "+hoy,"","","","","","","",""],
-      ["Estado","Catálogo","Descripción","Lote","Total SAP","Físico","Pend. captura","Diferencia final","Qué falta"],
-      ...R.filas.map(f=>[f.estLabel,f.cat,f.desc,f.lote,f.tot,f.fis===undefined?"":f.fis,f.pen,f.difFinal===null?"":f.difFinal,f.nota])];
+      ["Estado","Catálogo","Descripción","Lote","Total SAP","Físico","Pend. captura","Diferencia final","Qué falta","Origen de los pendientes"],
+      ...R.filas.map(f=>[f.estLabel,f.cat,f.desc,f.lote,f.tot,f.fis===undefined?"":f.fis,f.pen,f.difFinal===null?"":f.difFinal,f.nota,f.origen||""])];
     const wsC=XLSX.utils.aoa_to_sheet(cData);
-    wsC["!cols"]=[{wch:26},{wch:12},{wch:40},{wch:14},{wch:11},{wch:10},{wch:13},{wch:14},{wch:46}];
+    wsC["!cols"]=[{wch:26},{wch:12},{wch:40},{wch:14},{wch:11},{wch:10},{wch:13},{wch:14},{wch:46},{wch:50}];
     XLSX.utils.book_append_sheet(wb,wsC,"Conciliación pendientes");
   }
 
