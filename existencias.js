@@ -87,7 +87,7 @@ function renderSelectorAlmacen(){
 
 /* ---- Pantalla de tarjetas de área ---- */
 function renderAreasInv(){
-  $("#backBtn").onclick=()=>{ invAlmacenSel=null; modInventario(); window.scrollTo(0,0); };
+  $("#backBtn").onclick=mostrarMenu; // "Módulos" siempre regresa directo al menú; para un paso atrás está "‹ Cambiar almacén"
   const alm=invAlmacenSel||DIST();
   const esDist=alm===DIST();
   const almInfo=DB.directorio.almacenes[alm]||{};
@@ -135,7 +135,7 @@ function renderAreasInv(){
 function renderDetalleInv(){
   const esTodo=invSel===TODO, label=esTodo?"Todo el inventario":invSel;
   // back vuelve a las tarjetas (no al menú)
-  $("#backBtn").onclick=()=>{ invSel=null; modInventario(); window.scrollTo(0,0); };
+  $("#backBtn").onclick=mostrarMenu; // "Módulos" siempre regresa directo al menú; para un paso atrás está "‹ Volver a áreas"
   // ubicaciones del área (para el select)
   const base=matsArea(invSel);
   const ubis=[...new Set(base.map(m=>m.ubic).filter(Boolean))].sort();
