@@ -1059,6 +1059,21 @@ function exportarConteo(){
     const wsC=XLSX.utils.aoa_to_sheet(cData);
     wsC["!cols"]=[{wch:26},{wch:12},{wch:40},{wch:14},{wch:11},{wch:10},{wch:13},{wch:14},{wch:46},{wch:50}];
     XLSX.utils.book_append_sheet(wb,wsC,"Conciliación pendientes");
+
+    // Detalle: una fila por folio y material (para filtrar o hacer tabla dinámica)
+    const matPC={}; _conteoMats.forEach(m=>matPC[m.catalogo]=m);
+    const dRows=[];
+    Object.keys(_conteoFolios).sort().forEach(fo=>{
+      const N=_conteoNotas[fo]||{};
+      Object.keys(_conteoFolios[fo]).sort().forEach(k=>{
+        const cat=k.split("__")[0], lote=k.split("__")[1]||""; const m=matPC[cat];
+        dRows.push([fo,N[k]||N["#"]||"",cat,m?m.descripcion:"(no existe en D041)",m?m.um:"",lote,_conteoFolios[fo][k],m?m.area:""]);
+      });
+    });
+    const wsD=XLSX.utils.aoa_to_sheet([["PENDIENTES DE CAPTURA POR FOLIO — "+hoy,"","","","","","",""],
+      ["Folio","Origen / nota","Catálogo","Descripción","U.M.","Lote","Cantidad pendiente","Área"],...dRows]);
+    wsD["!cols"]=[{wch:20},{wch:34},{wch:12},{wch:40},{wch:7},{wch:14},{wch:18},{wch:14}];
+    XLSX.utils.book_append_sheet(wb,wsD,"Pendientes por folio");
   }
 
   XLSX.writeFile(wb,`Inventario_D041_${hoy}.xlsx`);
