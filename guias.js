@@ -417,6 +417,7 @@ function _guiasExportarSeleccion(indices, nombreArchivo){
 // elige con el selector del sistema. Se elige UNA vez y el permiso a esa carpeta se guarda
 // en IndexedDB (a veces el navegador vuelve a pedir un "Permitir" al reabrir).
 var _GUIAS_LS_BKCARPETA = "guias_bk_carpeta_nombre";
+var _GUIAS_LS_BKRUTA    = "guias_bk_carpeta_ruta"; // dirección completa escrita por el usuario (solo informativa)
 
 function _guiasFsSoportado(){ return typeof window.showDirectoryPicker === "function"; }
 
@@ -455,18 +456,34 @@ function _guiasBkElegirCarpeta(){
   window.showDirectoryPicker({ id: "tx41-guias-respaldos", mode: "readwrite", startIn: "documents" })
     .then(function(h){
       return _guiasIdbSet("dir", h).then(function(){
-        try{ localStorage.setItem(_GUIAS_LS_BKCARPETA, h.name); }catch(e){}
+        try{ localStorage.setItem(_GUIAS_LS_BKCARPETA, h.name); localStorage.removeItem(_GUIAS_LS_BKRUTA); }catch(e){}
         _guiasToast("📁 Los respaldos se guardarán en: " + h.name, "ok");
-        modGuias();
+        _guiasBkEditarRuta(true);
       });
     })
     .catch(function(e){ if(e && e.name !== "AbortError") alert("No se pudo elegir la carpeta: " + e.message); });
 }
 
+// El navegador solo revela el NOMBRE de la carpeta, no su ruta completa. Para poder ver la
+// dirección literal en pantalla, el usuario la pega una vez (es solo una etiqueta informativa).
+function _guiasBkEditarRuta(trasElegir){
+  var actual = ""; try{ actual = localStorage.getItem(_GUIAS_LS_BKRUTA) || ""; }catch(e){}
+  var nombre = ""; try{ nombre = localStorage.getItem(_GUIAS_LS_BKCARPETA) || ""; }catch(e){}
+  var txt = prompt(
+    "Pega la dirección completa de la carpeta «" + nombre + "» para mostrarla en pantalla.\n" +
+    "(Tip en Windows: abre la carpeta, clic en la barra de direcciones, Ctrl+C y aquí Ctrl+V.)\n" +
+    "Es solo una etiqueta; el navegador no puede leer la ruta por sí mismo.", actual);
+  if(txt !== null){
+    txt = txt.trim();
+    try{ if(txt) localStorage.setItem(_GUIAS_LS_BKRUTA, txt); else localStorage.removeItem(_GUIAS_LS_BKRUTA); }catch(e){}
+  }
+  modGuias();
+}
+
 function _guiasBkQuitarCarpeta(){
   if(!confirm("¿Dejar de usar la carpeta elegida? Los respaldos volverán a descargarse en Descargas.")) return;
   _guiasIdbDel("dir").catch(function(){});
-  try{ localStorage.removeItem(_GUIAS_LS_BKCARPETA); }catch(e){}
+  try{ localStorage.removeItem(_GUIAS_LS_BKCARPETA); localStorage.removeItem(_GUIAS_LS_BKRUTA); }catch(e){}
   modGuias();
 }
 
@@ -522,7 +539,8 @@ function _guiasBkEjecutar(pedirPermiso, avisar){
   return _guiasBkEscribirEnCarpeta(nombre, json, pedirPermiso).then(function(r){
     if(r === "ok"){
       marcarOk();
-      _guiasToast("📦 Respaldo guardado en la carpeta «" + carpeta + "»", "ok");
+      var _r = ""; try{ _r = localStorage.getItem(_GUIAS_LS_BKRUTA) || ""; }catch(e){}
+      _guiasToast("📦 Respaldo guardado en: " + (_r || ("carpeta «" + carpeta + "»")), "ok");
     } else if(r === "sin_permiso"){
       _guiasToast("⚠ Falta autorizar la carpeta de respaldos — toca «Respaldar ahora»", "warn");
     } else {
@@ -776,16 +794,20 @@ function modGuias(){
   var ultBkTxt = ultBk ? new Date(ultBk).toLocaleDateString('es-MX',{day:'2-digit',month:'short'}) : "nunca";
 
   var _bkNombre = ""; try{ _bkNombre = localStorage.getItem(_GUIAS_LS_BKCARPETA) || ""; }catch(e){}
+  var _bkRuta = ""; try{ _bkRuta = localStorage.getItem(_GUIAS_LS_BKRUTA) || ""; }catch(e){}
   var _bkBtn = "padding:5px 11px;background:white;border:1.5px solid var(--line);border-radius:8px;" +
     "font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit;color:var(--primary)";
   var bkHtml =
     "<div style=\"display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--muted);" +
     "margin-bottom:10px;padding:8px 12px;background:white;border:1.5px solid var(--line);border-radius:10px\">" +
     "<span>&#128193; Respaldos en:</span>" +
-    "<b style=\"color:var(--primary)\">" + (_bkNombre ? _bkNombre.replace(/</g,"&lt;") : "Descargas (predeterminada)") + "</b>" +
+    "<b style=\"color:var(--primary);word-break:break-all\">" +
+      (_bkNombre ? (_bkRuta || _bkNombre).replace(/</g,"&lt;") : "Descargas (predeterminada)") + "</b>" +
+    (_bkNombre && _bkRuta && _bkRuta !== _bkNombre ? "<span style=\"font-size:11px\">(carpeta «" + _bkNombre.replace(/</g,"&lt;") + "»)</span>" : "") +
     "<span style=\"flex:1\"></span>" +
     (_guiasFsSoportado() ?
       "<button onclick=\"_guiasBkElegirCarpeta()\" style=\"" + _bkBtn + "\">" + (_bkNombre ? "Cambiar carpeta" : "Elegir carpeta") + "</button>" +
+      (_bkNombre ? "<button onclick=\"_guiasBkEditarRuta()\" style=\"" + _bkBtn + "\">" + (_bkRuta ? "Editar dirección" : "Poner dirección") + "</button>" : "") +
       (_bkNombre ? "<button onclick=\"_guiasBkQuitarCarpeta()\" style=\"" + _bkBtn + ";color:#dc2626\">Quitar</button>" : "")
       : "<span style=\"font-size:11px\">(elegir carpeta requiere Chrome o Edge)</span>") +
     "<button onclick=\"_guiasBkAhora()\" style=\"" + _bkBtn + "\">Respaldar ahora</button>" +
