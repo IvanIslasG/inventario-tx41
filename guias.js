@@ -22,9 +22,6 @@ const _GUIAS_TARIMA_SEED = [
   {cat:"1039312", um:"PZA", subTipo:"Caja",   subCant:153, subCont:1,   freq:1}
 ];
 const _GUIAS_LS_TARIMA = "guias_bd_tarimas_v1";
-const _GUIAS_LS_DRAFT  = "guias_borrador_v1";
-const _GUIAS_LS_ULTBK  = "guias_ultimo_backup_v1";
-const _GUIAS_BACKUP_INTERVALO_DIAS = 7; // cada cuántos días se dispara el respaldo automático
 
 // ── Cargar/guardar BD de empaques ────────────────────────────────────────────
 var _guiasBDSeedMerged = false;
@@ -154,14 +151,13 @@ function _guiasTarimaBDGuardar(bd){
   try{ localStorage.setItem(_GUIAS_LS_TARIMA, JSON.stringify(bd)); }catch(e){}
 }
 
-function _guiasTarimaBDActualizar(cat, subTipo, subCant, subCont, um, grupoNombre){
+function _guiasTarimaBDActualizar(cat, subTipo, subCant, subCont, um){
   var bd = _guiasTarimaBDCargar();
   var idx = bd.findIndex(function(e){
     return e.cat === cat && e.subTipo === subTipo && e.subCant === subCant && e.subCont === subCont;
   });
-  var nombre = (grupoNombre || "Tarima").trim() || "Tarima";
-  if(idx >= 0){ bd[idx].freq = (bd[idx].freq || 1) + 1; bd[idx].grupoNombre = nombre; }
-  else{ bd.push({cat: cat, um: um || '', subTipo: subTipo, subCant: subCant, subCont: subCont, freq: 1, grupoNombre: nombre}); }
+  if(idx >= 0){ bd[idx].freq = (bd[idx].freq || 1) + 1; }
+  else{ bd.push({cat: cat, um: um || '', subTipo: subTipo, subCant: subCant, subCont: subCont, freq: 1}); }
   _guiasTarimaBDGuardar(bd);
 }
 
@@ -189,9 +185,8 @@ function _guiasTarimaTogglePreferido(cat, desc, um, subTipo, subCant, subCont){
   _guiasPedirEmpaque(cat, desc, um, _guiasBDOpciones(cat));
 }
 
-function _guiasTarimaBorrarOpcion(cat, desc, um, subTipo, subCant, subCont, grupoNombre){
-  var nombre = grupoNombre || "Tarima";
-  if(!confirm("¿Borrar esta " + nombre.toLowerCase() + " de la memoria?\n\n" + nombre + " de " + subCant + " " + subTipo + " c/ " + subCont + " " + um + "\n\nYa no se propondrá para este catálogo.")) return;
+function _guiasTarimaBorrarOpcion(cat, desc, um, subTipo, subCant, subCont){
+  if(!confirm("¿Borrar esta tarima de la memoria?\n\nTarima de " + subCant + " " + subTipo + " c/ " + subCont + " " + um + "\n\nYa no se propondrá para este catálogo.")) return;
   var bd = _guiasTarimaBDCargar();
   var idx = bd.findIndex(function(e){
     return e.cat === cat && e.subTipo === subTipo && e.subCant === subCant && e.subCont === subCont;
@@ -201,17 +196,16 @@ function _guiasTarimaBorrarOpcion(cat, desc, um, subTipo, subCant, subCont, grup
   _guiasPedirEmpaque(cat, desc, um, _guiasBDOpciones(cat));
 }
 
-// Agrega una línea de empaque agrupado (contenedor anidado: N grupos de X contenedores de Y c/u)
-function _guiasAgregarLineaTarima(cat, desc, um, subTipo, subCant, subCont, numTarimas, grupoNombre){
+// Agrega una línea de tarima (contenedor anidado: N tarimas de X contenedores de Y c/u)
+function _guiasAgregarLineaTarima(cat, desc, um, subTipo, subCant, subCont, numTarimas){
   if(_guiasEditandoLineaIdx !== null){ _guiaActual.lineas.splice(_guiasEditandoLineaIdx, 1); _guiasEditandoLineaIdx = null; }
-  var contEmp = subCant * subCont; // cantidad total que representa un grupo
+  var contEmp = subCant * subCont; // cantidad total que representa una tarima
   var cant = numTarimas * contEmp;
   _guiaActual.lineas.push({
     cat: cat, desc: desc, um: um,
     cant: cant, tipoEmp: "Tarima", contEmp: contEmp,
     bultos: numTarimas, patio: false, granel: false,
-    tarimaSubTipo: subTipo, tarimaSubCant: subCant, tarimaSubCont: subCont,
-    grupoNombre: (grupoNombre || "Tarima").trim() || "Tarima" // nombre a mostrar (Tarima, Caja maestra, Paquete…)
+    tarimaSubTipo: subTipo, tarimaSubCant: subCant, tarimaSubCont: subCont
   });
   _limpiarCatInput();
   document.querySelector(".modal")?.remove();
@@ -230,13 +224,12 @@ function _guiasConfirmarTarimaNueva(cat, desc, um){
   var subCant = parseInt(document.getElementById("gTarimaSubCant")?.value || "0");
   var subCont = parseInt(document.getElementById("gTarimaSubCont")?.value || "0");
   var numTarimas = parseInt(document.getElementById("gTarimaNum")?.value || "0");
-  var grupoNombre = (document.getElementById("gTarimaNombreGrupo")?.value || "Tarima").trim() || "Tarima";
   if(!subTipo){ alert("Indica el tipo de contenedor (Caja, Bobina, Rollo...)."); return; }
-  if(!subCant || subCant < 1){ alert("Indica cuántos contenedores lleva cada " + grupoNombre.toLowerCase() + "."); return; }
+  if(!subCant || subCant < 1){ alert("Indica cuántos contenedores lleva cada tarima."); return; }
   if(!subCont || subCont < 1){ alert("Indica el contenido de cada contenedor."); return; }
-  if(!numTarimas || numTarimas < 1){ alert("Indica cuántos(as) " + grupoNombre.toLowerCase() + "(s) van."); return; }
-  _guiasTarimaBDActualizar(cat, subTipo, subCant, subCont, um, grupoNombre);
-  _guiasAgregarLineaTarima(cat, desc, um, subTipo, subCant, subCont, numTarimas, grupoNombre);
+  if(!numTarimas || numTarimas < 1){ alert("Indica cuántas tarimas van."); return; }
+  _guiasTarimaBDActualizar(cat, subTipo, subCant, subCont, um);
+  _guiasAgregarLineaTarima(cat, desc, um, subTipo, subCant, subCont, numTarimas);
 }
 
 // ── Historial de guías ────────────────────────────────────────────────────────
@@ -250,9 +243,7 @@ function _guiasHistAgregar(guia){
   var idx = hist.findIndex(function(g){ return g.folio===guia.folio && g.area===guia.area; });
   if(idx >= 0) hist[idx] = guia;
   else hist.unshift(guia);
-  // Techo de seguridad muy alto (no un límite real de uso) — solo para evitar que localStorage
-  // crezca sin control si algún día pasa algo raro. Con uso normal, nunca debería alcanzarse.
-  if(hist.length > 5000) hist = hist.slice(0,5000);
+  if(hist.length > 50) hist = hist.slice(0,50);
   _guiasHistGuardar(hist);
 }
 
@@ -274,51 +265,6 @@ function _guiasAlmInfo(sigla){
 // ── Estado de la guía en progreso ─────────────────────────────────────────────
 var _guiaActual = null; // { destino, area, folio, fecha, lineas:[], transporte:'' }
 var _guiaEditandoOriginal = null; // { folio, area } de la guía que se está editando desde el historial, o null si es nueva
-
-// ── Borrador automático de la guía en progreso ────────────────────────────────
-// Guarda _guiaActual en localStorage cada pocos segundos MIENTRAS se está armando,
-// independiente del guardado final al generar. Así, si se va la luz o se cierra el
-// navegador a medias, al volver a entrar se puede recuperar lo que ya se había capturado.
-var _guiasDraftUltimoJSON = null;
-function _guiasDraftGuardar(){
-  if(!_guiaActual) return;
-  // Solo vale la pena respaldar si ya hay algo capturado (destino elegido o al menos una línea)
-  if(!_guiaActual.destino && (!_guiaActual.lineas || !_guiaActual.lineas.length)) return;
-  try{
-    var snap = JSON.stringify({guardado: Date.now(), datos: _guiaActual, editando: _guiaEditandoOriginal});
-    if(snap === _guiasDraftUltimoJSON) return; // nada cambió, no reescribir
-    localStorage.setItem(_GUIAS_LS_DRAFT, snap);
-    _guiasDraftUltimoJSON = snap;
-  }catch(e){}
-}
-function _guiasDraftCargar(){
-  try{
-    var raw = localStorage.getItem(_GUIAS_LS_DRAFT);
-    return raw ? JSON.parse(raw) : null;
-  }catch(e){ return null; }
-}
-function _guiasDraftBorrar(){
-  try{ localStorage.removeItem(_GUIAS_LS_DRAFT); }catch(e){}
-  _guiasDraftUltimoJSON = null;
-}
-// Autoguardado periódico mientras haya una guía en progreso, más un intento extra
-// al cambiar de pestaña/minimizar o cerrar — para no depender de un solo momento.
-setInterval(_guiasDraftGuardar, 4000);
-document.addEventListener("visibilitychange", function(){ if(document.hidden) _guiasDraftGuardar(); });
-window.addEventListener("beforeunload", _guiasDraftGuardar);
-function _guiasDraftRetomar(){
-  var d = _guiasDraftCargar();
-  if(!d) return;
-  _guiaActual = d.datos;
-  _guiaEditandoOriginal = d.editando || null;
-  _guiasDraftBorrar();
-  _guiasCapturaMateriales();
-}
-function _guiasDraftDescartar(){
-  if(!confirm("¿Descartar el borrador sin terminar? Esta acción no se puede deshacer.")) return;
-  _guiasDraftBorrar();
-  modGuias();
-}
 var _guiasEditandoLineaIdx = null; // índice de línea que se está reemplazando (edición desde Revisión), o null
 
 // Lotes reales (excluye el lote "NUEVO", que significa sin lote/no aplica)
@@ -384,7 +330,7 @@ function _guiasExportarTodo(){
   _guiasExportarSeleccion(null); // null = todas
 }
 
-function _guiasExportarSeleccion(indices, nombreArchivo){
+function _guiasExportarSeleccion(indices){
   var hist = _guiasHistCargar();
   var bd   = _guiasBDCargar();
   var datos = indices === null ? hist : indices.map(function(i){ return hist[i]; });
@@ -403,27 +349,9 @@ function _guiasExportarSeleccion(indices, nombreArchivo){
   var url  = URL.createObjectURL(blob);
   var a    = document.createElement("a");
   a.href   = url;
-  a.download = nombreArchivo || ("guias_tx41_" + new Date().toLocaleDateString("es-MX").replace(/\//g,"-") + ".json");
+  a.download = "guias_tx41_" + new Date().toLocaleDateString("es-MX").replace(/\//g,"-") + ".json";
   a.click();
   URL.revokeObjectURL(url);
-}
-
-// ── Respaldo automático programado ────────────────────────────────────────────
-// No es un cron real del sistema (esto es una página web, solo corre si está abierta):
-// cada vez que se abre el menú de Guías, si ya pasó _GUIAS_BACKUP_INTERVALO_DIAS desde el
-// último respaldo, se descarga solo el historial completo, sin pedir nada.
-function _guiasBackupAutoCheck(){
-  try{
-    var hist = _guiasHistCargar();
-    if(!hist.length) return; // nada que respaldar todavía
-    var ultimo = +localStorage.getItem(_GUIAS_LS_ULTBK) || 0;
-    var dias = (Date.now() - ultimo) / 86400000;
-    if(dias < _GUIAS_BACKUP_INTERVALO_DIAS) return;
-    var fecha = new Date().toLocaleDateString("es-MX").replace(/\//g,"-");
-    _guiasExportarSeleccion(null, "Respaldo_automatico_guias_" + fecha + ".json");
-    localStorage.setItem(_GUIAS_LS_ULTBK, String(Date.now()));
-    _guiasToast("📦 Respaldo automático descargado — revisa tu carpeta de Descargas", "ok");
-  }catch(e){}
 }
 
 function _guiasImportar(){
@@ -485,7 +413,6 @@ function _guiasBDExportarSemilla(){
   var jsonArray = JSON.stringify(ordenado);
   var codigo = "const _GUIAS_BD_SEED = " + jsonArray + ";";
 
-  document.querySelectorAll(".modal").forEach(function(m){ m.remove(); });
   var modal = document.createElement("div");
   modal.className = "modal on";
   modal.innerHTML =
@@ -585,104 +512,81 @@ function _guiasBorrarSeleccionadas(){
 }
 
 // ── PANTALLA 1: Menú principal ────────────────────────────────────────────────
-var _guiasAreaSel = null;   // área abierta en el listado (null = ninguna, tarjetas cerradas)
-
-var _GUIAS_AREAS = ["Herramientas","Misceláneos","Papelería","Cables","Ropa y Calzado","General"];
-
-function _guiasAgrupar(hist){
-  var porArea = {};
-  _GUIAS_AREAS.forEach(function(a){ porArea[a] = []; });
-  hist.forEach(function(g,i){
-    var a = g.area || "General";
-    if(!porArea[a]) porArea[a] = [];
-    porArea[a].push({g:g, i:i});
-  });
-  return porArea;
-}
-
 function modGuias(){
-  _guiasBackupAutoCheck();
   var hist = _guiasHistCargar();
-  var porArea = _guiasAgrupar(hist);
 
-  // Si el área abierta se quedó sin guías, se cierra
-  if(_guiasAreaSel && !(porArea[_guiasAreaSel] || []).length) _guiasAreaSel = null;
+  // Agrupar historial por área
+  var areas = ["Herramientas","Misceláneos","Papelería","Cables","Ropa y Calzado","General"];
+  var porArea = {};
+  areas.forEach(function(a){ porArea[a] = []; });
+  hist.forEach(function(g,i){ var a = g.area||"General"; if(!porArea[a]) porArea[a]=[]; porArea[a].push({g:g,i:i}); });
 
-  var tarjetas = "";
-  Object.keys(porArea).forEach(function(area){
-    var n = (porArea[area] || []).length;
-    var abierta = _guiasAreaSel === area;
-    tarjetas +=
-      "<div class=\"guia-area-card" + (abierta ? " abierta" : "") + (n === 0 ? " vacia" : "") + "\"" +
-      " data-area=\"" + _escAttr(area) + "\">" +
-      "<div class=\"ga-n\">" + n + "</div>" +
-      "<div class=\"ga-t\">" + area + "</div>" +
-      "<div class=\"ga-s\">" + (n === 0 ? "sin guías" : (n === 1 ? "1 guía" : n + " guías")) + "</div>" +
-      "</div>";
-  });
-
-  // Si quedó un borrador de una guía sin terminar (ej. por un apagón o cierre inesperado),
-  // se ofrece recuperarlo antes que nada — sin él, ese trabajo se hubiera perdido por completo.
-  var draft = (!_guiaActual) ? _guiasDraftCargar() : null;
-  var draftHtml = "";
-  if(draft && draft.datos){
-    var dd = draft.datos;
-    var cuando = new Date(draft.guardado).toLocaleString('es-MX',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
-    draftHtml =
-      "<div style=\"background:#fff8e1;border:1.5px solid #f0c93a;border-radius:12px;padding:14px 16px;margin-bottom:14px;" +
-      "display:flex;align-items:center;gap:12px;flex-wrap:wrap\">" +
-      "<div style=\"flex:1;min-width:220px\">" +
-      "<div style=\"font-weight:700;font-size:13.5px\">📝 Hay una guía sin terminar</div>" +
-      "<div style=\"font-size:12px;color:var(--muted);margin-top:2px\">" +
-      (dd.area||"Sin área") + (dd.folio?(" · No. "+dd.folio):"") + (dd.destino?(" · "+dd.destino):"") +
-      " · " + (dd.lineas?dd.lineas.length:0) + " línea(s) · respaldada " + cuando + "</div></div>" +
-      "<button onclick=\"_guiasDraftRetomar()\" style=\"padding:8px 16px;background:var(--primary);color:#fff;" +
-      "border:none;border-radius:8px;font-weight:700;font-size:12.5px;cursor:pointer;font-family:inherit\">Continuar</button>" +
-      "<button onclick=\"_guiasDraftDescartar()\" style=\"padding:8px 14px;background:none;color:#a8390f;" +
-      "border:1.5px solid #f0c93a;border-radius:8px;font-size:12.5px;cursor:pointer;font-family:inherit\">Descartar</button>" +
-      "</div>";
+  var histHtml = "";
+  if(hist.length === 0){
+    histHtml = "<div style=\"color:var(--muted);font-size:13px;padding:16px 0\">No hay guías generadas aún.</div>";
+  } else {
+    areas.forEach(function(area){
+      var items = porArea[area] || [];
+      if(!items.length) return;
+      histHtml +=
+        "<details open class=\"guia-area-group\" data-area-group=\"" + area + "\" style=\"margin-bottom:12px\">" +
+        "<summary style=\"font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;" +
+        "letter-spacing:.4px;cursor:pointer;padding:6px 0;list-style:none\">" +
+        area + " <span style=\"color:var(--primary)\">(" + items.length + ")</span></summary>" +
+        "<div style=\"display:flex;flex-direction:column;gap:6px;margin-top:8px\">";
+      items.forEach(function(item){
+        var g=item.g, i=item.i;
+        var buscable = (g.folio + " " + (g.destino||'') + " " + area + " " + (g.fecha||'')).toLowerCase();
+        histHtml +=
+          "<div class=\"guia-item\" data-buscar=\"" + buscable.replace(/"/g,"&quot;") + "\" style=\"display:flex;align-items:center;gap:8px;padding:10px 14px;" +
+          "background:white;border:1px solid var(--line);border-radius:10px\">" +
+          "<input type=\"checkbox\" class=\"guia-chk\" data-idx=\"" + i + "\"" +
+          " onchange=\"_guiasToggleExportBtn()\" style=\"width:15px;height:15px;cursor:pointer;flex-shrink:0\">" +
+          "<div style=\"flex:1;cursor:pointer\" onclick=\"_guiasAbrirHistorial(" + i + ")\" title=\"Ver / editar\">" +
+          "<div style=\"font-size:13px;font-weight:700\">No. " + g.folio + " &mdash; " + (g.destino||'') + "</div>" +
+          "<div style=\"font-size:11px;color:var(--muted)\">" + (g.fecha||'') + " &middot; " + (g.lineas||0) + " materiales</div>" +
+          "</div>" +
+          "<button onclick=\"_guiasReimprimirHistorial(" + i + ",event)\" title=\"Reimprimir\"" +
+          " style=\"background:none;border:none;color:var(--primary);cursor:pointer;font-size:15px;padding:0\">&#128424;</button>" +
+          "<button onclick=\"_guiasBorrarHistorial(" + i + ")\" title=\"Borrar\"" +
+          " style=\"background:none;border:none;color:#dc2626;cursor:pointer;font-size:16px;padding:0\">&times;</button>" +
+          "</div>";
+      });
+      histHtml += "</div></details>";
+    });
   }
 
-  var ultBk = +localStorage.getItem(_GUIAS_LS_ULTBK) || 0;
-  var ultBkTxt = ultBk ? new Date(ultBk).toLocaleDateString('es-MX',{day:'2-digit',month:'short'}) : "nunca";
-
   $("#moduleView").innerHTML =
-    "<div style=\"max-width:900px;margin:0 auto;padding:16px 0\">" +
-    "<div class=\"menu-h\" style=\"margin-bottom:14px\">" +
-    "<h1>Guías de Embarque</h1>" +
-    "<p>" + DIST() + " &middot; " + hist.length + " guía" + (hist.length===1?"":"s") + " guardada" + (hist.length===1?"":"s") +
-    " &middot; último respaldo automático: " + ultBkTxt + "</p>" +
+    "<div style=\"max-width:600px;margin:0 auto;padding:24px 16px\">" +
+    "<div style=\"margin-bottom:24px\">" +
+    "<h2 style=\"margin:0 0 4px;font-size:20px\">Guías de Embarque</h2>" +
+    "<p style=\"margin:0;color:var(--muted);font-size:13px\">D041 &middot; Almacén Distribuidor Puebla</p>" +
     "</div>" +
-    draftHtml +
-
-    "<button onclick=\"_guiasDraftBorrar();_guiaActual=null;_guiaEditandoOriginal=null;_guiasNueva()\"" +
+    "<button onclick=\"_guiaActual=null;_guiaEditandoOriginal=null;_guiasNueva()\"" +
     " style=\"width:100%;padding:14px;background:var(--primary);color:white;border:none;" +
     "border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;" +
     "margin-bottom:10px\">+ Nueva guía de embarque</button>" +
-
-    "<div style=\"display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap\">" +
+    "<div style=\"display:flex;gap:8px;margin-bottom:20px\">" +
     "<button id=\"btnExportSel\" disabled onclick=\"_guiasExportarSeleccion(_guiasGetSeleccionados())\"" +
-    " style=\"flex:1;min-width:150px;padding:9px;background:white;border:1.5px solid var(--line);border-radius:10px;" +
+    " style=\"flex:1;padding:9px;background:white;border:1.5px solid var(--line);border-radius:10px;" +
     "font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;color:var(--primary);\">" +
     "Exportar seleccionadas</button>" +
     "<button id=\"btnBorrarSel\" disabled onclick=\"_guiasBorrarSeleccionadas()\"" +
-    " style=\"flex:1;min-width:150px;padding:9px;background:white;border:1.5px solid var(--line);border-radius:10px;" +
+    " style=\"flex:1;padding:9px;background:white;border:1.5px solid var(--line);border-radius:10px;" +
     "font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;color:#dc2626;\">" +
     "Borrar seleccionadas</button>" +
     "</div>" +
-
-    "<div style=\"display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap\">" +
+    "<div style=\"display:flex;gap:8px;margin-bottom:20px\">" +
     "<button onclick=\"_guiasExportarTodo()\"" +
-    " style=\"flex:1;min-width:150px;padding:9px;background:white;border:1.5px solid var(--line);border-radius:10px;" +
+    " style=\"flex:1;padding:9px;background:white;border:1.5px solid var(--line);border-radius:10px;" +
     "font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;color:var(--primary)\">" +
     "Exportar todo</button>" +
     "<button onclick=\"_guiasImportar()\"" +
-    " style=\"flex:1;min-width:150px;padding:9px;background:white;border:1.5px solid var(--line);border-radius:10px;" +
+    " style=\"flex:1;padding:9px;background:white;border:1.5px solid var(--line);border-radius:10px;" +
     "font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;color:var(--primary)\">" +
     "&#8679; Importar</button>" +
     "</div>" +
-
-    "<details style=\"margin-bottom:18px\">" +
+    "<details style=\"margin-bottom:20px\">" +
     "<summary style=\"font-size:11px;color:var(--muted);cursor:pointer;list-style:none;" +
     "display:inline-block\">&#9881; Opciones avanzadas</summary>" +
     "<button onclick=\"_guiasBDExportarSemilla()\"" +
@@ -690,99 +594,36 @@ function modGuias(){
     "border-radius:8px;font-size:11px;cursor:pointer;font-family:inherit;color:var(--muted)\">" +
     "Generar código de semilla de empaques</button>" +
     "</details>" +
-
+    "<div style=\"font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;" +
+    "letter-spacing:.4px;margin-bottom:10px\">Guías recientes</div>" +
     "<input type=\"search\" id=\"guiaSearch\" placeholder=\"Buscar por folio, destino o área...\"" +
     " style=\"width:100%;padding:9px 12px;border:1.5px solid var(--line);border-radius:10px;" +
-    "font-family:inherit;font-size:13px;margin-bottom:14px;box-sizing:border-box\">" +
-
-    "<div class=\"guia-areas-grid\" id=\"guiaAreasGrid\">" + tarjetas + "</div>" +
-    "<div id=\"guiaPanel\"></div>" +
+    "font-family:inherit;font-size:13px;margin-bottom:12px;box-sizing:border-box\">" +
+    "<div id=\"guiaListaVacia\" style=\"display:none;color:var(--muted);font-size:13px;padding:12px 0\">" +
+    "Sin resultados para esa búsqueda.</div>" +
+    "<div style=\"display:flex;flex-direction:column;gap:8px\">" + histHtml + "</div>" +
     "</div>";
-
-  $("#guiaAreasGrid").querySelectorAll(".guia-area-card").forEach(function(card){
-    card.onclick = function(){
-      var area = card.dataset.area;
-      _guiasAreaSel = (_guiasAreaSel === area) ? null : area;
-      modGuias();
-    };
-  });
-
-  _guiasRenderPanel();
 
   var buscador = document.getElementById("guiaSearch");
   if(buscador){
-    buscador.oninput = function(){ _guiasBuscar(this.value); };
+    buscador.oninput = function(){
+      var q = this.value.trim().toLowerCase();
+      var algunaVisible = false;
+      document.querySelectorAll(".guia-area-group").forEach(function(grupo){
+        var visiblesEnGrupo = 0;
+        grupo.querySelectorAll(".guia-item").forEach(function(item){
+          var match = !q || item.dataset.buscar.includes(q);
+          item.style.display = match ? "" : "none";
+          if(match) visiblesEnGrupo++;
+        });
+        grupo.style.display = visiblesEnGrupo > 0 ? "" : "none";
+        if(visiblesEnGrupo > 0) algunaVisible = true;
+        if(q) grupo.open = true; // expandir automáticamente al buscar
+      });
+      var vacio = document.getElementById("guiaListaVacia");
+      if(vacio) vacio.style.display = algunaVisible ? "none" : "";
+    };
   }
-}
-
-// ── Panel inferior: guías del área abierta ───────────────────────────────────
-function _guiasRenderPanel(){
-  var panel = document.getElementById("guiaPanel");
-  if(!panel) return;
-  if(!_guiasAreaSel){ panel.innerHTML = ""; return; }
-
-  var items = _guiasAgrupar(_guiasHistCargar())[_guiasAreaSel] || [];
-  panel.innerHTML =
-    "<div class=\"guia-panel-head\">" +
-    "<span>" + _guiasAreaSel + "</span>" +
-    "<span class=\"pill\">" + items.length + "</span>" +
-    "<button class=\"guia-cerrar\" onclick=\"_guiasAreaSel=null;modGuias()\">Cerrar &times;</button>" +
-    "</div>" +
-    "<div class=\"guia-lista\">" + items.map(_guiasFilaHtml).join("") + "</div>";
-  _guiasToggleExportBtn();
-}
-
-function _guiasFilaHtml(item){
-  var g = item.g, i = item.i;
-  var area = g.area || "General";
-  var buscable = (g.folio + " " + (g.destino||"") + " " + area + " " + (g.fecha||"")).toLowerCase();
-  return "<div class=\"guia-item\" data-buscar=\"" + _escAttr(buscable) + "\">" +
-    "<input type=\"checkbox\" class=\"guia-chk\" data-idx=\"" + i + "\"" +
-    " onchange=\"_guiasToggleExportBtn()\" style=\"width:15px;height:15px;cursor:pointer;flex-shrink:0\">" +
-    "<div style=\"flex:1;min-width:0;cursor:pointer\" onclick=\"_guiasAbrirHistorial(" + i + ")\" title=\"Ver / editar\">" +
-    "<div class=\"gi-t\">No. " + g.folio + " &mdash; " + (g.destino||"") + "</div>" +
-    "<div class=\"gi-s\">" + (g.fecha||"") + " &middot; " + (g.lineas||0) + " materiales</div>" +
-    "</div>" +
-    "<button onclick=\"_guiasReimprimirHistorial(" + i + ",event)\" title=\"Reimprimir\"" +
-    " style=\"background:none;border:none;color:var(--primary);cursor:pointer;font-size:15px;padding:0\">&#128424;</button>" +
-    "<button onclick=\"_guiasBorrarHistorial(" + i + ")\" title=\"Borrar\"" +
-    " style=\"background:none;border:none;color:#dc2626;cursor:pointer;font-size:16px;padding:0\">&times;</button>" +
-    "</div>";
-}
-
-// ── Búsqueda: resultados planos de todas las áreas ───────────────────────────
-function _guiasBuscar(val){
-  var q = (val||"").trim().toLowerCase();
-  var grid = document.getElementById("guiaAreasGrid");
-  var panel = document.getElementById("guiaPanel");
-  if(!grid || !panel) return;
-
-  if(!q){                       // sin búsqueda: se regresa a las tarjetas
-    grid.style.display = "";
-    _guiasRenderPanel();
-    return;
-  }
-
-  grid.style.display = "none";  // durante la búsqueda las tarjetas estorban
-  var hist = _guiasHistCargar();
-  var res = hist.map(function(g,i){ return {g:g, i:i}; }).filter(function(item){
-    var g = item.g;
-    var s = (g.folio + " " + (g.destino||"") + " " + (g.area||"General") + " " + (g.fecha||"")).toLowerCase();
-    return s.indexOf(q) !== -1;
-  });
-
-  if(!res.length){
-    panel.innerHTML = "<div class=\"empty\">Sin resultados para esa búsqueda.</div>";
-    return;
-  }
-  panel.innerHTML =
-    "<div class=\"guia-panel-head\"><span>Resultados</span>" +
-    "<span class=\"pill\">" + res.length + "</span></div>" +
-    "<div class=\"guia-lista\">" + res.map(function(item){
-      return _guiasFilaHtml(item).replace("<div class=\"gi-s\">",
-        "<div class=\"gi-s\"><b style=\"color:var(--primary)\">" + (item.g.area||"General") + "</b> &middot; ");
-    }).join("") + "</div>";
-  _guiasToggleExportBtn();
 }
 
 // ── PANTALLA 2: Nueva guía — datos de cabecera ────────────────────────────────
@@ -876,11 +717,21 @@ function _guiasNueva(){
     "</div>" +
 
     // Fecha
-    "<div style=\"margin-bottom:24px\">" +
+    "<div style=\"margin-bottom:16px\">" +
     "<label style=\"font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;" +
     "letter-spacing:.4px;display:block;margin-bottom:6px\">Fecha</label>" +
     "<input id=\"gFecha\" type=\"date\"" +
     (editando && _guiaActual.fecha ? " value=\"" + _escAttr(_guiaActual.fecha) + "\"" : "") +
+    " style=\"width:100%;padding:10px 14px;border:1.5px solid var(--line);border-radius:10px;" +
+    "font-size:14px;font-family:inherit;box-sizing:border-box\">" +
+    "</div>" +
+
+    // Transporte
+    "<div style=\"margin-bottom:24px\">" +
+    "<label style=\"font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;" +
+    "letter-spacing:.4px;display:block;margin-bottom:6px\">Línea de transporte (opcional)</label>" +
+    "<input id=\"gTransporte\" type=\"text\" placeholder=\"DHL, Transporte\"" +
+    (editando && _guiaActual.transporte ? " value=\"" + _escAttr(_guiaActual.transporte) + "\"" : "") +
     " style=\"width:100%;padding:10px 14px;border:1.5px solid var(--line);border-radius:10px;" +
     "font-size:14px;font-family:inherit;box-sizing:border-box\">" +
     "</div>" +
@@ -1004,6 +855,7 @@ function _guiasContinuarMateriales(){
   var raw = document.getElementById("gDestino").value.trim();
   var destino = raw.split(" ")[0].split("—")[0].trim().toUpperCase();
   var fecha   = document.getElementById("gFecha").value;
+  var transp  = document.getElementById("gTransporte").value.trim();
 
   if(!folio){ alert("Ingresa el número de guía."); return; }
   if(!destino){ alert("Selecciona el almacén destino."); return; }
@@ -1012,15 +864,14 @@ function _guiasContinuarMateriales(){
   var previa = _guiaActual; // si venimos de editar, aquí ya hay materiales y otros datos capturados
   _guiaActual = {
     area: area, folio: parseInt(folio), destino: destino,
-    almInfo: almInfo, fecha: fecha, transporte: previa ? previa.transporte : '', // se captura en la pantalla de firma
+    almInfo: almInfo, fecha: fecha, transporte: transp,
     lineas: previa ? previa.lineas : [],
     surtio:    previa ? previa.surtio    : '',
     operador:  previa ? previa.operador  : '',
     placas:    previa ? previa.placas    : '',
     tipoVeh:   previa ? previa.tipoVeh   : '',
     pedido:    previa ? previa.pedido    : '',
-    siatel:    previa ? previa.siatel    : '',
-    cajasGranel: previa && previa.cajasGranel != null ? previa.cajasGranel : 0
+    siatel:    previa ? previa.siatel    : ''
   };
 
   // Si se importó un OR desde esta pantalla, aplicar ahora los materiales
@@ -1131,7 +982,7 @@ function _tplLineaGuia(l, idx){
     "<div style=\"font-size:12px;font-weight:700;font-family:monospace;color:var(--primary)\">" + l.cat + badgeHtml + "</div>" +
     "<div style=\"font-size:12px;color:var(--text);margin:2px 0\">" + l.desc + "</div>" +
     "<div style=\"font-size:11px;color:var(--muted)\">" +
-    l.cant + " " + l.um + " &mdash; " + l.bultos + " " + (l.tipoEmp === "Tarima" ? (l.grupoNombre || "Tarima") : l.tipoEmp) +
+    l.cant + " " + l.um + " &mdash; " + l.bultos + " " + l.tipoEmp +
     (l.tipoEmp === "Tarima" ? " (" + l.tarimaSubCant + " " + l.tarimaSubTipo + " c/ " + l.tarimaSubCont + " " + l.um + ")"
       : l.contEmp > 1 ? " de " + l.contEmp + " " + l.um : "") +
     (l.patio ? " &mdash; <b>PATIO</b>" : "") +
@@ -1284,7 +1135,6 @@ function _guiasConfirmarLotesSeleccionados(cat, desc, um){
 }
 
 function _guiasPedirEmpaque(cat, desc, um, opciones){
-  document.querySelectorAll(".modal").forEach(function(m){ m.remove(); }); // por si quedó alguna ventana anterior sin cerrar
   var modal = document.createElement("div");
   modal.className = "modal on";
 
@@ -1304,7 +1154,7 @@ function _guiasPedirEmpaque(cat, desc, um, opciones){
       bultos: cant, patio: true, granel: false
     });
     var inp = document.getElementById("gCatInput");
-    if(inp) _limpiarCatInput();
+    if(inp){ inp.value = ""; document.getElementById("gCatInfo").textContent = ""; }
     _guiasRefrescarVista();
     return;
   }
@@ -1324,7 +1174,7 @@ function _guiasPedirEmpaque(cat, desc, um, opciones){
     var estrella = op.preferido ? "&#9733;" : "&#9734;"; // ★ / ☆
     btnsConocidos +=
       "<div style=\"display:flex;align-items:center;gap:4px;margin-bottom:6px\">" +
-      "<button class=\"gEmpBtn\" onclick=\"_guiasSeleccionarEmpaque('" + catEsc + "','" + descEsc + "','" + um + "','" +
+      "<button onclick=\"_guiasSeleccionarEmpaque('" + catEsc + "','" + descEsc + "','" + um + "','" +
       op.tipo + "'," + op.cont + ")\"" +
       " style=\"flex:1;text-align:left;padding:10px 14px;background:#f0f4ff;" +
       "border:1.5px solid var(--primary);border-radius:8px;cursor:pointer;" +
@@ -1344,30 +1194,28 @@ function _guiasPedirEmpaque(cat, desc, um, opciones){
       "</div>";
   }
 
-  // Botones de empaques agrupados conocidos para este catálogo (Tarima, Caja maestra, Paquete…)
+  // Botones de tarimas conocidas para este catálogo
   var tarimasCat = _guiasTarimaOpciones(cat);
   var btnsTarimas = "";
   for(var ti=0; ti<tarimasCat.length; ti++){
     var tp = tarimasCat[ti];
-    var nombreT = tp.grupoNombre || "Tarima";
-    var nombreTEsc = nombreT.replace(/'/g,"&#39;").replace(/"/g,"&quot;");
     var estrellaT = tp.preferido ? "&#9733;" : "&#9734;";
     btnsTarimas +=
       "<div style=\"display:flex;align-items:center;gap:4px;margin-bottom:6px\">" +
-      "<button class=\"gEmpBtn\" onclick=\"_guiasSeleccionarTarima('" + catEsc + "','" + descEsc + "','" + um + "','" +
-      tp.subTipo + "'," + tp.subCant + "," + tp.subCont + ",'" + nombreTEsc + "')\"" +
+      "<button onclick=\"_guiasSeleccionarTarima('" + catEsc + "','" + descEsc + "','" + um + "','" +
+      tp.subTipo + "'," + tp.subCant + "," + tp.subCont + ")\"" +
       " style=\"flex:1;text-align:left;padding:10px 14px;background:#fdf4e7;" +
       "border:1.5px solid #b8722a;border-radius:8px;cursor:pointer;" +
       "font-family:inherit;font-size:13px\">" +
-      "<b>" + nombreT + "</b> de " + tp.subCant + " " + tp.subTipo + " c/ " + tp.subCont + " " + um +
+      "<b>Tarima</b> de " + tp.subCant + " " + tp.subTipo + " c/ " + tp.subCont + " " + um +
       (tp.preferido ? " <span style=\"color:#f59e0b;font-size:10px;font-weight:700\">PREFERIDA</span>" : "") +
       "</button>" +
       "<button onclick=\"_guiasTarimaTogglePreferido('" + catEsc + "','" + descEsc + "','" + um + "','" + tp.subTipo + "'," + tp.subCant + "," + tp.subCont + ")\"" +
       " title=\"" + (tp.preferido ? "Preferida — siempre se propondrá primero" : "Marcar como preferida") + "\"" +
       " style=\"background:none;border:none;cursor:pointer;font-size:20px;line-height:1;" +
       "color:" + (tp.preferido ? "#f59e0b" : "#ccc") + ";flex-shrink:0\">" + estrellaT + "</button>" +
-      "<button onclick=\"_guiasTarimaBorrarOpcion('" + catEsc + "','" + descEsc + "','" + um + "','" + tp.subTipo + "'," + tp.subCant + "," + tp.subCont + ",'" + nombreTEsc + "')\"" +
-      " title=\"Borrar esta " + nombreT.toLowerCase() + " de la memoria\"" +
+      "<button onclick=\"_guiasTarimaBorrarOpcion('" + catEsc + "','" + descEsc + "','" + um + "','" + tp.subTipo + "'," + tp.subCant + "," + tp.subCont + ")\"" +
+      " title=\"Borrar esta tarima de la memoria\"" +
       " style=\"background:none;border:none;cursor:pointer;font-size:18px;line-height:1;" +
       "color:#dc2626;flex-shrink:0\">&times;</button>" +
       "</div>";
@@ -1438,16 +1286,12 @@ function _guiasPedirEmpaque(cat, desc, um, opciones){
     "</div></details>" +
     "<details style=\"margin-top:14px;border-top:1px dashed var(--line);padding-top:12px\">" +
     "<summary style=\"font-size:11px;font-weight:700;color:#b8722a;text-transform:uppercase;" +
-    "letter-spacing:.4px;cursor:pointer;padding:4px 0;list-style:none\">+ Nuevo empaque agrupado</summary>" +
+    "letter-spacing:.4px;cursor:pointer;padding:4px 0;list-style:none\">+ Nueva tarima</summary>" +
     "<div style=\"margin-top:10px;display:flex;flex-direction:column;gap:8px\">" +
-    "<div><label style=\"font-size:11px;color:var(--muted)\">¿Cómo se llama este empaque? (Tarima, Caja maestra, Paquete…)</label>" +
-    "<input id=\"gTarimaNombreGrupo\" type=\"text\" value=\"Tarima\" placeholder=\"Tarima, Caja maestra, Paquete...\"" +
-    " style=\"width:100%;padding:8px;border:1.5px solid var(--line);border-radius:8px;" +
-    "font-family:inherit;margin-top:3px\"></div>" +
-    "<div><label style=\"font-size:11px;color:var(--muted)\">Tipo de contenedor adentro</label>" +
+    "<div><label style=\"font-size:11px;color:var(--muted)\">Tipo de contenedor por tarima</label>" +
     tipoTarimaInputHtml + "</div>" +
     "<div style=\"display:flex;gap:8px\">" +
-    "<div style=\"flex:1\"><label style=\"font-size:11px;color:var(--muted)\">Contenedores por empaque</label>" +
+    "<div style=\"flex:1\"><label style=\"font-size:11px;color:var(--muted)\">Contenedores por tarima</label>" +
     "<input id=\"gTarimaSubCant\" type=\"number\" min=\"1\" placeholder=\"Ej. 60\"" +
     " style=\"width:100%;padding:8px;border:1.5px solid var(--line);border-radius:8px;" +
     "font-family:inherit;margin-top:3px\"></div>" +
@@ -1456,14 +1300,14 @@ function _guiasPedirEmpaque(cat, desc, um, opciones){
     " style=\"width:100%;padding:8px;border:1.5px solid var(--line);border-radius:8px;" +
     "font-family:inherit;margin-top:3px\"></div>" +
     "</div>" +
-    "<div><label style=\"font-size:11px;color:var(--muted)\">Cuántos van</label>" +
+    "<div><label style=\"font-size:11px;color:var(--muted)\">Cuántas tarimas van</label>" +
     "<input id=\"gTarimaNum\" type=\"number\" min=\"1\" value=\"1\"" +
     " onkeydown=\"if(event.key==='Enter'){event.preventDefault();_guiasConfirmarTarimaNueva('" + catEsc + "','" + descEsc + "','" + um + "');}\"" +
     " style=\"width:100%;padding:8px;border:1.5px solid var(--line);border-radius:8px;" +
     "font-family:inherit;font-size:15px;font-weight:700;color:#b8722a;margin-top:3px\"></div>" +
     "<button onclick=\"_guiasConfirmarTarimaNueva('" + catEsc + "','" + descEsc + "','" + um + "')\"" +
     " style=\"width:100%;padding:9px;background:#b8722a;color:white;border:none;border-radius:8px;" +
-    "font-weight:700;cursor:pointer;font-family:inherit;font-size:12.5px\">Agregar</button>" +
+    "font-weight:700;cursor:pointer;font-family:inherit;font-size:12.5px\">Agregar tarima</button>" +
     "</div></details>" +
     "</div>";
 
@@ -1484,102 +1328,34 @@ function _guiasPedirEmpaque(cat, desc, um, opciones){
     "</div></div>";
 
   document.body.appendChild(modal);
-  // Navegación con flechas entre los empaques/tarimas conocidas (sin tocar el mouse):
-  // ↓/↑ mueve el foco solo entre los botones de selección (no las estrellas ni la ×).
-  modal.addEventListener("keydown", function(e){
-    if(e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
-    var btns = [].slice.call(modal.querySelectorAll(".gEmpBtn"));
-    if(!btns.length) return;
-    e.preventDefault();
-    var idx = btns.indexOf(document.activeElement);
-    if(idx === -1){ btns[0].focus(); return; }
-    var next = e.key === "ArrowDown" ? (idx + 1) % btns.length : (idx - 1 + btns.length) % btns.length;
-    btns[next].focus();
-  });
   setTimeout(function(){
-    // Si hay algo conocido, el foco arranca ahí (el primero es siempre el preferido/más usado)
-    // para poder confirmar con solo Enter; si no, cae al campo de captura manual.
-    var primero = modal.querySelector(".gEmpBtn");
-    var el = primero || document.getElementById(opciones.length === 0 ? "gEmpCant" : "gGranelCant");
+    var el = document.getElementById(opciones.length === 0 ? "gEmpCant" : "gGranelCant");
     if(el) el.focus();
   }, 100);
 }
 
 function _guiasSeleccionarEmpaque(cat, desc, um, tipo, cont){
   cont = parseInt(cont);
-  var catEsc  = cat.replace(/'/g,"&#39;").replace(/"/g,"&quot;");
-  var descEsc = desc.replace(/'/g,"&#39;").replace(/"/g,"&quot;");
-  var tipoEsc = String(tipo).replace(/'/g,"&#39;").replace(/"/g,"&quot;");
-  var box = document.querySelector(".modal .modal-box");
-  if(!box) return;
-  // Paso 2 dentro del mismo modal (sin prompt()): solo pide la cantidad total, con Enter para confirmar.
-  box.innerHTML =
-    "<div style=\"padding:24px\">" +
-    "<h3 style=\"margin:0 0 4px\">" + cat + "</h3>" +
-    "<div style=\"font-size:12px;color:var(--muted);margin-bottom:16px\">" + desc + "</div>" +
-    "<div style=\"background:#f0f4ff;border:1.5px solid var(--primary);border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:13px\">" +
-    "<b>" + tipo + "</b> de " + cont + " " + um + "</div>" +
-    "<label style=\"font-size:11px;color:var(--muted)\">Cantidad total</label>" +
-    "<input id=\"gEmpCantInline\" type=\"number\" min=\"1\" autocomplete=\"off\"" +
-    " onkeydown=\"if(event.key==='Enter'){event.preventDefault();_guiasConfirmarCantidadInline('" + catEsc + "','" + descEsc + "','" + um + "','" + tipoEsc + "'," + cont + ");}\"" +
-    " style=\"width:100%;padding:10px;border:1.5px solid var(--primary);border-radius:8px;" +
-    "font-family:inherit;font-size:17px;font-weight:700;color:var(--primary);margin-top:4px\">" +
-    "<div style=\"display:flex;gap:8px;margin-top:18px\">" +
-    "<button class=\"btn\" onclick=\"_guiasPedirEmpaque('" + catEsc + "','" + descEsc + "','" + um + "',_guiasBDOpciones('" + catEsc + "'))\" style=\"flex:1;padding:10px\">&larr; Regresar</button>" +
-    "<button class=\"btn-prim\" onclick=\"_guiasConfirmarCantidadInline('" + catEsc + "','" + descEsc + "','" + um + "','" + tipoEsc + "'," + cont + ")\" style=\"flex:1;padding:10px\">Agregar</button>" +
-    "</div></div>";
-  setTimeout(function(){ document.getElementById("gEmpCantInline")?.focus(); }, 50);
-}
-
-function _guiasSeleccionarTarima(cat, desc, um, subTipo, subCant, subCont, grupoNombre){
-  var catEsc  = cat.replace(/'/g,"&#39;").replace(/"/g,"&quot;");
-  var descEsc = desc.replace(/'/g,"&#39;").replace(/"/g,"&quot;");
-  var subTipoEsc = String(subTipo).replace(/'/g,"&#39;").replace(/"/g,"&quot;");
-  var nombre = grupoNombre || "Tarima";
-  var nombreEsc = nombre.replace(/'/g,"&#39;").replace(/"/g,"&quot;");
-  var box = document.querySelector(".modal .modal-box");
-  if(!box) return;
-  box.innerHTML =
-    "<div style=\"padding:24px\">" +
-    "<h3 style=\"margin:0 0 4px\">" + cat + "</h3>" +
-    "<div style=\"font-size:12px;color:var(--muted);margin-bottom:16px\">" + desc + "</div>" +
-    "<div style=\"background:#fdf4e7;border:1.5px solid #b8722a;border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:13px\">" +
-    "<b>" + nombre + "</b> de " + subCant + " " + subTipo + " c/ " + subCont + " " + um + "</div>" +
-    "<label style=\"font-size:11px;color:var(--muted)\">¿Cuántos(as) " + nombre.toLowerCase() + "(s) van?</label>" +
-    "<input id=\"gTarimaNumInline\" type=\"number\" min=\"1\" value=\"1\" autocomplete=\"off\"" +
-    " onkeydown=\"if(event.key==='Enter'){event.preventDefault();_guiasConfirmarTarimasInline('" + catEsc + "','" + descEsc + "','" + um + "','" + subTipoEsc + "'," + subCant + "," + subCont + ",'" + nombreEsc + "');}\"" +
-    " style=\"width:100%;padding:10px;border:1.5px solid #b8722a;border-radius:8px;" +
-    "font-family:inherit;font-size:17px;font-weight:700;color:#b8722a;margin-top:4px\">" +
-    "<div style=\"display:flex;gap:8px;margin-top:18px\">" +
-    "<button class=\"btn\" onclick=\"_guiasPedirEmpaque('" + catEsc + "','" + descEsc + "','" + um + "',_guiasBDOpciones('" + catEsc + "'))\" style=\"flex:1;padding:10px\">&larr; Regresar</button>" +
-    "<button class=\"btn-prim\" onclick=\"_guiasConfirmarTarimasInline('" + catEsc + "','" + descEsc + "','" + um + "','" + subTipoEsc + "'," + subCant + "," + subCont + ",'" + nombreEsc + "')\" style=\"flex:1;padding:10px\">Agregar</button>" +
-    "</div></div>";
-  setTimeout(function(){ document.getElementById("gTarimaNumInline")?.focus(); }, 50);
-}
-
-// Confirma el paso 2 (cantidad) de un empaque conocido — sin prompt(), dentro del mismo modal, con Enter.
-function _guiasConfirmarCantidadInline(cat, desc, um, tipo, cont){
-  var cant = parseInt(document.getElementById("gEmpCantInline")?.value || "0");
-  if(!cant || cant < 1){ alert("Ingresa una cantidad válida."); return; }
+  var cant = prompt("Cantidad total de " + cat + ":", "");
+  if(!cant || isNaN(cant) || parseInt(cant) < 1){ _guiasEditandoLineaIdx = null; return; }
+  cant = parseInt(cant);
   document.querySelector(".modal")?.remove();
-  var nCajas = Math.floor(cant / cont), residuo = cant % cont;
+
+  var nCajas  = Math.floor(cant / cont);
+  var residuo = cant % cont;
+
   if(nCajas > 0 && residuo > 0){
+    // División automática: cajas cerradas + granel (la línea vieja, si aplica, se limpia dentro de _guiasAgregarLineaSilente)
     _guiasAgregarLineaSilente(cat, desc, um, tipo, cont, nCajas * cont, false);
     _guiasAgregarLineaSilente(cat, desc, um, "Granel", 0, residuo, true);
-    _limpiarCatInput();
+      _limpiarCatInput();
     _guiasRefrescarVista();
   } else {
-    _guiasAgregarLinea(cat, desc, um, tipo, cont, cant, nCajas === 0);
+    // Todo en cajas cerradas o todo a granel
+    var esGranel = (nCajas === 0);
+    _guiasAgregarLinea(cat, desc, um, tipo, cont, cant, esGranel);
   }
   _guiasBDActualizarEmpaque(cat, tipo, cont, um);
-}
-// Confirma el paso 2 (cuántos van) de un empaque agrupado conocido — mismo criterio, sin prompt().
-function _guiasConfirmarTarimasInline(cat, desc, um, subTipo, subCant, subCont, grupoNombre){
-  var num = parseInt(document.getElementById("gTarimaNumInline")?.value || "0");
-  if(!num || num < 1){ alert("Ingresa cuántos van."); return; }
-  document.querySelector(".modal")?.remove();
-  _guiasTarimaBDActualizar(cat, subTipo, subCant, subCont, um, grupoNombre);
-  _guiasAgregarLineaTarima(cat, desc, um, subTipo, subCant, subCont, num, grupoNombre);
 }
 
 function _guiasAPatioModal(cat, desc, um){
@@ -1593,7 +1369,8 @@ function _guiasAPatioModal(cat, desc, um){
     cant: cant, tipoEmp: "Patio", contEmp: 1,
     bultos: bultos, patio: true, granel: false
   });
-  _limpiarCatInput();
+  var inp = document.getElementById("gCatInput");
+  if(inp){ inp.value = ""; document.getElementById("gCatInfo").textContent = ""; }
   _guiasRefrescarVista();
 }
 
@@ -1638,13 +1415,7 @@ function _guiasConfirmarEmpaque(cat, desc, um){
 
 function _limpiarCatInput(){
   var inp = document.getElementById("gCatInput");
-  if(inp){
-    inp.value = "";
-    document.getElementById("gCatInfo").textContent = "";
-    // Regresa el cursor al catálogo automáticamente — así se puede seguir capturando
-    // solo con teclado, sin usar el mouse para volver a dar clic ahí cada vez.
-    setTimeout(function(){ inp.focus(); }, 30);
-  }
+  if(inp){ inp.value = ""; document.getElementById("gCatInfo").textContent = ""; }
 }
 
 function _guiasAgregarLineaSilente(cat, desc, um, tipoEmp, contEmp, cant, esGranel){
@@ -1814,7 +1585,6 @@ function _guiasDetectarSinHeader(rows){
 
 // ── Pegar tabla copiada de un correo ──────────────────────────────────────────
 function _guiasAbrirPegarTabla(desdeNueva){
-  document.querySelectorAll(".modal").forEach(function(m){ m.remove(); });
   var modal = document.createElement("div");
   modal.className = "modal on";
   modal.innerHTML =
@@ -1899,93 +1669,13 @@ function _guiasProcesarTablaPegada(desdeNueva){
     return;
   }
 
-  // En vez de importar directo, se normaliza a pares [catálogo, cantidad] y se muestra
-  // una tabla editable — así se pueden quitar líneas que no surten, corregir cantidades,
-  // o agregar líneas sueltas antes de confirmar la importación.
-  var pares = [];
-  for(var r=det.hdrIdx+1; r<rows.length; r++){
-    var row = rows[r];
-    var cat = String(row[det.iCat]||"").trim();
-    var xs  = String(row[det.iXS]||"").replace(/[,\s]/g,"").trim();
-    if(!cat && !xs) continue;
-    pares.push([cat, xs]);
-  }
-
   document.querySelector(".modal")?.remove();
-  _guiasAbrirRevisionTabla(pares, desdeNueva);
-}
 
-// ── Fila editable dentro de la tabla de revisión ─────────────────────────────
-function _guiasTplFilaPegRevision(cat, xs){
-  return "<div class=\"gPegRow\" style=\"display:flex;gap:8px;align-items:center;margin-bottom:6px\">" +
-    "<input type=\"text\" class=\"gPegCat\" value=\"" + _escAttr(cat) + "\" placeholder=\"Catálogo\"" +
-    " style=\"flex:1.4;padding:7px 9px;border:1px solid var(--line);border-radius:6px;font-family:inherit;font-size:13px\">" +
-    "<input type=\"text\" inputmode=\"numeric\" class=\"gPegXS\" value=\"" + _escAttr(xs) + "\" placeholder=\"Cantidad\"" +
-    " style=\"width:90px;padding:7px 9px;border:1px solid var(--line);border-radius:6px;font-family:inherit;font-size:13px;text-align:right\">" +
-    "<button type=\"button\" onclick=\"this.closest('.gPegRow').remove()\" title=\"Quitar línea\"" +
-    " style=\"border:none;background:none;color:var(--rojo,#dc2626);font-size:18px;line-height:1;cursor:pointer;padding:4px 8px;font-weight:700\">&times;</button>" +
-    "</div>";
-}
-
-// ── Modal de revisión: tabla editable antes de importar ──────────────────────
-function _guiasAbrirRevisionTabla(pares, desdeNueva){
-  var filasHtml = pares.map(function(p){ return _guiasTplFilaPegRevision(p[0], p[1]); }).join("");
-  document.querySelectorAll(".modal").forEach(function(m){ m.remove(); });
-  var modal = document.createElement("div");
-  modal.className = "modal on";
-  modal.id = "gModalRevisionTabla";
-  modal.innerHTML =
-    "<div class=\"modal-box\" style=\"max-width:520px\">" +
-    "<h3 style=\"margin:0 0 6px\">Revisar antes de importar</h3>" +
-    "<p style=\"font-size:12px;color:var(--muted);margin:0 0 12px\">" +
-    "Quita las líneas que no surten (&times;), corrige catálogo o cantidad, o agrega líneas sueltas. " +
-    "Al confirmar se procesan igual que siempre (empaque, patio, lote, etc.).</p>" +
-    "<div id=\"gPegRowsWrap\" style=\"max-height:340px;overflow-y:auto;padding-right:2px\">" +
-    filasHtml +
-    "</div>" +
-    "<button type=\"button\" onclick=\"_guiasAgregarFilaPegRevision()\"" +
-    " style=\"margin-top:8px;border:1.5px dashed var(--line);background:none;border-radius:6px;" +
-    "padding:7px 12px;font-family:inherit;font-size:12px;color:var(--primary);cursor:pointer;width:100%\">" +
-    "+ Agregar línea</button>" +
-    "<div style=\"display:flex;justify-content:flex-end;gap:8px;margin-top:14px\">" +
-    "<button class=\"btn\" onclick=\"this.closest('.modal').remove()\">Cancelar</button>" +
-    "<button class=\"btn-prim\" onclick=\"_guiasConfirmarRevisionTabla(" + (desdeNueva?"true":"false") + ")\">Confirmar e importar</button>" +
-    "</div></div>";
-  document.body.appendChild(modal);
-}
-
-function _guiasAgregarFilaPegRevision(){
-  var wrap = document.getElementById("gPegRowsWrap");
-  if(!wrap) return;
-  wrap.insertAdjacentHTML("beforeend", _guiasTplFilaPegRevision("", ""));
-  var inputs = wrap.querySelectorAll(".gPegRow .gPegCat");
-  var ultimo = inputs[inputs.length-1];
-  if(ultimo) ultimo.focus();
-}
-
-function _guiasConfirmarRevisionTabla(desdeNueva){
-  var wrap = document.getElementById("gPegRowsWrap");
-  if(!wrap) return;
-  var rowsEditadas = [];
-  wrap.querySelectorAll(".gPegRow").forEach(function(fila){
-    var cat = (fila.querySelector(".gPegCat")?.value || "").trim();
-    var xs  = (fila.querySelector(".gPegXS")?.value || "").trim();
-    if(!cat) return; // línea vacía o dejada en blanco tras editar — se ignora
-    rowsEditadas.push([cat, xs]);
-  });
-  if(rowsEditadas.length === 0){
-    alert("No quedó ninguna línea con catálogo. Agrega al menos una o cancela.");
-    return;
-  }
-
-  document.getElementById("gModalRevisionTabla")?.remove();
-
-  // hdrIdx:-1 porque rowsEditadas ya no trae encabezado — arranca en la fila 0
   if(desdeNueva){
-    _guiasORPendiente = { rows: rowsEditadas, hdrIdx: -1, iCat: 0, iXS: 1 };
-    _guiasToast("Tabla revisada y guardada &mdash; se importará al continuar", "ok");
+    _guiasORPendiente = { rows: rows, hdrIdx: det.hdrIdx, iCat: det.iCat, iXS: det.iXS };
+    _guiasToast("Tabla procesada y guardada &mdash; se importará al continuar", "ok");
   } else {
-    var res = _guiasImportarFilasOR(rowsEditadas, -1, 0, 1);
+    var res = _guiasImportarFilasOR(rows, det.hdrIdx, det.iCat, det.iXS);
     _guiasRefrescarLineas();
     if(res.paraRevisar > 0){
       _guiasToast(res.importados + " materiales guardados &mdash; " + res.paraRevisar + " por revisar", "warn");
@@ -2159,64 +1849,12 @@ var _GUIAS_TRANSPORTES_BASE = [
   ]}
 ];
 
-// Personal que habitualmente surte las guías — tarjetas de llenado rápido
-var _GUIAS_SURTIDORES = [
-  "Misrrain Maldonado Villegas",
-  "Iván Islas Galván",
-  "Elisa Molina Cortés",
-  "Carolina García Villegas",
-  "Roberto Triano Vega",
-  "Ana Reyes Ramírez"
-];
-
-function _guiasElegirSurtio(nombre){
-  var el = document.getElementById("gSurtio");
-  if(!el) return;
-  el.value = nombre;
-  if(_guiaActual) _guiaActual.surtio = nombre;
-  _guiasMarcarSurtidor();
-}
-
-// Resalta la tarjeta que coincide con lo que hay escrito en el campo
-function _guiasMarcarSurtidor(){
-  var el = document.getElementById("gSurtio");
-  if(!el) return;
-  var val = (el.value || "").trim().toLowerCase();
-  var cont = document.getElementById("gSurtidores");
-  if(!cont) return;
-  cont.querySelectorAll("button[data-surtidor]").forEach(function(b){
-    var on = b.dataset.surtidor.toLowerCase() === val;
-    b.style.background = on ? "var(--primary)" : "white";
-    b.style.color      = on ? "white" : "var(--primary)";
-  });
-}
-
-function _guiasTarjetasSurtidoresHtml(){
-  return "<div style=\"font-size:10.5px;color:var(--muted);margin-bottom:6px\">" +
-    "Qui&eacute;n surti&oacute; &mdash; toca un nombre</div>" +
-    "<div id=\"gSurtidores\" style=\"display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px\">" +
-    _GUIAS_SURTIDORES.map(function(n){
-      return "<button type=\"button\" data-surtidor=\"" + _escAttr(n) + "\"" +
-        " onclick=\"_guiasElegirSurtio('" + _escAttr(n).replace(/'/g,"\\'") + "')\"" +
-        " style=\"padding:6px 11px;background:white;border:1.5px solid var(--primary);" +
-        "color:var(--primary);border-radius:8px;font-size:11px;font-weight:600;" +
-        "cursor:pointer;font-family:inherit\">" + n + "</button>";
-    }).join("") +
-    "</div>";
-}
-
 function _guiasElegirTransporteBase(linea, tipo, placas, operador){
   var f = function(id, val){ var el = document.getElementById(id); if(el) el.value = val; };
   f("gTransporteRev", linea);
   f("gTipoVeh", tipo);
   f("gPlacas", placas);
   f("gOperador", operador);
-  // Marcar visualmente cuál quedó elegido, sin redibujar toda la pantalla
-  var keySel = linea + "|" + tipo + "|" + placas + "|" + operador;
-  document.querySelectorAll(".gTransBtn").forEach(function(btn){
-    var esEsta = btn.getAttribute("data-key") === keySel;
-    btn.style.cssText = (btn.style.width === "100%" ? "width:100%;" : "") + _guiasEstiloBtnTransporte(esEsta);
-  });
 }
 
 function _guiasTarjetasTransporteHtml(){
@@ -2230,36 +1868,22 @@ function _guiasTarjetasTransporteHtml(){
         "<div style=\"font-size:12px;font-weight:800;color:var(--primary)\">" + t.linea + " &mdash; " + v.tipo + "</div>" +
         "<div style=\"font-size:11px;color:var(--muted);font-family:monospace;margin-bottom:6px\">" + v.placas + "</div>" +
         (unOperador ?
-          _guiasTplBtnTransporte(t.linea, v.tipo, v.placas, v.operadores[0], true)
+          "<button type=\"button\" onclick=\"_guiasElegirTransporteBase('" + t.linea + "','" + v.tipo + "','" + v.placas + "','" + v.operadores[0] + "')\"" +
+          " style=\"width:100%;padding:6px;background:var(--primary);color:white;border:none;" +
+          "border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit\">Usar &mdash; " + v.operadores[0] + "</button>"
           :
           "<div style=\"font-size:10px;color:var(--muted);margin-bottom:3px\">Operador:</div>" +
           "<div style=\"display:flex;flex-wrap:wrap;gap:4px\">" +
           v.operadores.map(function(op){
-            return _guiasTplBtnTransporte(t.linea, v.tipo, v.placas, op, false);
+            return "<button type=\"button\" onclick=\"_guiasElegirTransporteBase('" + t.linea + "','" + v.tipo + "','" + v.placas + "','" + op + "')\"" +
+              " style=\"padding:5px 9px;background:white;border:1.5px solid var(--primary);color:var(--primary);" +
+              "border-radius:7px;font-size:10.5px;font-weight:600;cursor:pointer;font-family:inherit\">" + op + "</button>";
           }).join("") +
           "</div>") +
         "</div>";
     });
   });
   return html;
-}
-
-// Un botón de operador — marcado como seleccionado (fondo sólido) solo si coincide
-// exactamente con lo que ya está elegido para esta guía en este momento.
-function _guiasTplBtnTransporte(linea, tipo, placas, operador, ancho100){
-  var key = linea + "|" + tipo + "|" + placas + "|" + operador;
-  var sel = _guiaActual && _guiaActual.transporte === linea && _guiaActual.tipoVeh === tipo &&
-            _guiaActual.placas === placas && _guiaActual.operador === operador;
-  return "<button type=\"button\" class=\"gTransBtn\" data-key=\"" + _escAttr(key) + "\"" +
-    " onclick=\"_guiasElegirTransporteBase('" + _escAttr(linea) + "','" + _escAttr(tipo) + "','" + _escAttr(placas) + "','" + _escAttr(operador) + "')\"" +
-    " style=\"" + (ancho100 ? "width:100%;" : "") + _guiasEstiloBtnTransporte(sel) + "\">" + operador + "</button>";
-}
-function _guiasEstiloBtnTransporte(sel){
-  return sel
-    ? "padding:5px 9px;background:var(--primary);border:1.5px solid var(--primary);color:#fff;" +
-      "border-radius:7px;font-size:10.5px;font-weight:700;cursor:pointer;font-family:inherit"
-    : "padding:5px 9px;background:white;border:1.5px solid var(--primary);color:var(--primary);" +
-      "border-radius:7px;font-size:10.5px;font-weight:600;cursor:pointer;font-family:inherit";
 }
 
 function _guiasRevision(){
@@ -2273,13 +1897,16 @@ function _guiasRevision(){
     return;
   }
 
-  if(_guiaActual.cajasGranel == null) _guiaActual.cajasGranel = 0;
-  var totalBultos = _guiasTotalBultos();
+  var _gruposBultos = _guiasAgruparLineas(_guiaActual.lineas, _guiaActual.area);
+  var totalBultos = 0;
+  _gruposBultos.cajas.forEach(function(l){ totalBultos += Math.floor(l.cant/l.contEmp); });
+  _gruposBultos.patio.forEach(function(l){ totalBultos += l.bultos || 1; });
+  if(_gruposBultos.granel.length > 0) totalBultos += 1; // 1 caja colectiva
 
   var filasHtml = "";
   for(var i=0; i<_guiaActual.lineas.length; i++){
     var l = _guiaActual.lineas[i];
-    var descEmp = l.bultos + " " + (l.tipoEmp === "Tarima" ? (l.grupoNombre || "Tarima") : l.tipoEmp) +
+    var descEmp = l.bultos + " " + l.tipoEmp +
       (l.tipoEmp === "Tarima" ? " (" + l.tarimaSubCant + " " + l.tarimaSubTipo + " c/ " + l.tarimaSubCont + " " + l.um + ")"
         : l.contEmp>1?" de "+l.contEmp+" "+l.um:"") + (l.lote?" — L - "+l.lote:"");
     filasHtml +=
@@ -2307,11 +1934,8 @@ function _guiasRevision(){
     "<div><div style=\"font-size:18px;font-weight:800;color:var(--primary)\">" +
     "Guía " + _guiaActual.area + " No. " + _guiaActual.folio + " &mdash; Revisión</div>" +
     "<div style=\"font-size:12px;color:var(--muted)\">" + _guiaActual.destino + " &middot; " +
-    _guiaActual.almInfo.nombre + " &middot; <span id=\"gTotalBultos\">" + totalBultos + " bultos total</span></div></div>" +
+    _guiaActual.almInfo.nombre + " &middot; " + totalBultos + " bultos total</div></div>" +
     "</div>" +
-
-    // Panel de reparto de granel (vacío si no hay material a granel)
-    "<div id=\"granelPanel\"></div>" +
 
     // Tabla de materiales
     "<div style=\"background:white;border:1px solid var(--line);border-radius:12px;" +
@@ -2334,10 +1958,9 @@ function _guiasRevision(){
     "letter-spacing:.4px;margin-bottom:12px\">Datos para la guía</div>" +
     "<div style=\"font-size:10.5px;color:var(--muted);margin-bottom:6px\">Transporte conocido &mdash; toca para llenar automático</div>" +
     "<div style=\"display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px\">" + _guiasTarjetasTransporteHtml() + "</div>" +
-    _guiasTarjetasSurtidoresHtml() +
     "<div style=\"display:grid;grid-template-columns:1fr 1fr;gap:12px\">" +
-    _tplCampoFirma("gPedido", "No. Pedido", _guiaActual.pedido || "0", true) +
-    _tplCampoFirma("gSiatel", "Siatel", _guiaActual.siatel || "0", true) +
+    _tplCampoFirma("gPedido", "No. Pedido", _guiaActual.pedido || "0") +
+    _tplCampoFirma("gSiatel", "Siatel", _guiaActual.siatel || "0") +
     _tplCampoFirma("gSurtio", "Surtió (quien despacha)", _guiaActual.surtio) +
     _tplCampoFirma("gTransporteRev", "Línea de transporte", _guiaActual.transporte) +
     _tplCampoFirma("gOperador", "Operador", _guiaActual.operador) +
@@ -2358,19 +1981,12 @@ function _guiasRevision(){
     "border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit\">" +
     "&#128203; Generar e imprimir guía</button>" +
     "</div>";
-
-  _grSel = null;
-  _guiasRenderGranelPanel();
-  _guiasMarcarSurtidor();
-  var _sf = document.getElementById("gSurtio");
-  if(_sf) _sf.addEventListener("input", _guiasMarcarSurtidor);
 }
 
-function _tplCampoFirma(id, label, valor, seleccionarTodo){
+function _tplCampoFirma(id, label, valor){
   return "<div><label style=\"font-size:11px;color:var(--muted);display:block;margin-bottom:4px\">" +
     label + "</label>" +
     "<input id=\"" + id + "\" type=\"text\" value=\"" + (valor||"") + "\"" +
-    (seleccionarTodo ? " onfocus=\"this.select()\"" : "") +
     " style=\"width:100%;padding:8px 12px;border:1.5px solid var(--line);border-radius:8px;" +
     "font-family:inherit;font-size:13px\"></div>";
 }
@@ -2432,284 +2048,6 @@ function _guiasAgruparLineas(lineas, area){
   return { cajas: cajas, patio: patio, granel: granel };
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   REPARTO DE GRANEL EN VARIAS CAJAS
-   El usuario dice cuántas cajas colectivas va a usar y arrastra cada material
-   a la que le toca. 0 cajas = comportamiento de siempre (un solo encabezado).
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-// Índices (dentro de _guiaActual.lineas) de todo lo que va a granel
-function _guiasGranelIdx(){
-  var out = [];
-  var ls = (_guiaActual && _guiaActual.lineas) || [];
-  for(var i=0; i<ls.length; i++){
-    var l = ls[i];
-    if(!l.patio && (l.granel || l.contEmp === 0)) out.push(i);
-  }
-  return out;
-}
-
-function _guiasNumCajasGranel(){
-  var n = parseInt((_guiaActual && _guiaActual.cajasGranel) || 0, 10);
-  return (isNaN(n) || n < 0) ? 0 : n;
-}
-
-// Cuántas cajas colectivas cuentan como bulto (incluye la de "sin asignar")
-function _guiasBultosGranel(){
-  var idx = _guiasGranelIdx();
-  if(!idx.length) return 0;
-  var n = _guiasNumCajasGranel();
-  if(n === 0) return 1;                       // una sola caja colectiva, como antes
-  var sinAsignar = idx.some(function(i){
-    var c = _guiaActual.lineas[i].cajaGranel;
-    return !c || c < 1 || c > n;
-  });
-  return n + (sinAsignar ? 1 : 0);
-}
-
-function _guiasCambiarNumCajas(valor){
-  var n = parseInt(valor, 10);
-  if(isNaN(n) || n < 0) n = 0;
-  if(n > 30) n = 30;
-  _guiaActual.cajasGranel = n;
-  // Si se reduce el número de cajas, lo que quedó fuera de rango vuelve a "sin asignar"
-  _guiasGranelIdx().forEach(function(i){
-    var l = _guiaActual.lineas[i];
-    if(l.cajaGranel && (l.cajaGranel > n || n === 0)) delete l.cajaGranel;
-  });
-  _guiasRenderGranelPanel();
-}
-
-function _guiasAsignarGranel(idxLinea, caja){
-  var l = _guiaActual.lineas[idxLinea];
-  if(!l) return;
-  if(caja == null) delete l.cajaGranel;
-  else l.cajaGranel = caja;
-  _guiasRenderGranelPanel();
-}
-
-// Reparte lo que falta, en orden, entre las cajas disponibles
-function _guiasGranelAuto(){
-  var n = _guiasNumCajasGranel();
-  if(n < 1) return;
-  var pend = _guiasGranelIdx().filter(function(i){
-    var c = _guiaActual.lineas[i].cajaGranel;
-    return !c || c < 1 || c > n;
-  });
-  if(!pend.length){ return; }
-  // se reparte por cantidad de materiales, buscando siempre la caja menos llena
-  var carga = {};
-  for(var k=1;k<=n;k++) carga[k]=0;
-  _guiasGranelIdx().forEach(function(i){
-    var c=_guiaActual.lineas[i].cajaGranel;
-    if(c>=1 && c<=n) carga[c]++;
-  });
-  pend.forEach(function(i){
-    var mejor=1;
-    for(var k=2;k<=n;k++) if(carga[k]<carga[mejor]) mejor=k;
-    _guiaActual.lineas[i].cajaGranel = mejor;
-    carga[mejor]++;
-  });
-  _guiasRenderGranelPanel();
-}
-
-function _guiasGranelLimpiar(){
-  _guiasGranelIdx().forEach(function(i){ delete _guiaActual.lineas[i].cajaGranel; });
-  _guiasRenderGranelPanel();
-}
-
-// ── Tarjeta de material a granel ─────────────────────────────────────────────
-function _tplGranelCard(i){
-  var l = _guiaActual.lineas[i];
-  return "<div class=\"gr-card\" data-idx=\"" + i + "\">" +
-    "<div class=\"gr-cat\">" + l.cat + "</div>" +
-    "<div class=\"gr-desc\">" + l.desc + "</div>" +
-    "<div class=\"gr-cant\">" + l.cant + " " + l.um + (l.lote ? " · L-" + l.lote : "") + "</div>" +
-    "</div>";
-}
-
-function _tplGranelPanel(){
-  var idx = _guiasGranelIdx();
-  if(!idx.length) return "";   // sin granel no se pregunta nada
-
-  var colectivo = _GUIAS_COLECTIVO[_guiaActual.area] || "Material en General";
-  var n = _guiasNumCajasGranel();
-
-  var html =
-    "<div style=\"background:white;border:1px solid var(--line);border-radius:12px;" +
-    "padding:16px;margin-bottom:20px\">" +
-    "<div style=\"display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px\">" +
-    "<div style=\"font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;" +
-    "letter-spacing:.4px;flex:1\">Cajas de granel</div>" +
-    "<label style=\"font-size:12px;color:var(--muted)\">&iquest;Cu&aacute;ntas cajas?</label>" +
-    "<input id=\"gNumCajasGranel\" type=\"number\" min=\"0\" max=\"30\" value=\"" + n + "\"" +
-    " onchange=\"_guiasCambiarNumCajas(this.value)\"" +
-    " style=\"width:70px;padding:7px 9px;border:1.5px solid var(--line);border-radius:8px;" +
-    "font-family:inherit;font-size:14px;font-weight:700;text-align:center\">" +
-    "</div>" +
-    "<div style=\"font-size:11.5px;color:var(--muted);margin-bottom:12px\">" +
-    idx.length + " material(es) a granel. " +
-    (n === 0
-      ? "Con 0 cajas todo sale junto bajo &laquo;" + colectivo + "&raquo;."
-      : "Arrastra cada material a su caja, o t&oacute;calo y luego toca la caja.") +
-    "</div>";
-
-  if(n === 0){
-    html += "<div class=\"gr-zona gr-zona-off\">" +
-      idx.map(_tplGranelCard).join("") + "</div>";
-  } else {
-    var sinAsignar = idx.filter(function(i){
-      var c = _guiaActual.lineas[i].cajaGranel;
-      return !c || c < 1 || c > n;
-    });
-
-    html +=
-      "<div style=\"display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px\">" +
-      "<button type=\"button\" onclick=\"_guiasGranelAuto()\" style=\"padding:6px 12px;background:white;" +
-      "border:1.5px solid var(--line);border-radius:8px;font-size:11.5px;font-weight:600;" +
-      "cursor:pointer;font-family:inherit;color:var(--primary)\">Repartir autom&aacute;tico</button>" +
-      "<button type=\"button\" onclick=\"_guiasGranelLimpiar()\" style=\"padding:6px 12px;background:white;" +
-      "border:1.5px solid var(--line);border-radius:8px;font-size:11.5px;font-weight:600;" +
-      "cursor:pointer;font-family:inherit;color:var(--muted)\">Vaciar cajas</button>" +
-      "</div>";
-
-    // Bandeja de pendientes
-    html +=
-      "<div class=\"gr-pend" + (sinAsignar.length ? " alerta" : "") + "\">" +
-      "<div class=\"gr-zona-tit\">" +
-      (sinAsignar.length ? "Sin asignar &middot; " + sinAsignar.length : "Todo asignado &#10003;") +
-      "</div>" +
-      "<div class=\"gr-zona\" data-caja=\"0\">" +
-      (sinAsignar.length ? sinAsignar.map(_tplGranelCard).join("")
-                         : "<div class=\"gr-vacia\">Arrastra aqu&iacute; para sacar un material de su caja</div>") +
-      "</div></div>";
-
-    // Una zona por caja
-    html += "<div class=\"gr-cajas\">";
-    for(var c=1; c<=n; c++){
-      var enCaja = idx.filter(function(i){ return _guiaActual.lineas[i].cajaGranel === c; });
-      html +=
-        "<div class=\"gr-caja\">" +
-        "<div class=\"gr-zona-tit\">Caja " + c + " de " + colectivo +
-        "<span class=\"gr-n\">" + enCaja.length + "</span></div>" +
-        "<div class=\"gr-zona\" data-caja=\"" + c + "\">" +
-        (enCaja.length ? enCaja.map(_tplGranelCard).join("")
-                       : "<div class=\"gr-vacia\">Vac&iacute;a</div>") +
-        "</div></div>";
-    }
-    html += "</div>";
-  }
-
-  return html + "</div>";
-}
-
-// Repinta solo el panel, sin rehacer toda la pantalla de revisión
-function _guiasRenderGranelPanel(){
-  var cont = document.getElementById("granelPanel");
-  if(!cont) return;
-  cont.innerHTML = _tplGranelPanel();
-  _guiasGranelDnD();
-  // el total de bultos del encabezado depende de las cajas de granel
-  var bs = document.getElementById("gTotalBultos");
-  if(bs) bs.textContent = _guiasTotalBultos() + " bultos total";
-}
-
-/* ── Arrastrar y soltar ──────────────────────────────────────────────────────
-   Se usa Pointer Events en vez de HTML5 drag&drop porque este último no
-   funciona con el dedo. Un toque corto selecciona; arrastrar mueve. */
-var _grSel = null;   // índice seleccionado por toque (modo "tocar y colocar")
-
-function _guiasGranelDnD(){
-  var panel = document.getElementById("granelPanel");
-  if(!panel) return;
-  if(_guiasNumCajasGranel() < 1) return;
-
-  panel.querySelectorAll(".gr-card").forEach(function(card){
-    card.style.touchAction = "none";
-    card.onpointerdown = function(ev){
-      if(ev.button === 1 || ev.button === 2) return;
-      var idx = +card.dataset.idx;
-      var x0 = ev.clientX, y0 = ev.clientY;
-      var arrastrando = false, fantasma = null, zonaPrev = null;
-
-      var mover = function(e){
-        if(!arrastrando){
-          if(Math.abs(e.clientX-x0) < 6 && Math.abs(e.clientY-y0) < 6) return;
-          arrastrando = true;
-          card.classList.add("gr-origen");
-          fantasma = card.cloneNode(true);
-          fantasma.className = "gr-card gr-fantasma";
-          fantasma.style.width = card.offsetWidth + "px";
-          document.body.appendChild(fantasma);
-        }
-        fantasma.style.left = (e.clientX - fantasma.offsetWidth/2) + "px";
-        fantasma.style.top  = (e.clientY - 22) + "px";
-
-        fantasma.style.display = "none";
-        var bajo = document.elementFromPoint(e.clientX, e.clientY);
-        fantasma.style.display = "";
-        var zona = bajo && bajo.closest ? bajo.closest(".gr-zona") : null;
-        if(zona !== zonaPrev){
-          if(zonaPrev) zonaPrev.classList.remove("gr-sobre");
-          if(zona) zona.classList.add("gr-sobre");
-          zonaPrev = zona;
-        }
-      };
-
-      var soltar = function(e){
-        card.releasePointerCapture && card.releasePointerCapture(ev.pointerId);
-        window.removeEventListener("pointermove", mover);
-        window.removeEventListener("pointerup", soltar);
-        window.removeEventListener("pointercancel", soltar);
-        if(fantasma) fantasma.remove();
-        if(zonaPrev) zonaPrev.classList.remove("gr-sobre");
-        card.classList.remove("gr-origen");
-
-        if(arrastrando){
-          if(zonaPrev){
-            var c = +zonaPrev.dataset.caja;
-            _guiasAsignarGranel(idx, c > 0 ? c : null);
-          }
-        } else {
-          // Toque simple: seleccionar / deseleccionar
-          _grSel = (_grSel === idx) ? null : idx;
-          panel.querySelectorAll(".gr-card").forEach(function(c2){
-            c2.classList.toggle("gr-sel", +c2.dataset.idx === _grSel);
-          });
-          panel.querySelectorAll(".gr-zona").forEach(function(z){
-            z.classList.toggle("gr-destino", _grSel !== null);
-          });
-        }
-      };
-
-      try{ card.setPointerCapture(ev.pointerId); }catch(err){}
-      window.addEventListener("pointermove", mover);
-      window.addEventListener("pointerup", soltar);
-      window.addEventListener("pointercancel", soltar);
-    };
-  });
-
-  // Tocar una zona coloca ahí el material seleccionado
-  panel.querySelectorAll(".gr-zona").forEach(function(zona){
-    zona.onclick = function(){
-      if(_grSel === null) return;
-      var c = +zona.dataset.caja;
-      var sel = _grSel;
-      _grSel = null;
-      _guiasAsignarGranel(sel, c > 0 ? c : null);
-    };
-  });
-}
-
-function _guiasTotalBultos(){
-  var g = _guiasAgruparLineas(_guiaActual.lineas, _guiaActual.area);
-  var t = 0;
-  g.cajas.forEach(function(l){ t += Math.floor(l.cant/l.contEmp); });
-  g.patio.forEach(function(l){ t += l.bultos || 1; });
-  return t + _guiasBultosGranel();
-}
-
-
 // Abreviatura del tipo de empaque para el impreso (C/C para Caja, como ya se usaba; nuevo para los demás)
 function _guiasAbrevTipo(tipo){
   var map = { "Caja": "C/C", "Bobina": "Bob c/" };
@@ -2727,7 +2065,7 @@ function _guiasBloquesImpresion(lineas, area){
     var nCajas = Math.floor(l.cant / l.contEmp);
     var descEmp;
     if(l.tipoEmp === "Tarima"){
-      descEmp = (l.grupoNombre || "Tarima") + " de " + l.tarimaSubCant + " " + l.tarimaSubTipo + " c/ " + l.tarimaSubCont + " " + l.um;
+      descEmp = "Tarima de " + l.tarimaSubCant + " " + l.tarimaSubTipo + " c/ " + l.tarimaSubCont + " " + l.um;
     } else {
       descEmp = _guiasAbrevTipo(l.tipoEmp) + " " + l.contEmp + " " + l.um;
     }
@@ -2755,14 +2093,13 @@ function _guiasBloquesImpresion(lineas, area){
   });
   if(bloqueEmpaque.length > 0) bloques.push(bloqueEmpaque);
 
-  // BLOQUE(S) GRANEL: cada caja colectiva es un bloque que nunca se parte entre hojas
+  // BLOQUE GRANEL: separador + encabezado colectivo + materiales, siempre juntos
   if(grupos.granel.length > 0){
-    var grupos_granel = grupos.granel;
-    var nCajasG = parseInt((_guiaActual && _guiaActual.cajasGranel) || 0, 10);
-    if(isNaN(nCajasG) || nCajasG < 0) nCajasG = 0;
-
-    var filaGranel = function(l){
-      return {
+    var bloqueGranel = [];
+    bloqueGranel.push({ tipo: "separador" });
+    bloqueGranel.push({ tipo: "colectivo", desc: colectivo });
+    grupos.granel.forEach(function(l){
+      bloqueGranel.push({
         cant:    l.cant,
         um:      l.um,
         desc:    l.desc + (l.lote ? " — L - " + l.lote : ""),
@@ -2770,38 +2107,9 @@ function _guiasBloquesImpresion(lineas, area){
         total:   l.cant + " " + l.um,
         tipo:    "granel",
         patio:   false
-      };
-    };
-    var armarBloque = function(titulo, lineas){
-      var b = [{ tipo:"separador" }, { tipo:"colectivo", desc:titulo }];
-      lineas.forEach(function(l){ b.push(filaGranel(l)); });
-      bloques.push(b);
-    };
-
-    // Se arman primero los grupos para saber cuántas cajas colectivas salen de verdad
-    var grupos = [];   // {caja: n|null, lineas: []}
-    if(nCajasG < 1){
-      grupos.push({ caja:null, lineas: grupos_granel });
-    } else {
-      for(var c=1; c<=nCajasG; c++){
-        var enCaja = grupos_granel.filter(function(l){ return l.cajaGranel === c; });
-        if(enCaja.length) grupos.push({ caja:c, lineas:enCaja });
-      }
-      var sueltos = grupos_granel.filter(function(l){
-        return !l.cajaGranel || l.cajaGranel < 1 || l.cajaGranel > nCajasG;
       });
-      if(sueltos.length) grupos.push({ caja:null, lineas:sueltos });
-    }
-
-    // Una sola caja colectiva en toda la guía: se nombra "1 caja de …"
-    var unaSola = grupos.length === 1;
-    grupos.forEach(function(g){
-      var titulo;
-      if(unaSola)            titulo = "1 caja de " + colectivo + ":";
-      else if(g.caja)        titulo = "Caja " + g.caja + " de " + colectivo + ":";
-      else                   titulo = colectivo;
-      armarBloque(titulo, g.lineas);
     });
+    bloques.push(bloqueGranel);
   }
 
   return bloques;
@@ -2809,20 +2117,6 @@ function _guiasBloquesImpresion(lineas, area){
 
 // ── PANTALLA 5: Generar guía imprimible ───────────────────────────────────────
 function _guiasGenerar(){
-  var nCajasG = _guiasNumCajasGranel();
-  if(nCajasG >= 1){
-    var sueltos = _guiasGranelIdx().filter(function(i){
-      var c = _guiaActual.lineas[i].cajaGranel;
-      return !c || c < 1 || c > nCajasG;
-    });
-    if(sueltos.length){
-      var nombres = sueltos.slice(0,6).map(function(i){ return "  · " + _guiaActual.lineas[i].cat; }).join("\n");
-      if(!confirm("Hay " + sueltos.length + " material(es) a granel sin caja asignada:\n\n" + nombres +
-        (sueltos.length>6 ? "\n  · …" : "") +
-        "\n\nVan a salir al final, bajo el encabezado general y contando como una caja aparte.\n\n¿Generar así?")) return;
-    }
-  }
-
   var faltanLote = _guiaActual.lineas.filter(function(l){ return l.loteRequerido; });
   if(faltanLote.length > 0){
     alert("Hay " + faltanLote.length + " material(es) que llevan lote y aún no se ha elegido de cuál surtir " +
@@ -2831,20 +2125,15 @@ function _guiasGenerar(){
     return;
   }
 
-  // Capturar datos de firma — SOLO si el formulario de firma está en pantalla (flujo normal
-  // de captura). Al reimprimir desde el historial se llega aquí sin pasar por esa pantalla,
-  // así que esos campos no existen en el DOM; si se leyeran de todos modos, se borraría con
-  // "" lo que ya se había cargado correctamente desde el historial.
-  if(document.getElementById("gSurtio")){
-    _guiaActual.pedido     = document.getElementById("gPedido")?.value.trim() || "0";
-    _guiaActual.siatel     = document.getElementById("gSiatel")?.value.trim() || "0";
-    _guiaActual.surtio     = document.getElementById("gSurtio")?.value || "";
-    _guiaActual.transporte = document.getElementById("gTransporteRev")?.value || "";
-    _guiaActual.operador   = document.getElementById("gOperador")?.value || "";
-    _guiaActual.tipoVeh    = document.getElementById("gTipoVeh")?.value || "";
-    _guiaActual.placas     = document.getElementById("gPlacas")?.value || "";
-    _guiaActual.observaciones = document.getElementById("gObservaciones")?.value || "";
-  }
+  // Capturar datos de firma
+  _guiaActual.pedido     = document.getElementById("gPedido")?.value.trim() || "0";
+  _guiaActual.siatel     = document.getElementById("gSiatel")?.value.trim() || "0";
+  _guiaActual.surtio     = document.getElementById("gSurtio")?.value || "";
+  _guiaActual.transporte = document.getElementById("gTransporteRev")?.value || "";
+  _guiaActual.operador   = document.getElementById("gOperador")?.value || "";
+  _guiaActual.tipoVeh    = document.getElementById("gTipoVeh")?.value || "";
+  _guiaActual.placas     = document.getElementById("gPlacas")?.value || "";
+  _guiaActual.observaciones = document.getElementById("gObservaciones")?.value || "";
 
   var alm      = _guiaActual.almInfo;
   var hoy      = _guiaActual.fecha ? new Date(_guiaActual.fecha+"T12:00:00") : new Date();
@@ -2963,7 +2252,7 @@ function _guiasGenerar(){
       "<div class=\"sello-box\">Sello</div>" +
       "</div>" +
       "<table class=\"firma-linea\">" +
-      "<tr><td style=\"padding:32px 6px 5px;font-size:11px;font-weight:700;border-top:2px solid #000\">Fecha y firma &mdash; Transportista</td></tr>" +
+      "<tr><td style=\"padding:32px 6px 5px;font-size:11px;font-weight:700;border-top:2px solid #000\">Fecha y firma &mdash; de quien recibe</td></tr>" +
       "</table>" +
       "</div>";
   }
@@ -3028,9 +2317,10 @@ function _guiasGenerar(){
     paginasHtml +
     "<div class=\"no-print\" style=\"padding:12px\">" +
     "<button onclick=\"window.print()\" style=\"padding:10px 24px;background:#001E6E;color:white;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;margin-right:10px\">&#128424; Imprimir</button>" +
-    "<button onclick=\"_guiasDescargarPDF()\" style=\"padding:10px 24px;background:#16a34a;color:white;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer\">&#11015; Descargar PDF</button>" +
+    "<button onclick=\"_guiasDescargarPDF()\" style=\"padding:10px 24px;background:#16a34a;color:white;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;margin-right:10px\">&#11015; Descargar PDF</button>" +
+    "<button onclick=\"_guiasVolverAGuias()\" style=\"padding:10px 24px;background:#475569;color:white;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer\">&#8617; Volver a Guías</button>" +
     "</div>" +
-    "<script>function _guiasDescargarPDF(){var opt={margin:0,filename:'Guia_" + _guiaActual.area + "_No" + _guiaActual.folio + ".pdf',image:{type:'jpeg',quality:0.98},html2canvas:{scale:2,useCORS:true},jsPDF:{unit:'mm',format:'letter',orientation:'portrait'}};var el=document.body.cloneNode(true);el.querySelectorAll('.no-print').forEach(function(b){b.remove();});if(typeof html2pdf!=='undefined'){html2pdf().set(opt).from(el).save();}else{alert('Usa Imprimir → Guardar como PDF');window.print();}}<\/script>" +
+    "<script>function _guiasVolverAGuias(){try{if(window.opener&&!window.opener.closed){window.opener.modGuias();window.opener.focus();}}catch(e){}window.close();}function _guiasDescargarPDF(){var opt={margin:0,filename:'Guia_" + _guiaActual.area + "_No" + _guiaActual.folio + ".pdf',image:{type:'jpeg',quality:0.98},html2canvas:{scale:2,useCORS:true},jsPDF:{unit:'mm',format:'letter',orientation:'portrait'}};var el=document.body.cloneNode(true);el.querySelectorAll('.no-print').forEach(function(b){b.remove();});if(typeof html2pdf!=='undefined'){html2pdf().set(opt).from(el).save();}else{alert('Usa Imprimir → Guardar como PDF');window.print();}}<\/script>" +
     "<script src=\"https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js\"><\/script>" +
     "</body></html>";
 
@@ -3045,7 +2335,6 @@ function _guiasGenerar(){
     lineas: _guiaActual.lineas.length,
     datos: JSON.parse(JSON.stringify(_guiaActual))
   });
-  _guiasDraftBorrar(); // ya quedó a salvo en el historial, el borrador transitorio ya no hace falta
 
   // Si veníamos editando una guía existente y cambió folio/área, limpiar el registro anterior
   if(_guiaEditandoOriginal &&
@@ -3056,6 +2345,25 @@ function _guiasGenerar(){
     _guiasHistGuardar(histLimpio);
   }
   _guiaEditandoOriginal = null;
+
+  // Aviso en la pantalla principal con acceso directo para seguir con otra guía
+  _guiasMostrarFin(_guiaActual.folio, _guiaActual.destino);
+}
+
+function _guiasMostrarFin(folio, destino){
+  var viejo = document.getElementById("gFinModal"); if(viejo) viejo.remove();
+  var ov = document.createElement("div");
+  ov.id = "gFinModal";
+  ov.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px";
+  ov.innerHTML =
+    "<div style=\"background:white;border-radius:14px;max-width:380px;width:100%;padding:20px;text-align:center\">" +
+    "<div style=\"font-size:34px\">&#9989;</div>" +
+    "<h3 style=\"margin:6px 0 4px;font-size:17px\">Guía No. " + String(folio).replace(/</g,"&lt;") + " generada</h3>" +
+    "<div style=\"font-size:12.5px;color:var(--muted);margin-bottom:14px\">" + String(destino||"").replace(/</g,"&lt;") + " &middot; guardada en el historial</div>" +
+    "<button onclick=\"document.getElementById('gFinModal').remove();modGuias()\" style=\"width:100%;padding:12px;background:#001E6E;color:white;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:8px\">&#8617; Volver a Guías (hacer otra)</button>" +
+    "<button onclick=\"document.getElementById('gFinModal').remove()\" style=\"width:100%;padding:10px;background:none;border:1.5px solid var(--line,#ccc);border-radius:10px;font-size:13px;cursor:pointer\">Seguir en esta guía</button>" +
+    "</div>";
+  document.body.appendChild(ov);
 }
 
 function _guiasBorrarHistorial(idx){
