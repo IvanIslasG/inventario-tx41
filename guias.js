@@ -412,6 +412,138 @@ function _guiasExportarSeleccion(indices, nombreArchivo){
 // No es un cron real del sistema (esto es una página web, solo corre si está abierta):
 // cada vez que se abre el menú de Guías, si ya pasó _GUIAS_BACKUP_INTERVALO_DIAS desde el
 // último respaldo, se descarga solo el historial completo, sin pedir nada.
+// ── Carpeta de respaldos elegida por el usuario (File System Access API: Chrome / Edge) ──
+// El navegador NO permite escribir en una ruta tecleada; solo en una carpeta que el usuario
+// elige con el selector del sistema. Se elige UNA vez y el permiso a esa carpeta se guarda
+// en IndexedDB (a veces el navegador vuelve a pedir un "Permitir" al reabrir).
+var _GUIAS_LS_BKCARPETA = "guias_bk_carpeta_nombre";
+
+function _guiasFsSoportado(){ return typeof window.showDirectoryPicker === "function"; }
+
+function _guiasIdb(){
+  return new Promise(function(res, rej){
+    var r = indexedDB.open("tx41_guias_fs", 1);
+    r.onupgradeneeded = function(){ r.result.createObjectStore("kv"); };
+    r.onsuccess = function(){ res(r.result); };
+    r.onerror   = function(){ rej(r.error); };
+  });
+}
+function _guiasIdbGet(k){
+  return _guiasIdb().then(function(db){ return new Promise(function(res, rej){
+    var q = db.transaction("kv").objectStore("kv").get(k);
+    q.onsuccess = function(){ res(q.result); }; q.onerror = function(){ rej(q.error); };
+  }); });
+}
+function _guiasIdbSet(k, v){
+  return _guiasIdb().then(function(db){ return new Promise(function(res, rej){
+    var tx = db.transaction("kv", "readwrite"); tx.objectStore("kv").put(v, k);
+    tx.oncomplete = function(){ res(); }; tx.onerror = function(){ rej(tx.error); };
+  }); });
+}
+function _guiasIdbDel(k){
+  return _guiasIdb().then(function(db){ return new Promise(function(res, rej){
+    var tx = db.transaction("kv", "readwrite"); tx.objectStore("kv").delete(k);
+    tx.oncomplete = function(){ res(); }; tx.onerror = function(){ rej(tx.error); };
+  }); });
+}
+
+function _guiasBkElegirCarpeta(){
+  if(!_guiasFsSoportado()){
+    alert("Tu navegador no permite elegir carpeta (funciona en Chrome o Edge de escritorio).\nLos respaldos seguirán yendo a la carpeta de Descargas.");
+    return;
+  }
+  window.showDirectoryPicker({ id: "tx41-guias-respaldos", mode: "readwrite", startIn: "documents" })
+    .then(function(h){
+      return _guiasIdbSet("dir", h).then(function(){
+        try{ localStorage.setItem(_GUIAS_LS_BKCARPETA, h.name); }catch(e){}
+        _guiasToast("📁 Los respaldos se guardarán en: " + h.name, "ok");
+        modGuias();
+      });
+    })
+    .catch(function(e){ if(e && e.name !== "AbortError") alert("No se pudo elegir la carpeta: " + e.message); });
+}
+
+function _guiasBkQuitarCarpeta(){
+  if(!confirm("¿Dejar de usar la carpeta elegida? Los respaldos volverán a descargarse en Descargas.")) return;
+  _guiasIdbDel("dir").catch(function(){});
+  try{ localStorage.removeItem(_GUIAS_LS_BKCARPETA); }catch(e){}
+  modGuias();
+}
+
+// Arma el JSON del respaldo completo (mismo formato que Exportar todo)
+function _guiasBackupJSON(){
+  return JSON.stringify({
+    version: "tx41-guias-v1",
+    exportado: new Date().toISOString(),
+    guias: _guiasHistCargar(),
+    bd_empaques: _guiasBDCargar()
+  }, null, 2);
+}
+
+// Escribe en la carpeta elegida. Resuelve: "ok" | "sin_carpeta" | "sin_permiso" | "error"
+function _guiasBkEscribirEnCarpeta(nombre, json, pedirPermiso){
+  return _guiasIdbGet("dir").then(function(h){
+    if(!h) return "sin_carpeta";
+    return h.queryPermission({ mode: "readwrite" }).then(function(p){
+      if(p !== "granted" && pedirPermiso) return h.requestPermission({ mode: "readwrite" });
+      return p;
+    }).then(function(p){
+      if(p !== "granted") return "sin_permiso";
+      return h.getFileHandle(nombre, { create: true })
+        .then(function(fh){ return fh.createWritable(); })
+        .then(function(w){ return w.write(json).then(function(){ return w.close(); }); })
+        .then(function(){ return "ok"; });
+    });
+  }).catch(function(){ return "error"; });
+}
+
+function _guiasBkDescargar(nombre, json){
+  var blob = new Blob([json], {type: "application/json"});
+  var url  = URL.createObjectURL(blob);
+  var a    = document.createElement("a");
+  a.href = url; a.download = nombre; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// Ejecuta un respaldo: a la carpeta elegida si hay una; si no (o si falla) a Descargas.
+function _guiasBkEjecutar(pedirPermiso, avisar){
+  var fecha  = new Date().toLocaleDateString("es-MX").replace(/\//g,"-");
+  var nombre = "Respaldo_automatico_guias_" + fecha + ".json";
+  var json   = _guiasBackupJSON();
+  var carpeta = null;
+  try{ carpeta = localStorage.getItem(_GUIAS_LS_BKCARPETA); }catch(e){}
+  var marcarOk = function(){ try{ localStorage.setItem(_GUIAS_LS_ULTBK, String(Date.now())); }catch(e){} };
+
+  if(!carpeta || !_guiasFsSoportado()){
+    _guiasBkDescargar(nombre, json); marcarOk();
+    _guiasToast("📦 Respaldo descargado — revisa tu carpeta de Descargas", "ok");
+    return Promise.resolve("descarga");
+  }
+  return _guiasBkEscribirEnCarpeta(nombre, json, pedirPermiso).then(function(r){
+    if(r === "ok"){
+      marcarOk();
+      _guiasToast("📦 Respaldo guardado en la carpeta «" + carpeta + "»", "ok");
+    } else if(r === "sin_permiso"){
+      _guiasToast("⚠ Falta autorizar la carpeta de respaldos — toca «Respaldar ahora»", "warn");
+    } else {
+      // carpeta borrada/movida u otro error: no perder el respaldo
+      _guiasBkDescargar(nombre, json); marcarOk();
+      _guiasToast("⚠ No pude escribir en «" + carpeta + "»; el respaldo se descargó en Descargas", "warn");
+    }
+    return r;
+  });
+}
+
+function _guiasBkAhora(){
+  if(!_guiasHistCargar().length){ alert("Aún no hay guías que respaldar."); return; }
+  _guiasBkEjecutar(true, true).then(function(){ modGuias(); });
+}
+
+// ── Respaldo automático programado ────────────────────────────────────────────
+// No es un cron real del sistema (esto es una página web, solo corre si está abierta):
+// cada vez que se abre el menú de Guías, si ya pasó _GUIAS_BACKUP_INTERVALO_DIAS desde el
+// último respaldo, se guarda solo el historial completo en la carpeta que el usuario eligió
+// (o en Descargas si no eligió ninguna).
 function _guiasBackupAutoCheck(){
   try{
     var hist = _guiasHistCargar();
@@ -419,10 +551,7 @@ function _guiasBackupAutoCheck(){
     var ultimo = +localStorage.getItem(_GUIAS_LS_ULTBK) || 0;
     var dias = (Date.now() - ultimo) / 86400000;
     if(dias < _GUIAS_BACKUP_INTERVALO_DIAS) return;
-    var fecha = new Date().toLocaleDateString("es-MX").replace(/\//g,"-");
-    _guiasExportarSeleccion(null, "Respaldo_automatico_guias_" + fecha + ".json");
-    localStorage.setItem(_GUIAS_LS_ULTBK, String(Date.now()));
-    _guiasToast("📦 Respaldo automático descargado — revisa tu carpeta de Descargas", "ok");
+    _guiasBkEjecutar(true, true).then(function(){ /* el menú se refresca solo al reabrirse */ });
   }catch(e){}
 }
 
@@ -646,6 +775,22 @@ function modGuias(){
   var ultBk = +localStorage.getItem(_GUIAS_LS_ULTBK) || 0;
   var ultBkTxt = ultBk ? new Date(ultBk).toLocaleDateString('es-MX',{day:'2-digit',month:'short'}) : "nunca";
 
+  var _bkNombre = ""; try{ _bkNombre = localStorage.getItem(_GUIAS_LS_BKCARPETA) || ""; }catch(e){}
+  var _bkBtn = "padding:5px 11px;background:white;border:1.5px solid var(--line);border-radius:8px;" +
+    "font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit;color:var(--primary)";
+  var bkHtml =
+    "<div style=\"display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--muted);" +
+    "margin-bottom:10px;padding:8px 12px;background:white;border:1.5px solid var(--line);border-radius:10px\">" +
+    "<span>&#128193; Respaldos en:</span>" +
+    "<b style=\"color:var(--primary)\">" + (_bkNombre ? _bkNombre.replace(/</g,"&lt;") : "Descargas (predeterminada)") + "</b>" +
+    "<span style=\"flex:1\"></span>" +
+    (_guiasFsSoportado() ?
+      "<button onclick=\"_guiasBkElegirCarpeta()\" style=\"" + _bkBtn + "\">" + (_bkNombre ? "Cambiar carpeta" : "Elegir carpeta") + "</button>" +
+      (_bkNombre ? "<button onclick=\"_guiasBkQuitarCarpeta()\" style=\"" + _bkBtn + ";color:#dc2626\">Quitar</button>" : "")
+      : "<span style=\"font-size:11px\">(elegir carpeta requiere Chrome o Edge)</span>") +
+    "<button onclick=\"_guiasBkAhora()\" style=\"" + _bkBtn + "\">Respaldar ahora</button>" +
+    "</div>";
+
   $("#moduleView").innerHTML =
     "<div style=\"max-width:900px;margin:0 auto;padding:16px 0\">" +
     "<div class=\"menu-h\" style=\"margin-bottom:14px\">" +
@@ -653,7 +798,7 @@ function modGuias(){
     "<p>" + DIST() + " &middot; " + hist.length + " guía" + (hist.length===1?"":"s") + " guardada" + (hist.length===1?"":"s") +
     " &middot; último respaldo automático: " + ultBkTxt + "</p>" +
     "</div>" +
-    draftHtml +
+    draftHtml + bkHtml +
 
     "<button onclick=\"_guiasDraftBorrar();_guiaActual=null;_guiaEditandoOriginal=null;_guiasNueva()\"" +
     " style=\"width:100%;padding:14px;background:var(--primary);color:white;border:none;" +
