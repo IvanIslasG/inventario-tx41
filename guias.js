@@ -271,6 +271,46 @@ function _guiasAlmInfo(sigla){
   return {nombre: sigla, atiende:'', domicilio:'', ciudad:'', cp:'', tel:''};
 }
 
+// ── Destino: sigla de almacén conocida O texto libre de varias palabras ──────────
+function _guiasEscHtml(t){ return String(t==null?"":t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+function _guiasEsSiglaConocida(sigla){
+  if(!sigla) return false;
+  return !!(_GUIAS_ALM_SEED[sigla] || (DB.directorio && DB.directorio.almacenes && DB.directorio.almacenes[sigla]));
+}
+
+// "A08A", "a08a", "A08A — SAN PEDRO" → "A08A".  "CM Veracruz" → "CM Veracruz" (texto libre completo)
+function _guiasParsearDestino(raw){
+  raw = String(raw||"").replace(/\s+/g, " ").trim();
+  if(!raw) return "";
+  var tok = raw.split(/\s|—/)[0].toUpperCase();
+  return _guiasEsSiglaConocida(tok) ? tok : raw;
+}
+
+// Nombre corto y legible: "ALMACEN AUXILIAR SAN PEDRO" → "San Pedro"
+function _guiasNombreCorto(nombre){
+  var t = String(nombre||"").replace(/\s+/g, " ").trim();
+  t = t.replace(/^ALMAC[EÉ]N\s+(AUXILIAR|DISTRIBUIDOR|GENERAL)?\s*/i, "").trim();
+  if(!t) t = String(nombre||"").trim();
+  var peq = {"DE":1,"DEL":1,"LA":1,"LAS":1,"LOS":1,"Y":1,"EL":1};
+  return t.split(" ").map(function(w, i){
+    var W = w.toUpperCase();
+    if(i > 0 && peq[W]) return w.toLowerCase();
+    if(W.length <= 2 || /^[IVX]+$/.test(W) || /\d/.test(W)) return W;       // CT, DF, II, A08...
+    return W.charAt(0) + W.slice(1).toLowerCase();
+  }).join(" ");
+}
+
+// Etiqueta para mostrar el destino: "A08A → San Pedro"; texto libre se muestra tal cual.
+function _guiasDestinoEtiqueta(destino){
+  var d = String(destino||"").trim();
+  if(!d) return "";
+  if(!_guiasEsSiglaConocida(d)) return d;
+  var nom = _guiasNombreCorto(_guiasAlmInfo(d).nombre);
+  return (nom && nom.toUpperCase() !== d.toUpperCase()) ? d + " → " + nom : d;
+}
+function _guiasDestinoEtiquetaHtml(destino){ return _guiasEscHtml(_guiasDestinoEtiqueta(destino)); }
+
 // ── Estado de la guía en progreso ─────────────────────────────────────────────
 var _guiaActual = null; // { destino, area, folio, fecha, lineas:[], transporte:'' }
 var _guiaEditandoOriginal = null; // { folio, area } de la guía que se está editando desde el historial, o null si es nueva
@@ -781,7 +821,7 @@ function modGuias(){
       "<div style=\"flex:1;min-width:220px\">" +
       "<div style=\"font-weight:700;font-size:13.5px\">📝 Hay una guía sin terminar</div>" +
       "<div style=\"font-size:12px;color:var(--muted);margin-top:2px\">" +
-      (dd.area||"Sin área") + (dd.folio?(" · No. "+dd.folio):"") + (dd.destino?(" · "+dd.destino):"") +
+      (dd.area||"Sin área") + (dd.folio?(" · No. "+dd.folio):"") + (dd.destino?(" · "+_guiasDestinoEtiquetaHtml(dd.destino)):"") +
       " · " + (dd.lineas?dd.lineas.length:0) + " línea(s) · respaldada " + cuando + "</div></div>" +
       "<button onclick=\"_guiasDraftRetomar()\" style=\"padding:8px 16px;background:var(--primary);color:#fff;" +
       "border:none;border-radius:8px;font-weight:700;font-size:12.5px;cursor:pointer;font-family:inherit\">Continuar</button>" +
@@ -902,12 +942,12 @@ function _guiasRenderPanel(){
 function _guiasFilaHtml(item){
   var g = item.g, i = item.i;
   var area = g.area || "General";
-  var buscable = (g.folio + " " + (g.destino||"") + " " + area + " " + (g.fecha||"")).toLowerCase();
+  var buscable = (g.folio + " " + (g.destino||"") + " " + _guiasDestinoEtiqueta(g.destino) + " " + area + " " + (g.fecha||"")).toLowerCase();
   return "<div class=\"guia-item\" data-buscar=\"" + _escAttr(buscable) + "\">" +
     "<input type=\"checkbox\" class=\"guia-chk\" data-idx=\"" + i + "\"" +
     " onchange=\"_guiasToggleExportBtn()\" style=\"width:15px;height:15px;cursor:pointer;flex-shrink:0\">" +
     "<div style=\"flex:1;min-width:0;cursor:pointer\" onclick=\"_guiasAbrirHistorial(" + i + ")\" title=\"Ver / editar\">" +
-    "<div class=\"gi-t\">No. " + g.folio + " &mdash; " + (g.destino||"") + "</div>" +
+    "<div class=\"gi-t\">No. " + g.folio + " &mdash; " + _guiasDestinoEtiquetaHtml(g.destino) + "</div>" +
     "<div class=\"gi-s\">" + (g.fecha||"") + " &middot; " + (g.lineas||0) + " materiales</div>" +
     "</div>" +
     "<button onclick=\"_guiasReimprimirHistorial(" + i + ",event)\" title=\"Reimprimir\"" +
@@ -934,7 +974,7 @@ function _guiasBuscar(val){
   var hist = _guiasHistCargar();
   var res = hist.map(function(g,i){ return {g:g, i:i}; }).filter(function(item){
     var g = item.g;
-    var s = (g.folio + " " + (g.destino||"") + " " + (g.area||"General") + " " + (g.fecha||"")).toLowerCase();
+    var s = (g.folio + " " + (g.destino||"") + " " + _guiasDestinoEtiqueta(g.destino) + " " + (g.area||"General") + " " + (g.fecha||"")).toLowerCase();
     return s.indexOf(q) !== -1;
   });
 
@@ -1079,6 +1119,11 @@ function _guiasDestinoInput(){
   _guiasDestinoFiltrados = _guiasDestinoLista.filter(function(a){
     return !q || a.sigla.toLowerCase().includes(q) || a.nombre.toLowerCase().includes(q);
   }).slice(0, 30);
+  // Fila final para escribir un destino que no está en la base (varias palabras, se guarda completo)
+  var crudo = inp.value.replace(/\s+/g, " ").trim();
+  if(crudo && !_guiasEsSiglaConocida(crudo.toUpperCase())){
+    _guiasDestinoFiltrados.push({ libre: true, sigla: crudo, nombre: "" });
+  }
   _guiasDestinoHighlight = -1;
   _guiasDestinoRenderSugerencias();
   _guiasActualizarDestinatario();
@@ -1090,10 +1135,16 @@ function _guiasDestinoRenderSugerencias(){
   if(_guiasDestinoFiltrados.length === 0){ cont.style.display = "none"; cont.innerHTML = ""; return; }
   cont.innerHTML = _guiasDestinoFiltrados.map(function(a, idx){
     var resaltado = idx === _guiasDestinoHighlight;
+    if(a.libre){
+      return "<div data-idx=\"" + idx + "\" onmousedown=\"event.preventDefault();_guiasDestinoElegir(" + idx + ")\"" +
+        " style=\"padding:9px 14px;cursor:pointer;font-size:13px;border-top:1px solid var(--line);" +
+        (resaltado ? "background:var(--primary);color:white" : "background:#f8fafc;color:var(--muted)") + "\">" +
+        "&#9998; Usar <b>&laquo;" + _guiasEscHtml(a.sigla) + "&raquo;</b> como destino (fuera del catálogo)</div>";
+    }
     return "<div data-idx=\"" + idx + "\" onmousedown=\"event.preventDefault();_guiasDestinoElegir(" + idx + ")\"" +
       " style=\"padding:9px 14px;cursor:pointer;font-size:13px;" +
       (resaltado ? "background:var(--primary);color:white" : "background:white;color:inherit") + "\">" +
-      "<b>" + a.sigla + "</b> &mdash; " + a.nombre + "</div>";
+      "<b>" + _guiasEscHtml(a.sigla) + "</b> &mdash; " + _guiasEscHtml(a.nombre) + "</div>";
   }).join("");
   cont.style.display = "block";
   if(_guiasDestinoHighlight >= 0){
@@ -1106,10 +1157,26 @@ function _guiasDestinoElegir(idx){
   var a = _guiasDestinoFiltrados[idx];
   if(!a) return;
   var inp = document.getElementById("gDestino");
-  inp.value = a.sigla;
+  inp.value = a.sigla; // en el caso libre es el texto completo tal como se escribió
   var cont = document.getElementById("gDestinoSugerencias");
   if(cont) cont.style.display = "none";
   _guiasActualizarDestinatario();
+}
+
+// ¿Qué sugerencia tomar con Enter/Tab si el usuario no marcó ninguna con las flechas?
+// Solo si es inequívoca: una única coincidencia real, o una sigla que empieza con lo escrito.
+// Así "CM Veracruz" o "Veracruz" no se cambian por otro almacén sin querer.
+function _guiasDestinoAutoIdx(){
+  var inp = document.getElementById("gDestino");
+  var q = inp ? inp.value.trim().toLowerCase() : "";
+  var reales = [];
+  _guiasDestinoFiltrados.forEach(function(a, i){ if(!a.libre) reales.push(i); });
+  if(!reales.length) return -1;
+  if(reales.length === 1) return reales[0];
+  for(var k = 0; k < reales.length; k++){
+    if(_guiasDestinoFiltrados[reales[k]].sigla.toLowerCase().indexOf(q) === 0) return reales[k];
+  }
+  return -1;
 }
 
 function _guiasDestinoKeydown(ev){
@@ -1132,15 +1199,17 @@ function _guiasDestinoKeydown(ev){
   }
   if(ev.key === "Enter"){
     if(visible){
-      ev.preventDefault();
-      _guiasDestinoElegir(_guiasDestinoHighlight >= 0 ? _guiasDestinoHighlight : 0);
+      var iE = _guiasDestinoHighlight >= 0 ? _guiasDestinoHighlight : _guiasDestinoAutoIdx();
+      if(iE >= 0){ ev.preventDefault(); _guiasDestinoElegir(iE); }
     }
-    // Si no hay sugerencias visibles, se deja pasar el Enter para que el formulario continúe.
+    // Si no hay una sugerencia clara, se deja pasar el Enter para que el formulario continúe
+    // con lo escrito (destino libre).
     return;
   }
   if(ev.key === "Tab"){
     if(visible){
-      _guiasDestinoElegir(_guiasDestinoHighlight >= 0 ? _guiasDestinoHighlight : 0);
+      var iT = _guiasDestinoHighlight >= 0 ? _guiasDestinoHighlight : _guiasDestinoAutoIdx();
+      if(iT >= 0) _guiasDestinoElegir(iT);
     }
     return; // no se bloquea: el Tab sigue avanzando al siguiente campo
   }
@@ -1151,13 +1220,15 @@ function _guiasDestinoKeydown(ev){
 
 function _guiasActualizarDestinatario(){
   var raw = document.getElementById("gDestino").value.trim();
-  // Aceptar sigla directa o "SIGLA — NOMBRE"
-  var sigla = raw.split(" ")[0].split("—")[0].trim().toUpperCase();
+  // Aceptar sigla directa, "SIGLA — NOMBRE" o un destino libre de varias palabras
+  var sigla = _guiasParsearDestino(raw);
   var info = document.getElementById("gDestinatarioInfo");
   if(!sigla){ info.style.display="none"; return; }
   var d = _guiasAlmInfo(sigla);
+  var libre = !_guiasEsSiglaConocida(sigla);
   info.innerHTML =
-    "<b>" + d.nombre + "</b><br>" +
+    "<b>" + _guiasEscHtml(d.nombre) + "</b><br>" +
+    (libre ? "<span style=\"font-size:11px;color:var(--muted)\">Destino fuera del catálogo &mdash; se guardará tal cual.</span><br>" : "") +
     (d.atiende ? "Atiende: " + d.atiende + "<br>" : "") +
     (d.domicilio ? d.domicilio + "<br>" : "") +
     (d.ciudad ? d.ciudad + (d.cp?" &nbsp; C.P. "+d.cp:"") : "") +
@@ -1169,7 +1240,7 @@ function _guiasContinuarMateriales(){
   var area    = document.getElementById("gArea").value;
   var folio   = document.getElementById("gFolio").value.trim();
   var raw = document.getElementById("gDestino").value.trim();
-  var destino = raw.split(" ")[0].split("—")[0].trim().toUpperCase();
+  var destino = _guiasParsearDestino(raw);
   var fecha   = document.getElementById("gFecha").value;
 
   if(!folio){ alert("Ingresa el número de guía."); return; }
@@ -1232,8 +1303,7 @@ function _guiasCapturaMateriales(){
     "color:var(--muted)\">&lsaquo; Datos</button>" +
     "<div><div style=\"font-size:17px;font-weight:800;color:var(--primary)\">" +
     "Guía " + _guiaActual.area + " No. " + _guiaActual.folio + "</div>" +
-    "<div style=\"font-size:12px;color:var(--muted)\">" + _guiaActual.destino +
-    " &middot; " + _guiaActual.almInfo.nombre + "</div></div>" +
+    "<div style=\"font-size:12px;color:var(--muted)\">" + _guiasDestinoEtiquetaHtml(_guiaActual.destino) + "</div></div>" +
     "</div>" +
 
     // Panel de entrada de material
@@ -2473,8 +2543,8 @@ function _guiasRevision(){
     "color:var(--muted)\">&lsaquo; Materiales</button>" +
     "<div><div style=\"font-size:18px;font-weight:800;color:var(--primary)\">" +
     "Guía " + _guiaActual.area + " No. " + _guiaActual.folio + " &mdash; Revisión</div>" +
-    "<div style=\"font-size:12px;color:var(--muted)\">" + _guiaActual.destino + " &middot; " +
-    _guiaActual.almInfo.nombre + " &middot; <span id=\"gTotalBultos\">" + totalBultos + " bultos total</span></div></div>" +
+    "<div style=\"font-size:12px;color:var(--muted)\">" + _guiasDestinoEtiquetaHtml(_guiaActual.destino) + " &middot; " +
+    "<span id=\"gTotalBultos\">" + totalBultos + " bultos total</span></div></div>" +
     "<button onclick=\"_guiasCapturarFirmasRevisionSiActiva();modGuias()\" title=\"Volver a la pantalla inicial de guías\" style=\"margin-left:auto;background:none;border:1.5px solid var(--line);" +
     "border-radius:8px;padding:6px 14px;cursor:pointer;font-size:13px;font-family:inherit;" +
     "color:var(--muted)\">&#8617; Guías</button>" +
@@ -3241,7 +3311,7 @@ function _guiasMostrarFin(folio, destino){
     "<div style=\"background:white;border-radius:14px;max-width:380px;width:100%;padding:20px;text-align:center\">" +
     "<div style=\"font-size:34px\">&#9989;</div>" +
     "<h3 style=\"margin:6px 0 4px;font-size:17px\">Guía No. " + String(folio).replace(/</g,"&lt;") + " generada</h3>" +
-    "<div style=\"font-size:12.5px;color:var(--muted);margin-bottom:14px\">" + String(destino||"").replace(/</g,"&lt;") + " &middot; guardada en el historial</div>" +
+    "<div style=\"font-size:12.5px;color:var(--muted);margin-bottom:14px\">" + _guiasDestinoEtiquetaHtml(destino) + " &middot; guardada en el historial</div>" +
     "<button onclick=\"document.getElementById('gFinModal').remove();modGuias()\" style=\"width:100%;padding:12px;background:#001E6E;color:white;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:8px\">&#8617; Volver a Guías (hacer otra)</button>" +
     "<button onclick=\"document.getElementById('gFinModal').remove()\" style=\"width:100%;padding:10px;background:none;border:1.5px solid var(--line,#ccc);border-radius:10px;font-size:13px;cursor:pointer\">Seguir en esta guía</button>" +
     "</div>";
@@ -3252,7 +3322,7 @@ function _guiasBorrarHistorial(idx){
   var hist = _guiasHistCargar();
   var g = hist[idx];
   if(!g) return;
-  if(!confirm("¿Borrar la guía No. " + g.folio + " — " + (g.destino||'') + "?\n\nEsta acción no se puede deshacer.")) return;
+  if(!confirm("¿Borrar la guía No. " + g.folio + " — " + _guiasDestinoEtiqueta(g.destino) + "?\n\nEsta acción no se puede deshacer.")) return;
   hist.splice(idx, 1);
   _guiasHistGuardar(hist);
   modGuias();
