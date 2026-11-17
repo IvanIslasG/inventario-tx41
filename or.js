@@ -482,6 +482,7 @@ function _tplPanelOR(orAlm, mCPM, mStk, areaSel){
     "<button class=\"btn btn-outline btn-sm\" onclick=\"_mostrarBienvenidaOR()\">&lsaquo; Areas</button>" +
     "<span style=\"font-weight:700;color:var(--primary);font-size:13px\">" + orAlm + " &middot; " + almName(orAlm) + "</span>" +
     "<button class=\"btn btn-outline btn-sm\" style=\"color:var(--rojo,#dc2626)\" onclick=\"_orReiniciar()\">&#8634; Reiniciar</button>" +
+    "<button class=\"btn btn-outline btn-sm\" onclick=\"if(typeof ngcPanel==='function')ngcPanel()\">&#127991; Correcciones NG</button>" +
     "</div>" +
     "<div class=\"controls\" style=\"flex-wrap:wrap;margin-top:6px;align-items:center\">" +
     "<label class=\"chk\">CPM (meses) <input type=\"number\" id=\"orMCPM\" value=\"" + mCPM + "\" min=\"1\" max=\"24\" step=\"1\" style=\"width:58px\"></label>" +
@@ -925,7 +926,7 @@ function pintarOR(){
       <td class="cat num">${r.cat}${r.agregadoSolicitud>0?`<span title="Se agregaron ${fmt1(r.agregadoSolicitud)} por una solicitud de correo" style="margin-left:5px;cursor:help">📩</span>`:""}${r.faltanteSolicitud>0?`<span title="Se solicitó por correo y faltó existencia en D041 para cubrir ${fmt1(r.faltanteSolicitud)}" style="margin-left:5px;cursor:help">🚫</span>`:""}</td>
       <td class="desc">${r.desc||"—"}</td>
       <td><span class="area-tag">${r.area}</span></td>
-      <td style="${ngStyle}">${r.ng}</td>
+      <td style="${ngStyle}">${r.ng}${typeof ngcLapiz==="function"?ngcLapiz(r.cat):""}</td>
       <td>${r.um||""}</td>
       <td class="r num">${nfmt(r.consumo)}</td>
       <td class="r num">${fmt1(r.cpm)}</td>
