@@ -1,6 +1,13 @@
 {
  "version": 1,
- "actualizado": "",
- "por": "",
- "correcciones": {}
+ "actualizado": "2026-11-17T22:23:23.309Z",
+ "por": "Ivan Islas G",
+ "correcciones": {
+  "1054130": {
+   "ng": "FOSC 450",
+   "por": "Ivan Islas G",
+   "fecha": "2026-11-17T22:19:23.937Z",
+   "anterior": "FOSC 350"
+  }
+ }
 }
