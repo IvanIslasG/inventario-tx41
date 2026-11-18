@@ -1502,10 +1502,11 @@ function _tplStatCard(n, l){
 function _tplResumenOR(orAlm, totalPzas, totalCats, ramaLabel, matRowsHtml){
   return (
     "<div style=\"max-width:680px;margin:0 auto;padding:24px 16px\">" +
-    "<div style=\"display:flex;align-items:center;gap:12px;margin-bottom:24px\">" +
-    "<button onclick=\"_modORPanel()\" style=\"background:none;border:1.5px solid var(--line);" +
-    "border-radius:8px;padding:6px 14px;cursor:pointer;font-size:13px;font-family:inherit;" +
-    "color:var(--muted)\">&lsaquo; Regresar</button>" +
+    "<div style=\"display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:24px\">" +
+    "<button onclick=\"_mostrarPaso1Alm()\" style=\"background:none;border:1.5px solid var(--line);border-radius:8px;padding:6px 14px;cursor:pointer;font-size:13px;font-family:inherit;color:var(--muted)\">&lsaquo; Almacenes</button>" +
+    "<button onclick=\"_mostrarBienvenidaOR()\" style=\"background:none;border:1.5px solid var(--line);border-radius:8px;padding:6px 14px;cursor:pointer;font-size:13px;font-family:inherit;color:var(--muted)\">&lsaquo; &Aacute;reas</button>" +
+    "<button onclick=\"_modORPanel()\" style=\"background:none;border:1.5px solid var(--line);border-radius:8px;padding:6px 14px;cursor:pointer;font-size:13px;font-family:inherit;color:var(--muted)\">&lsaquo; Tabla</button>" +
+    "<div style=\"width:100%;height:0\"></div>" +
     "<div><div style=\"font-size:18px;font-weight:800;color:var(--primary)\">Resumen de la OR</div>" +
     "<div style=\"font-size:12px;color:var(--muted)\">" + orAlm + " &middot; " + almName(orAlm) + "</div></div>" +
     "</div>" +
