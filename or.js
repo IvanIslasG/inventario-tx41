@@ -1357,13 +1357,22 @@ function _exportarORJson(rows, numReabasto, generador, areasSeleccionadas){
 }
 
 /* ---- Excel OR directo (sin servidor externo) ---- */
+/* Letra(s) por área para el nombre del archivo: M, H, C, P (R = Ropa y Calzado, X = sin clasificar).
+   Si la OR trae varias áreas, se juntan en este orden: M H C P R X  (ej. OR_A08J_MH) */
+const OR_LETRA_AREA = {"Misceláneos":"M","Herramientas":"H","Cables":"C","Papelería":"P","Ropa y Calzado":"R","Sin clasificar":"X"};
+function _orLetrasArea(areas){
+  const set=new Set(areas), orden=["Misceláneos","Herramientas","Cables","Papelería","Ropa y Calzado","Sin clasificar"];
+  const l=orden.filter(a=>set.has(a)).map(a=>OR_LETRA_AREA[a]).join("");
+  return l||"OR";
+}
+
 async function _exportarORSimple(rows, numReabasto, generador, areasSeleccionadas){
   const hoy=new Date().toLocaleDateString("es-MX",{day:"2-digit",month:"2-digit",year:"numeric"});
   const alm=orAlm, almNom=almName(alm);
   console.log("[OR export] orAlm:", orAlm, "rows:", rows.length, "areas:", areasSeleccionadas);
   const mCPM=+document.getElementById("orMCPM")?.value||6;
   const mStk=+document.getElementById("orMS")?.value||1.5;
-  const filename=`OR_${alm}_Reb${numReabasto}_${hoy.replace(/\//g,"-")}.xlsx`;
+  const filename=`OR_${alm}_${_orLetrasArea(rows.map(r=>r.area))}.xlsx`;
   const porArea={}; rows.forEach(r=>(porArea[r.area]||=[]).push(r));
   const wb=XLSX.utils.book_new();
 
@@ -1518,6 +1527,7 @@ function _tplResumenOR(orAlm, totalPzas, totalCats, ramaLabel, matRowsHtml){
     "padding:10px 14px;border:1.5px solid var(--line);border-radius:10px;font-size:14px;" +
     "font-family:inherit;color:var(--ink);outline:none\"" +
     " onfocus=\"this.style.borderColor='var(--primary)'\" onblur=\"this.style.borderColor='var(--line)'\">" +
+    _orGenBotonesHtml() +
     "</div></div>" +
     "<div style=\"background:#f0f4ff;border:1.5px solid #c7d7f0;border-radius:10px;" +
     "padding:12px 16px;margin-bottom:20px;display:flex;align-items:center;gap:10px\">" +
@@ -1552,6 +1562,28 @@ function _tplResumenOR(orAlm, totalPzas, totalCats, ramaLabel, matRowsHtml){
   );
 }
 
+/* ---- Botones de nombres frecuentes para "Genera OR" ---- */
+const OR_GENERADORES = ["Misrrain Maldonado V.","Ivan Islas G.","Elisa Molina C.","Carolina Garcia V.","Roberto Triano V."];
+function _orGenBotonesHtml(){
+  return "<div id=\"orGenBtns\" style=\"display:flex;flex-wrap:wrap;gap:5px;margin-top:7px\">" +
+    OR_GENERADORES.map(function(n,i){
+      return "<button type=\"button\" class=\"btn btn-outline btn-sm or-gen-btn\" data-i=\"" + i + "\" " +
+        "style=\"font-size:11.5px;padding:3px 8px\" onclick=\"_orGenElegir(" + i + ")\">" + n + "</button>";
+    }).join("") + "</div>";
+}
+function _orGenElegir(i){
+  var inp=$("#orGenResum"); if(!inp) return;
+  inp.value=OR_GENERADORES[i];
+  _orGenMarcar();
+}
+function _orGenMarcar(){
+  var v=(($("#orGenResum")||{}).value||"").trim();
+  document.querySelectorAll(".or-gen-btn").forEach(function(b){
+    var on=OR_GENERADORES[+b.dataset.i]===v;
+    b.style.background=on?"var(--primary)":""; b.style.color=on?"#fff":"";
+  });
+}
+
 function _mostrarResumenOR(){
   const rows = filasOR();
   const conXS = rows.filter(r => r.xsurtir > 0);
@@ -1571,6 +1603,7 @@ function _mostrarResumenOR(){
   });
 
   $("#moduleView").innerHTML = _tplResumenOR(orAlm, totalPzas, totalCats, ramaLabel, matRowsHtml);
+  $("#orGenResum").addEventListener("input",_orGenMarcar);
 }
 
 /* ---- Fallback: xlsx plano sin formato ---- */
